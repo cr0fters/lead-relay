@@ -10,7 +10,7 @@ public sealed class InMemorySiteRepository : ISiteRepository
         new()
         {
             Id = "site_demo",
-            Name = "Demo site",
+            Name = "Spaces by Kelly",
             BusinessSummary = "Interior design company specialising in modern, family-friendly spaces.",
             OwnerEmail = "owner@example.com",
             WhatsAppNumber = "447000000000",
@@ -19,19 +19,26 @@ public sealed class InMemorySiteRepository : ISiteRepository
             [
                 new()
                 {
-                    Key = "name",
-                    Prompt = "What's your name?"
-                },
-                new()
-                {
-                    Key = "email",
-                    Prompt = "What's your email address?",
-                    Type = ConversationFieldType.Email
-                },
-                new()
-                {
                     Key = "project_description",
-                    Prompt = "Can you describe the project?"
+                    Prompt = "Tell me a little about your project! What space are you designing? What's your biggest challenge? Any inspiration?"
+                }
+            ],
+            OptionalFields =
+            [
+                new()
+                {
+                    Key = "timeline",
+                    Prompt = "Do you have a rough timeline in mind?"
+                },
+                new()
+                {
+                    Key = "budget",
+                    Prompt = "Do you have a rough budget range you're aiming for?"
+                },
+                new()
+                {
+                    Key = "location",
+                    Prompt = "Where is the project located?"
                 }
             ]
         }

@@ -14,4 +14,10 @@ public sealed class Lead
     public string? Referrer { get; set; }
     public Dictionary<string, string> Utm { get; init; } = new();
     public Dictionary<string, string> Fields { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+    public List<LeadConversationTurn> Conversation { get; init; } = new();
 }
+
+public sealed record LeadConversationTurn(
+    string Role,
+    string Text,
+    DateTimeOffset AtUtc);

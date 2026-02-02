@@ -15,17 +15,19 @@ public sealed class DebugController(
     }
 
     [HttpPost("/debug/whatsapp/send")]
-    public async Task<IActionResult> Send([FromForm] string waId, [FromForm] string message, CancellationToken ct)
+    public async Task<IActionResult> Send([FromForm] string waId, [FromForm] string message, [FromForm] string? systemPrompt, CancellationToken ct)
     {
         var site = await sites.GetByIdAsync("site_demo", ct);
         if (site is null) return NotFound();
 
-        var reply = conversations.HandleMessage(site, waId, message);
+        var reply = await conversations.HandleMessageAsync(site, waId, message, systemPrompt, ct);
         return Ok(new
         {
             reply = reply.ReplyText,
             completed = reply.IsComplete,
-            collected = reply.Collected
+            collected = reply.Collected,
+            history = reply.History,
+            leadId = reply.LeadId
         });
     }
 }

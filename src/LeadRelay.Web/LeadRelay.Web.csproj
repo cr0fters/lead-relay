@@ -1,4 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <UserSecretsId>59c87377-2cc0-4b1a-8159-53ca7cd90be6</UserSecretsId>
+  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\LeadRelay.Application\LeadRelay.Application.csproj" />
     <ProjectReference Include="..\LeadRelay.Infrastructure\LeadRelay.Infrastructure.csproj" />

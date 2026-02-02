@@ -44,31 +44,49 @@ public sealed class WhatsAppWebhookController(
         var site = await sites.GetByIdAsync("site_demo", ct);
         if (site is null) return Ok(new { ok = true });
 
-        var reply = conversations.HandleMessage(site, waId, text);
+        var reply = await conversations.HandleMessageAsync(site, waId, text, null, ct);
         await whatsAppClient.SendTextAsync(waId, reply.ReplyText, ct);
 
-        if (reply.IsComplete)
+        if (reply.LeadId is not null)
         {
             var lead = new Lead
             {
-                Id = Guid.NewGuid(),
+                Id = reply.LeadId.Value,
                 SiteId = site.Id,
-                CreatedAtUtc = DateTimeOffset.UtcNow,
+                CreatedAtUtc = reply.LeadCreatedAtUtc ?? DateTimeOffset.UtcNow,
                 Intent = "website chat",
-                Notes = $"waId={waId}; firstMessage={text}"
+                Notes = $"waId={waId}; firstMessage={ExtractFirstUserMessage(reply.History) ?? text}"
             };
 
             foreach (var kv in reply.Collected)
                 lead.Fields[kv.Key] = kv.Value;
 
+            foreach (var turn in reply.History)
+                lead.Conversation.Add(new LeadConversationTurn(turn.Role, turn.Text, turn.AtUtc));
+
             await leads.SaveAsync(lead, ct);
 
-            var fieldsBlock = string.Join("\n", lead.Fields.Select(kv => $"{kv.Key}: {kv.Value}"));
-            var body = $"New lead for {site.Name}\n\nFields:\n{fieldsBlock}\n\nNotes: {lead.Notes}\n";
-            await emailSender.SendAsync(site.OwnerEmail, $"New WhatsApp lead ({site.Name})", body, ct);
+            if (reply.LeadJustCreated)
+            {
+                var fieldsBlock = string.Join("\n", lead.Fields.Select(kv => $"{kv.Key}: {kv.Value}"));
+                var body = $"New lead for {site.Name}\n\nFields:\n{fieldsBlock}\n\nNotes: {lead.Notes}\n";
+                await emailSender.SendAsync(site.OwnerEmail, $"New WhatsApp lead ({site.Name})", body, ct);
+            }
         }
 
         return Ok(new { ok = true });
+    }
+
+    private static string? ExtractFirstUserMessage(IReadOnlyList<ConversationTurn> history)
+    {
+        for (var i = 0; i < history.Count; i++)
+        {
+            var turn = history[i];
+            if (string.Equals(turn.Role, "user", StringComparison.OrdinalIgnoreCase))
+                return turn.Text;
+        }
+
+        return null;
     }
 
     private string? ExtractText(JsonElement payload)

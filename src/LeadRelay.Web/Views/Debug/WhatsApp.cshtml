@@ -1,56 +1,259 @@
+@using LeadRelay.Web.WhatsApp
+@using Microsoft.Extensions.Options
+@inject IOptions<ConversationOptions> ConversationOptions
+
 <!doctype html>
 <html>
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>WhatsApp Debug</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 24px; }
-        .row { display: flex; gap: 12px; flex-wrap: wrap; }
-        label { display: block; font-weight: 600; margin-bottom: 6px; }
-        input, textarea, button { font: inherit; padding: 8px 10px; }
-        textarea { width: min(720px, 95vw); height: 120px; }
-        .panel { margin-top: 16px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; background: #fafafa; }
-        pre { white-space: pre-wrap; }
+        :root {
+            color-scheme: light;
+            --ink: #171717;
+            --muted: #5b5b5b;
+            --paper: #f7f3ef;
+            --panel: #ffffff;
+            --accent: #0b6d5c;
+            --accent-2: #f2b132;
+            --stroke: #e5ded6;
+            --shadow: 0 18px 40px rgba(20, 20, 20, 0.12);
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "Source Sans 3", "Segoe UI", sans-serif;
+            color: var(--ink);
+            background: radial-gradient(circle at top right, #ffe8bf 0%, transparent 45%),
+                        radial-gradient(circle at top left, #c7f3e5 0%, transparent 55%),
+                        var(--paper);
+            min-height: 100vh;
+        }
+
+        .page {
+            padding: 32px clamp(16px, 4vw, 40px) 48px;
+            max-width: 1180px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 28px;
+        }
+
+        header h1 {
+            font-family: "Fraunces", serif;
+            font-size: clamp(28px, 3.2vw, 44px);
+            margin: 0;
+        }
+
+        header p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 1.05rem;
+        }
+
+        .grid {
+            display: grid;
+            gap: 20px;
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+        }
+
+        .card {
+            background: var(--panel);
+            border-radius: 20px;
+            border: 1px solid var(--stroke);
+            box-shadow: var(--shadow);
+            padding: 20px;
+        }
+
+        .card h2 {
+            font-size: 1.1rem;
+            margin: 0 0 12px;
+            font-weight: 600;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        label {
+            font-weight: 600;
+        }
+
+        input, textarea {
+            font: inherit;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid var(--stroke);
+            background: #fffdfa;
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            border-radius: 999px;
+            padding: 12px 20px;
+            font-weight: 600;
+            background: var(--accent);
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 12px 24px rgba(11, 109, 92, 0.25);
+        }
+
+        .primary:disabled {
+            opacity: 0.6;
+            cursor: default;
+        }
+
+        .ghost {
+            background: transparent;
+            border: 1px dashed var(--stroke);
+            color: var(--muted);
+            padding: 8px 12px;
+            border-radius: 10px;
+        }
+
+        .meta {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        .panel {
+            background: #0f172a;
+            color: #e2e8f0;
+            border-radius: 16px;
+            padding: 16px;
+            min-height: 120px;
+            overflow: auto;
+            font-family: "Source Sans 3", sans-serif;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            margin: 0;
+            font-family: "Source Sans 3", sans-serif;
+        }
+
+        .stack {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .tag {
+            background: #f9f0dd;
+            border-radius: 999px;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .accent {
+            color: var(--accent);
+        }
+
+        @@media (max-width: 900px) {
+            .grid { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+        }
     </style>
 </head>
 <body>
-<h1>WhatsApp Debug</h1>
-<p>Simulate incoming messages without WhatsApp. Uses site_demo configuration.</p>
+<div class="page">
+    <header>
+        <span class="tag">LeadRelay <span class="accent">•</span> WhatsApp Debug</span>
+        <h1>Talk to your lead assistant</h1>
+        <p>Simulate incoming messages without WhatsApp. Uses <strong>site_demo</strong> configuration.</p>
+        <div class="meta">
+            <span>LLM prompt + lead capture</span>
+            <span>•</span>
+            <span>Local simulator</span>
+        </div>
+    </header>
 
-<div class="row">
-    <div>
-        <label for="waId">waId (phone number)</label>
-        <input id="waId" type="text" value="15551234567" />
+    <div class="grid">
+        <section class="card" style="grid-column: span 5;">
+            <h2>Message input</h2>
+            <div class="field">
+                <label for="waId">waId (phone number)</label>
+                <input id="waId" type="text" value="15551234567" />
+            </div>
+            <div class="field">
+                <label for="message">Message</label>
+                <textarea id="message">Hi</textarea>
+            </div>
+            <div class="field">
+                <label for="systemPrompt">System prompt override</label>
+                <textarea id="systemPrompt">@ConversationOptions.Value.GlobalPromptTemplate</textarea>
+                <div class="meta">
+                    <span class="ghost">Tip: tweak tone or rules live</span>
+                </div>
+            </div>
+            <button id="sendBtn" class="primary" type="button">Send message</button>
+        </section>
+
+        <section class="card stack" style="grid-column: span 7;">
+            <div>
+                <h2>Assistant reply</h2>
+                <div class="panel">
+                    <pre id="reply"></pre>
+                </div>
+            </div>
+            <div>
+                <h2>Collected fields</h2>
+                <div class="panel">
+                    <pre id="collected"></pre>
+                </div>
+            </div>
+            <div>
+                <h2>Conversation history</h2>
+                <div class="panel">
+                    <pre id="history"></pre>
+                </div>
+            </div>
+            <div>
+                <h2>Lead ID</h2>
+                <div class="panel">
+                    <pre id="leadId"></pre>
+                </div>
+            </div>
+        </section>
     </div>
-    <div style="flex:1 1 300px;">
-        <label for="message">Message</label>
-        <textarea id="message">Hi</textarea>
-    </div>
-</div>
-
-<p>
-    <button id="sendBtn" type="button">Send</button>
-</p>
-
-<div class="panel">
-    <strong>Reply</strong>
-    <pre id="reply"></pre>
-</div>
-<div class="panel">
-    <strong>Collected fields</strong>
-    <pre id="collected"></pre>
 </div>
 
 <script>
     const btn = document.getElementById("sendBtn");
     const replyEl = document.getElementById("reply");
     const collectedEl = document.getElementById("collected");
+    const historyEl = document.getElementById("history");
+    const leadIdEl = document.getElementById("leadId");
 
     btn.addEventListener("click", async () => {
+        btn.disabled = true;
         const waId = document.getElementById("waId").value.trim();
         const message = document.getElementById("message").value;
-        const body = new URLSearchParams({ waId, message });
+        const systemPrompt = document.getElementById("systemPrompt").value;
+        const body = new URLSearchParams({ waId, message, systemPrompt });
 
         const res = await fetch("/debug/whatsapp/send", {
             method: "POST",
@@ -61,12 +264,18 @@
         if (!res.ok) {
             replyEl.textContent = "Request failed.";
             collectedEl.textContent = "";
+            historyEl.textContent = "";
+            leadIdEl.textContent = "";
+            btn.disabled = false;
             return;
         }
 
         const json = await res.json();
         replyEl.textContent = json.reply || "";
         collectedEl.textContent = JSON.stringify(json.collected || {}, null, 2);
+        historyEl.textContent = JSON.stringify(json.history || [], null, 2);
+        leadIdEl.textContent = json.leadId || "";
+        btn.disabled = false;
     });
 </script>
 </body>

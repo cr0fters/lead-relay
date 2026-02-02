@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 
 namespace LeadRelay.Infrastructure.Email;
 
-public sealed class ConsoleEmailSender(ILogger logger) : IEmailSender
+public sealed class ConsoleEmailSender(ILogger<ConsoleEmailSender> logger) : IEmailSender
 {
     public Task SendAsync(string toEmail, string subject, string bodyText, CancellationToken ct)
     {
