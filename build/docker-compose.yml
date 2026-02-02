@@ -1,0 +1,9 @@
+services:
+  leadrelay:
+    build:
+      context: ..
+      dockerfile: build/LeadRelay.Web.Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      Token__Secret: "change_me"
