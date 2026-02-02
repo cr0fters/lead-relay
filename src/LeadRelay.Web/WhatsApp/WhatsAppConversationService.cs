@@ -54,8 +54,14 @@ public sealed class WhatsAppConversationService(
             }
 
             var firstPrompt = GetPrompt(site, state.StepIndex);
-            var intro = BuildIntro(site, firstPrompt);
+            var intro = BuildIntro(site);
             AppendTurn(state, "assistant", intro);
+            var replies = new List<string> { intro };
+            if (!string.IsNullOrWhiteSpace(firstPrompt))
+            {
+                AppendTurn(state, "assistant", firstPrompt);
+                replies.Add(firstPrompt);
+            }
             return new ConversationReply(
                 intro,
                 false,
@@ -63,7 +69,8 @@ public sealed class WhatsAppConversationService(
                 state.History.ToList(),
                 state.LeadId,
                 state.LeadCreatedAtUtc,
-                leadJustCreated);
+                leadJustCreated,
+                replies);
         }
 
         AppendTurn(state, "user", normalizedText);
@@ -92,7 +99,8 @@ public sealed class WhatsAppConversationService(
                     History = state.History.ToList(),
                     LeadId = state.LeadId,
                     LeadCreatedAtUtc = state.LeadCreatedAtUtc,
-                    LeadJustCreated = leadJustCreatedExisting
+                    LeadJustCreated = leadJustCreatedExisting,
+                    Replies = new[] { llmReply.ReplyText }
                 };
         }
 
@@ -118,7 +126,8 @@ public sealed class WhatsAppConversationService(
                 state.History.ToList(),
                 state.LeadId,
                 state.LeadCreatedAtUtc,
-                leadJustCreated);
+                leadJustCreated,
+                new[] { completedReply });
         }
 
         if (!TryAcceptField(field, normalizedText, out var value, out var errorReply))
@@ -131,7 +140,8 @@ public sealed class WhatsAppConversationService(
                 state.History.ToList(),
                 state.LeadId,
                 state.LeadCreatedAtUtc,
-                leadJustCreated);
+                leadJustCreated,
+                new[] { errorReply });
         }
 
         state.Collected[field.Key] = value;
@@ -150,7 +160,8 @@ public sealed class WhatsAppConversationService(
                 state.History.ToList(),
                 state.LeadId,
                 state.LeadCreatedAtUtc,
-                leadJustCreated);
+                leadJustCreated,
+                new[] { completedReply });
         }
 
         AppendTurn(state, "assistant", nextPrompt);
@@ -161,7 +172,8 @@ public sealed class WhatsAppConversationService(
             state.History.ToList(),
             state.LeadId,
             state.LeadCreatedAtUtc,
-            leadJustCreated);
+            leadJustCreated,
+            new[] { nextPrompt });
     }
 
     private async Task<ConversationReply?> TryHandleWithLlmAsync(
@@ -277,7 +289,8 @@ public sealed class WhatsAppConversationService(
                 state.History.ToList(),
                 state.LeadId,
                 state.LeadCreatedAtUtc,
-                false);
+                false,
+                new[] { replyText });
         }
 
         var nextIndex = GetNextStepIndex(site, merged);
@@ -291,7 +304,8 @@ public sealed class WhatsAppConversationService(
             state.History.ToList(),
             state.LeadId,
             state.LeadCreatedAtUtc,
-            false);
+            false,
+            new[] { replyText });
     }
 
     private static string BuildSystemPrompt(Site site, ConversationOptions options, string? systemPromptOverride)
@@ -534,12 +548,20 @@ public sealed class WhatsAppConversationService(
         return (state with { LeadId = leadId, LeadCreatedAtUtc = clock.UtcNow }, true);
     }
 
-    private static string BuildIntro(Site site, string? nextPrompt)
+    private static string BuildIntro(Site site)
     {
-        if (string.IsNullOrWhiteSpace(nextPrompt))
-            return "Thanks for reaching out!";
+        return BuildIntroMessage(site);
+    }
 
-        return $"{(string.IsNullOrWhiteSpace(site.Name) ? "Thanks for reaching out" : $"Thanks for reaching out to {site.Name}")}! {nextPrompt}";
+    private static string BuildIntroMessage(Site site)
+    {
+        var intro = string.IsNullOrWhiteSpace(site.IntroMessage)
+            ? "Thanks for reaching out! I’m an AI assistant helping the team respond quickly. Someone on the team will follow up shortly."
+            : site.IntroMessage;
+
+        intro = intro.Replace("{site_name}", site.Name, StringComparison.OrdinalIgnoreCase);
+
+        return intro.Trim();
     }
 
     private static ConversationField? GetField(Site site, int index)
@@ -613,7 +635,8 @@ public sealed record ConversationReply(
     IReadOnlyList<ConversationTurn> History,
     Guid? LeadId,
     DateTimeOffset? LeadCreatedAtUtc,
-    bool LeadJustCreated);
+    bool LeadJustCreated,
+    IReadOnlyList<string> Replies);
 
 public sealed record ConversationState(
     string SiteId,

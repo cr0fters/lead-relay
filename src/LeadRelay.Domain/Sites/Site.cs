@@ -8,6 +8,7 @@ public sealed class Site
     public IReadOnlyList<string> AllowedDomains { get; init; } = Array.Empty<string>();
     public IReadOnlyList<ConversationField> Fields { get; init; } = Array.Empty<ConversationField>();
     public IReadOnlyList<ConversationField> OptionalFields { get; init; } = Array.Empty<ConversationField>();
+    public string? IntroMessage { get; init; }
     public required string OwnerEmail { get; init; }
     public required string WhatsAppNumber { get; init; }
 }

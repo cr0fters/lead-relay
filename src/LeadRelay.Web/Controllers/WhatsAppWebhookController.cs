@@ -45,7 +45,8 @@ public sealed class WhatsAppWebhookController(
         if (site is null) return Ok(new { ok = true });
 
         var reply = await conversations.HandleMessageAsync(site, waId, text, null, ct);
-        await whatsAppClient.SendTextAsync(waId, reply.ReplyText, ct);
+        foreach (var message in reply.Replies)
+            await whatsAppClient.SendTextAsync(waId, message, ct);
 
         if (reply.LeadId is not null)
         {

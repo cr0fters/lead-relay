@@ -24,6 +24,7 @@ public sealed class DebugController(
         return Ok(new
         {
             reply = reply.ReplyText,
+            replies = reply.Replies,
             completed = reply.IsComplete,
             collected = reply.Collected,
             history = reply.History,

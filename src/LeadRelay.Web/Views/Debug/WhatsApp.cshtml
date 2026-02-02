@@ -271,7 +271,11 @@
         }
 
         const json = await res.json();
-        replyEl.textContent = json.reply || "";
+        if (Array.isArray(json.replies) && json.replies.length > 0) {
+            replyEl.textContent = json.replies.join("\n\n");
+        } else {
+            replyEl.textContent = json.reply || "";
+        }
         collectedEl.textContent = JSON.stringify(json.collected || {}, null, 2);
         historyEl.textContent = JSON.stringify(json.history || [], null, 2);
         leadIdEl.textContent = json.leadId || "";

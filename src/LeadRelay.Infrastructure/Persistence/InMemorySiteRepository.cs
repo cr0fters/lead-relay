@@ -15,6 +15,7 @@ public sealed class InMemorySiteRepository : ISiteRepository
             OwnerEmail = "owner@example.com",
             WhatsAppNumber = "447000000000",
             AllowedDomains = ["localhost"],
+            IntroMessage = "Hey, thanks for reaching out to Spaces by Kelly! I'm here to get the ball rolling and gather a few details. Kelly will jump in shortly.",
             Fields =
             [
                 new()
