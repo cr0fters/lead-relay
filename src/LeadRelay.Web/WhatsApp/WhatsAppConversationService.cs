@@ -222,9 +222,10 @@ public sealed class WhatsAppConversationService(
                                     required = new[] { "key", "value" }
                                 }
                             },
-                            done = new { type = "boolean" }
+                            done = new { type = "boolean" },
+                            project_summary = new { type = new[] { "string", "null" } }
                         },
-                        required = new[] { "reply_text", "collected", "done" }
+                        required = new[] { "reply_text", "collected", "done", "project_summary" }
                     }
                 }
             },
@@ -257,6 +258,7 @@ public sealed class WhatsAppConversationService(
 
         var merged = MergeCollected(site, state.Collected, proposed);
         merged = TryInferFromCurrentField(site, state, normalizedText, merged);
+        merged = UpdateProjectSummary(merged, reply.ProjectSummary, state, normalizedText);
         var requiredComplete = AreRequiredFieldsFilled(site, merged);
         var done = reply.Done || (requiredComplete && site.OptionalFields.Count == 0);
         var replyText = reply.ReplyText.Trim();
@@ -358,6 +360,12 @@ public sealed class WhatsAppConversationService(
         foreach (var turn in history)
             sb.AppendLine($"- {turn.Role}: {turn.Text}");
 
+        sb.AppendLine();
+        sb.AppendLine("Project summary instructions:");
+        sb.AppendLine("- Maintain a 1-2 sentence summary based on all user messages so far.");
+        sb.AppendLine("- If a summary already exists, refine it with new details instead of replacing it.");
+        sb.AppendLine("- Return the updated summary in project_summary.");
+
         return sb.ToString();
     }
 
@@ -425,13 +433,7 @@ public sealed class WhatsAppConversationService(
         if (string.IsNullOrWhiteSpace(normalizedText))
             return collected;
 
-        if (state.StepIndex == 0 && state.History.Count <= 1)
-            return collected;
-
-        if (IsGreetingOnly(normalizedText))
-            return collected;
-
-        if (normalizedText.Length < 6)
+        if (!ShouldUseForFieldInference(state, normalizedText))
             return collected;
 
         var field = GetField(site, state.StepIndex);
@@ -450,6 +452,55 @@ public sealed class WhatsAppConversationService(
         };
 
         return updated;
+    }
+
+    private static Dictionary<string, string> UpdateProjectSummary(
+        Dictionary<string, string> collected,
+        string? summary,
+        ConversationState state,
+        string normalizedText)
+    {
+        var resolved = string.IsNullOrWhiteSpace(summary)
+            ? BuildSummaryFallback(collected, normalizedText)
+            : summary.Trim();
+
+        if (string.IsNullOrWhiteSpace(resolved))
+            return collected;
+
+        var updated = new Dictionary<string, string>(collected, StringComparer.OrdinalIgnoreCase)
+        {
+            ["project_summary"] = resolved
+        };
+
+        return updated;
+    }
+
+    private static string? BuildSummaryFallback(Dictionary<string, string> collected, string normalizedText)
+    {
+        if (IsGreetingOnly(normalizedText) || normalizedText.Length < 6)
+            return collected.TryGetValue("project_summary", out var existingSummary) ? existingSummary : null;
+
+        if (collected.TryGetValue("project_summary", out var existing) && !string.IsNullOrWhiteSpace(existing))
+            return $"{existing} {normalizedText}".Trim();
+
+        if (collected.TryGetValue("project_description", out var description) && !string.IsNullOrWhiteSpace(description))
+            return $"{description} {normalizedText}".Trim();
+
+        return normalizedText;
+    }
+
+    private static bool ShouldUseForFieldInference(ConversationState state, string normalizedText)
+    {
+        if (string.IsNullOrWhiteSpace(normalizedText))
+            return false;
+
+        if (state.StepIndex == 0 && state.History.Count <= 1)
+            return false;
+
+        if (IsGreetingOnly(normalizedText))
+            return false;
+
+        return normalizedText.Length >= 6;
     }
 
     private static bool IsGreetingOnly(string text)
@@ -582,7 +633,8 @@ public sealed record ConversationTurn(
 public sealed record LlmReply(
     [property: JsonPropertyName("reply_text")] string ReplyText,
     [property: JsonPropertyName("collected")] List<LlmCollectedField>? Collected,
-    [property: JsonPropertyName("done")] bool Done);
+    [property: JsonPropertyName("done")] bool Done,
+    [property: JsonPropertyName("project_summary")] string? ProjectSummary);
 
 public sealed record LlmCollectedField(
     [property: JsonPropertyName("key")] string Key,
