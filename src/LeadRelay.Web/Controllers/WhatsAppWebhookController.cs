@@ -1,13 +1,12 @@
-using LeadRelay.Application.Abstractions;
 using LeadRelay.Domain.Leads;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using LeadRelay.Application.Abstractions;
 
 namespace LeadRelay.Web.Controllers;
 
 [ApiController]
 public sealed class WhatsAppWebhookController(
-    ITokenService tokens,
     ISiteRepository sites,
     ILeadRepository leads,
     IEmailSender emailSender) : ControllerBase
@@ -18,11 +17,8 @@ public sealed class WhatsAppWebhookController(
         var text = ExtractText(payload);
         var waId = ExtractWaId(payload) ?? "unknown";
 
-        var token = ExtractRefToken(text);
-        if (token is null || !tokens.TryValidate(token, out var claims)) return Ok(new { ok = true });
-
-        if (!claims.TryGetValue("siteId", out var siteId)) return Ok(new { ok = true });
-        var site = await sites.GetByIdAsync(siteId, ct);
+        // POC: no attribution, assume a single configured site.
+        var site = await sites.GetByIdAsync("site_demo", ct);
         if (site is null) return Ok(new { ok = true });
 
         var lead = new Lead
@@ -31,10 +27,7 @@ public sealed class WhatsAppWebhookController(
             SiteId = site.Id,
             CreatedAtUtc = DateTimeOffset.UtcNow,
             Intent = "website chat",
-            Notes = $"waId={waId}; firstMessage={text}",
-            PageUrl = claims.TryGetValue("pageUrl", out var p) ? p : null,
-            Referrer = claims.TryGetValue("ref", out var r) ? r : null,
-            Utm = claims.Where(kv => kv.Key.StartsWith("utm:", StringComparison.Ordinal)).ToDictionary(kv => kv.Key[4..], kv => kv.Value)
+            Notes = $"waId={waId}; firstMessage={text}"
         };
 
         await leads.SaveAsync(lead, ct);
@@ -81,15 +74,4 @@ public sealed class WhatsAppWebhookController(
         return null;
     }
 
-    static string? ExtractRefToken(string? text)
-    {
-        if (string.IsNullOrWhiteSpace(text)) return null;
-        var idx = text.IndexOf("ref=", StringComparison.OrdinalIgnoreCase);
-        if (idx < 0) return null;
-        var start = idx + 4;
-        var end = text.IndexOfAny([' ', '\n', '\r', '\t'], start);
-        if (end < 0) end = text.Length;
-        var token = text[start..end].Trim();
-        return token.Length == 0 ? null : token;
-    }
 }

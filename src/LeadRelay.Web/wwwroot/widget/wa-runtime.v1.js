@@ -9,34 +9,6 @@
         return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
     }
 
-    function parseUtm() {
-        var p = new URLSearchParams(window.location.search || "");
-        var keys = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "gclid", "fbclid"];
-        var out = {};
-        for (var i = 0; i < keys.length; i++) {
-            var k = keys[i];
-            var v = p.get(k);
-            if (v) out[k] = v;
-        }
-        return out;
-    }
-
-    function safeUrl() {
-        try {
-            return window.location.href;
-        } catch (_) {
-            return "";
-        }
-    }
-
-    function safeReferrer() {
-        try {
-            return document.referrer || "";
-        } catch (_) {
-            return "";
-        }
-    }
-
     function clamp(n, min, max, fallback) {
         if (!isFinite(n)) return fallback;
         return Math.min(max, Math.max(min, n));
@@ -48,55 +20,8 @@
         window.open(url, "_blank", "noopener,noreferrer");
     }
 
-    function makePayload() {
-        return {
-            siteId: cfg.siteId,
-            publicKey: cfg.publicKey,
-            pageUrl: safeUrl(),
-            path: (window.location && window.location.pathname) || "",
-            referrer: safeReferrer(),
-            utm: parseUtm(),
-            tzOffsetMinutes: -new Date().getTimezoneOffset(),
-            lang: (navigator.language || "").toString().slice(0, 16),
-            ua: (navigator.userAgent || "").toString().slice(0, 256)
-        };
-    }
-
-    function fetchToken() {
-        var apiBase = (cfg.apiBase || "").replace(/\/+$/, "");
-        if (!apiBase) return Promise.resolve((cfg.prefill || "Hi") + " ref=" + cfg.siteId);
-
-        var controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-        var timeout = setTimeout(function () {
-            try {
-                if (controller) controller.abort();
-            } catch (_) {}
-        }, 3500);
-
-        return fetch(apiBase + "/v1/widget/token", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify(makePayload()),
-            signal: controller ? controller.signal : undefined,
-            credentials: "omit",
-            mode: "cors"
-        })
-            .then(function (r) {
-                if (!r.ok) throw new Error("bad_response");
-                return r.json();
-            })
-            .then(function (j) {
-                if (!j || typeof j !== "object") throw new Error("bad_json");
-                if (typeof j.prefillText === "string" && j.prefillText.trim()) return j.prefillText.trim();
-                if (typeof j.token === "string" && j.token.trim()) return (cfg.prefill || "Hi") + " ref=" + j.token.trim();
-                throw new Error("missing_token");
-            })
-            .catch(function () {
-                return (cfg.prefill || "Hi") + " ref=" + cfg.siteId;
-            })
-            .finally(function () {
-                clearTimeout(timeout);
-            });
+    function buildMessage() {
+        return cfg.prefill || "Hi";
     }
 
     function makeLogoNode() {
@@ -185,25 +110,12 @@
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount, { once: true });
     else mount();
 
-    var resolvedMessage = null;
-
-    fetchToken().then(function (msg) {
-        resolvedMessage = msg;
-        btn.disabled = false;
-        btn.style.opacity = "1";
-    });
+    var resolvedMessage = buildMessage();
+    btn.disabled = false;
+    btn.style.opacity = "1";
 
     btn.addEventListener("click", function (e) {
         e.preventDefault();
-        if (resolvedMessage) return openWhatsApp(resolvedMessage);
-
-        btn.disabled = true;
-        btn.style.opacity = ".85";
-        fetchToken().then(function (msg) {
-            resolvedMessage = msg;
-            btn.disabled = false;
-            btn.style.opacity = "1";
-            openWhatsApp(resolvedMessage);
-        });
+        return openWhatsApp(resolvedMessage);
     });
 })();

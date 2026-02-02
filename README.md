@@ -7,7 +7,6 @@ Drop-in "Chat via WhatsApp" widget + server-side lead capture.
 - Open: `http://localhost:5180/widget/demo`
 
 ## Endpoints
-- `POST /v1/widget/token`
 - `GET /health`
 - `GET /widget/wa-lead-widget.min.js`
 - `GET /widget/demo`
