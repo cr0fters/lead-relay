@@ -1,0 +1,8 @@
+namespace LeadRelay.Web.WhatsApp;
+
+public sealed record WhatsAppOptions
+{
+    public string? AccessToken { get; init; }
+    public string? MessagesEndpoint { get; init; }
+    public string? VerifyToken { get; init; }
+}

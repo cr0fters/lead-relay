@@ -1,7 +1,9 @@
-using LeadRelay.Domain.Leads;
-using Microsoft.AspNetCore.Mvc;
-using System.Text.Json;
 using LeadRelay.Application.Abstractions;
+using LeadRelay.Domain.Leads;
+using LeadRelay.Web.WhatsApp;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using System.Text.Json;
 
 namespace LeadRelay.Web.Controllers;
 
@@ -9,31 +11,61 @@ namespace LeadRelay.Web.Controllers;
 public sealed class WhatsAppWebhookController(
     ISiteRepository sites,
     ILeadRepository leads,
-    IEmailSender emailSender) : ControllerBase
+    IEmailSender emailSender,
+    WhatsAppClient whatsAppClient,
+    WhatsAppConversationService conversations,
+    IOptions<WhatsAppOptions> options) : ControllerBase
 {
+    [HttpGet("/v1/webhooks/whatsapp")]
+    public IActionResult Verify([FromQuery(Name = "hub.mode")] string? mode,
+        [FromQuery(Name = "hub.verify_token")] string? verifyToken,
+        [FromQuery(Name = "hub.challenge")] string? challenge)
+    {
+        var expected = options.Value.VerifyToken;
+        if (string.Equals(mode, "subscribe", StringComparison.OrdinalIgnoreCase) &&
+            !string.IsNullOrWhiteSpace(expected) &&
+            string.Equals(verifyToken, expected, StringComparison.Ordinal))
+        {
+            return Content(challenge ?? "", "text/plain");
+        }
+
+        return Unauthorized();
+    }
+
     [HttpPost("/v1/webhooks/whatsapp")]
     public async Task<IActionResult> Receive([FromBody] JsonElement payload, CancellationToken ct)
     {
         var text = ExtractText(payload);
-        var waId = ExtractWaId(payload) ?? "unknown";
+        var waId = ExtractWaId(payload);
+        if (string.IsNullOrWhiteSpace(waId)) return Ok(new { ok = true });
 
         // POC: no attribution, assume a single configured site.
         var site = await sites.GetByIdAsync("site_demo", ct);
         if (site is null) return Ok(new { ok = true });
 
-        var lead = new Lead
+        var reply = conversations.HandleMessage(site, waId, text);
+        await whatsAppClient.SendTextAsync(waId, reply.ReplyText, ct);
+
+        if (reply.IsComplete)
         {
-            Id = Guid.NewGuid(),
-            SiteId = site.Id,
-            CreatedAtUtc = DateTimeOffset.UtcNow,
-            Intent = "website chat",
-            Notes = $"waId={waId}; firstMessage={text}"
-        };
+            var lead = new Lead
+            {
+                Id = Guid.NewGuid(),
+                SiteId = site.Id,
+                CreatedAtUtc = DateTimeOffset.UtcNow,
+                Intent = "website chat",
+                Notes = $"waId={waId}; firstMessage={text}"
+            };
 
-        await leads.SaveAsync(lead, ct);
+            foreach (var kv in reply.Collected)
+                lead.Fields[kv.Key] = kv.Value;
 
-        var body = $"New lead for {site.Name}\n\nPage: {lead.PageUrl}\nReferrer: {lead.Referrer}\nNotes: {lead.Notes}\nUtm: {string.Join(", ", lead.Utm.Select(kv => kv.Key + "=" + kv.Value))}\n";
-        await emailSender.SendAsync(site.OwnerEmail, $"New WhatsApp lead ({site.Name})", body, ct);
+            await leads.SaveAsync(lead, ct);
+
+            var fieldsBlock = string.Join("\n", lead.Fields.Select(kv => $"{kv.Key}: {kv.Value}"));
+            var body = $"New lead for {site.Name}\n\nFields:\n{fieldsBlock}\n\nNotes: {lead.Notes}\n";
+            await emailSender.SendAsync(site.OwnerEmail, $"New WhatsApp lead ({site.Name})", body, ct);
+        }
 
         return Ok(new { ok = true });
     }
@@ -73,5 +105,4 @@ public sealed class WhatsAppWebhookController(
         catch { }
         return null;
     }
-
 }

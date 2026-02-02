@@ -13,4 +13,5 @@ public sealed class Lead
     public string? PageUrl { get; set; }
     public string? Referrer { get; set; }
     public Dictionary<string, string> Utm { get; init; } = new();
+    public Dictionary<string, string> Fields { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 }
