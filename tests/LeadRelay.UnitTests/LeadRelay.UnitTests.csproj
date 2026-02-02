@@ -14,5 +14,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\LeadRelay.Infrastructure\LeadRelay.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\LeadRelay.Web\LeadRelay.Web.csproj" />
   </ItemGroup>
 </Project>

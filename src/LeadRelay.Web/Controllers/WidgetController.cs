@@ -1,11 +1,11 @@
-using System.Text;
 using System.Text.Json;
 using LeadRelay.Application.Abstractions;
+using LeadRelay.Web.Security;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LeadRelay.Web.Controllers;
 
-public sealed class WidgetController(ISiteRepository sites) : Controller
+public sealed class WidgetController(ISiteRepository sites, ILogger<WidgetController> logger) : Controller
 {
     [HttpGet("/widget/demo")]
     public ViewResult Demo()
@@ -14,15 +14,28 @@ public sealed class WidgetController(ISiteRepository sites) : Controller
     }
 
     [HttpGet("/widget/bootstrap.js")]
-    public async Task<IActionResult> Bootstrap([FromQuery] string siteId, [FromQuery] string publicKey, CancellationToken ct)
+    public async Task<IActionResult> Bootstrap([FromQuery] string siteId, CancellationToken ct)
     {
         var site = await sites.GetByIdAsync(siteId, ct);
         if (site is null) return Unauthorized();
 
-        if (!System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
-                Encoding.UTF8.GetBytes(site.PublicKey),
-                Encoding.UTF8.GetBytes(publicKey)))
-            return Unauthorized();
+        var referer = Request.Headers.Referer.ToString();
+        var originHeader = Request.Headers.Origin.ToString();
+        if (!DomainAllowList.IsAllowedDomain(site.AllowedDomains, referer, originHeader))
+        {
+            var allowedList = site.AllowedDomains.Count == 0 ? "<any>" : string.Join(", ", site.AllowedDomains);
+            logger.LogWarning(
+                "Widget bootstrap blocked for site {SiteId}. Referer={Referer} Origin={Origin} AllowedDomains={AllowedDomains}",
+                site.Id,
+                string.IsNullOrWhiteSpace(referer) ? "<empty>" : referer,
+                string.IsNullOrWhiteSpace(originHeader) ? "<empty>" : originHeader,
+                allowedList);
+
+            Response.Headers.CacheControl = "no-store";
+            return Content(
+                $"console.warn(\"LeadRelay: widget blocked for site '{site.Id}'. Domain not in allow-list.\");",
+                "application/javascript; charset=utf-8");
+        }
 
         var origin = $"{Request.Scheme}://{Request.Host}";
         Response.Headers.CacheControl = "public, max-age=300, stale-while-revalidate=600";
@@ -31,7 +44,6 @@ public sealed class WidgetController(ISiteRepository sites) : Controller
                                 window.__LeadRelayWidgetConfig = {{JsonSerializer.Serialize(new
                                 {
                                     siteId = site.Id,
-                                    publicKey,
                                     apiBase = origin,
                                     waNumber = site.WhatsAppNumber,
                                     label = "Chat via WhatsApp",
@@ -51,4 +63,6 @@ public sealed class WidgetController(ISiteRepository sites) : Controller
                             })();
                          """, "application/javascript; charset=utf-8");
     }
+
+    
 }

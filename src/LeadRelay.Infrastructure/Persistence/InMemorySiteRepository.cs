@@ -11,9 +11,9 @@ public sealed class InMemorySiteRepository : ISiteRepository
         {
             Id = "site_demo",
             Name = "Demo site",
-            PublicKey = "pk_demo_123",
             OwnerEmail = "owner@example.com",
-            WhatsAppNumber = "447000000000"
+            WhatsAppNumber = "447000000000",
+            AllowedDomains = ["localhost"]
         }
     ];
 
