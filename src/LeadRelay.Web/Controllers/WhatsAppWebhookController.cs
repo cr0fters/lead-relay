@@ -14,7 +14,8 @@ public sealed class WhatsAppWebhookController(
     IEmailSender emailSender,
     WhatsAppClient whatsAppClient,
     WhatsAppConversationService conversations,
-    IOptions<WhatsAppOptions> options) : ControllerBase
+    IOptions<WhatsAppOptions> options,
+    ILogger<WhatsAppWebhookController> logger) : ControllerBase
 {
     [HttpGet("/v1/webhooks/whatsapp")]
     public IActionResult Verify([FromQuery(Name = "hub.mode")] string? mode,
@@ -70,7 +71,7 @@ public sealed class WhatsAppWebhookController(
         return Ok(new { ok = true });
     }
 
-    static string? ExtractText(JsonElement payload)
+    private string? ExtractText(JsonElement payload)
     {
         try
         {
@@ -86,11 +87,15 @@ public sealed class WhatsAppWebhookController(
                 }
             }
         }
-        catch { }
+        catch(Exception exception)
+        {
+            logger.LogError(exception, "Failed to extract text from WhatsApp message");
+        }
+
         return null;
     }
 
-    static string? ExtractWaId(JsonElement payload)
+    private string? ExtractWaId(JsonElement payload)
     {
         try
         {
@@ -102,7 +107,11 @@ public sealed class WhatsAppWebhookController(
                 if (first.TryGetProperty("from", out var f) && f.ValueKind == JsonValueKind.String) return f.GetString();
             }
         }
-        catch { }
+        catch(Exception exception)
+        {
+            logger.LogError(exception, "Failed to extract waId from WhatsApp message");
+        }
+
         return null;
     }
 }
