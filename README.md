@@ -5,11 +5,9 @@ Drop-in “Chat via WhatsApp” widget + server-side lead capture. Includes a si
 ## Run
 - `dotnet run --project src/LeadRelay.Web`
 - App binds to `http://localhost:5180` (configured in `src/LeadRelay.Web/appsettings.json`)
-- Demo widget: `http://localhost:5180/widget/demo`
 - Debug console (no WhatsApp required): `http://localhost:5180/debug/whatsapp`
 
 ## Endpoints
-- `GET /widget/demo` — demo page that embeds the widget
 - `GET /widget/bootstrap.js?siteId=...` — bootstrap script (domain allow-list enforced)
 - `GET /debug/whatsapp` — local UI to simulate chat flow
 - `POST /debug/whatsapp/send` — simulate incoming message (form-encoded)

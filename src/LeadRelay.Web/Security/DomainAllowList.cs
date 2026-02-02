@@ -4,11 +4,11 @@ namespace LeadRelay.Web.Security;
 
 internal static class DomainAllowList
 {
-    internal static bool IsAllowedDomain(IReadOnlyList<string> allowedDomains, string? referer, string? origin)
+    internal static bool IsAllowedDomain(IReadOnlyList<string> allowedDomains, string? referer, string? origin, string? fallbackHost = null)
     {
         if (allowedDomains.Count == 0) return true;
 
-        var host = TryGetHost(referer) ?? TryGetHost(origin);
+        var host = TryGetHost(referer) ?? TryGetHost(origin) ?? NormalizeDomain(fallbackHost);
         if (string.IsNullOrWhiteSpace(host)) return false;
 
         foreach (var allowed in allowedDomains)

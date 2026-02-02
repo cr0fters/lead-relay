@@ -7,12 +7,6 @@ namespace LeadRelay.Web.Controllers;
 
 public sealed class WidgetController(ISiteRepository sites, ILogger<WidgetController> logger) : Controller
 {
-    [HttpGet("/widget/demo")]
-    public ViewResult Demo()
-    {
-        return View();
-    }
-
     [HttpGet("/widget/bootstrap.js")]
     public async Task<IActionResult> Bootstrap([FromQuery] string siteId, CancellationToken ct)
     {
@@ -21,7 +15,7 @@ public sealed class WidgetController(ISiteRepository sites, ILogger<WidgetContro
 
         var referer = Request.Headers.Referer.ToString();
         var originHeader = Request.Headers.Origin.ToString();
-        if (!DomainAllowList.IsAllowedDomain(site.AllowedDomains, referer, originHeader))
+        if (!DomainAllowList.IsAllowedDomain(site.AllowedDomains, referer, originHeader, Request.Host.Host))
         {
             var allowedList = site.AllowedDomains.Count == 0 ? "<any>" : string.Join(", ", site.AllowedDomains);
             logger.LogWarning(

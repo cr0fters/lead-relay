@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LeadRelay — WhatsApp Leads, Effortlessly</title>
+    <style>
+        @@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Fraunces:wght@600;700&family=Caveat:wght@600&display=swap");
+
+        :root {
+            --bg: #0f1221;
+            --bg-soft: #151a2f;
+            --ink: #f7f6f2;
+            --muted: #c9c6bf;
+            --accent: #ffb454;
+            --accent-2: #7ee3c8;
+            --card: rgba(255, 255, 255, 0.06);
+            --stroke: rgba(255, 255, 255, 0.12);
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: var(--ink);
+            font-family: "DM Sans", system-ui, -apple-system, Segoe UI, sans-serif;
+            background:
+                radial-gradient(1200px 600px at 10% -10%, rgba(255, 180, 84, 0.25), transparent 60%),
+                radial-gradient(900px 500px at 100% 0%, rgba(126, 227, 200, 0.2), transparent 60%),
+                linear-gradient(180deg, #0d1020, #12162a 60%, #0f1221);
+            min-height: 100vh;
+        }
+
+        a { color: inherit; text-decoration: none; }
+        .wrap { max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        .brand-badge {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #ffb454, #ff6f6f);
+            display: grid;
+            place-items: center;
+            font-family: "Fraunces", serif;
+            font-size: 20px;
+            color: #1b1b1b;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+        }
+
+        .nav {
+            display: flex;
+            gap: 18px;
+            font-size: 14px;
+            color: var(--muted);
+        }
+
+        .hero {
+            margin-top: 64px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 40px;
+            align-items: center;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent-2);
+            background: rgba(126, 227, 200, 0.12);
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(126, 227, 200, 0.25);
+        }
+
+        h1 {
+            font-family: "Fraunces", serif;
+            font-size: clamp(2.6rem, 5vw, 4rem);
+            line-height: 1.02;
+            margin: 16px 0;
+        }
+
+        p.lede {
+            color: var(--muted);
+            font-size: 1.05rem;
+            max-width: 520px;
+        }
+
+        .cta-row {
+            display: flex;
+            gap: 14px;
+            margin-top: 26px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 18px;
+            border-radius: 999px;
+            font-weight: 600;
+            border: 1px solid transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #1a1a1a;
+        }
+
+        .btn-ghost {
+            border-color: var(--stroke);
+            color: var(--ink);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .hero-card {
+            background: var(--card);
+            border: 1px solid var(--stroke);
+            padding: 24px;
+            border-radius: 24px;
+            backdrop-filter: blur(6px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .steps {
+            display: grid;
+            gap: 16px;
+            margin-top: 18px;
+        }
+
+        .step {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .step-number {
+            width: 28px;
+            height: 28px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            display: grid;
+            place-items: center;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .grid {
+            margin-top: 64px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 18px;
+        }
+
+        .feature {
+            background: var(--card);
+            border: 1px solid var(--stroke);
+            border-radius: 18px;
+            padding: 18px;
+        }
+
+        .feature h3 {
+            margin: 0 0 6px;
+            font-size: 1.05rem;
+        }
+
+        .feature p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        .cta-banner {
+            margin-top: 72px;
+            padding: 28px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: linear-gradient(135deg, rgba(255, 180, 84, 0.2), rgba(126, 227, 200, 0.2));
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .widget-callout {
+            margin-top: 48px;
+            position: relative;
+            padding: 22px 24px;
+            border-radius: 20px;
+            border: 1px dashed rgba(255, 255, 255, 0.22);
+            background: rgba(255, 255, 255, 0.04);
+            display: grid;
+            gap: 8px;
+        }
+
+
+        footer {
+            margin-top: 60px;
+            color: var(--muted);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        @@media (max-width: 720px) {
+            header { flex-direction: column; align-items: flex-start; }
+            .nav { flex-wrap: wrap; }
+            
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header>
+        <div class="brand">
+            <div class="brand-badge">LR</div>
+            <span>LeadRelay</span>
+        </div>
+        <nav class="nav">
+            <a href="#how">How it works</a>
+            <a href="#features">Features</a>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div>
+            <span class="eyebrow">WhatsApp leads, minus the fuss</span>
+            <h1>Turn “Hi” into qualified leads — without a complicated CRM.</h1>
+            <p class="lede">
+                LeadRelay drops a friendly WhatsApp button onto your site, starts a warm, guided chat,
+                and emails you the details you actually need. Made for indie businesses that move fast.
+            </p>
+            <div class="cta-row">
+                <a class="btn btn-primary" href="#how">Try the widget</a>
+                <a class="btn btn-ghost" href="#features">See what’s inside</a>
+            </div>
+        </div>
+
+        <div class="hero-card">
+            <div class="pill">Live demo conversation</div>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div>
+                        <strong>Customer:</strong> “Hi! I need help with a kitchen remodel.”
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div>
+                        <strong>LeadRelay:</strong> “Amazing — what’s your name and email?”
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div>
+                        <strong>You:</strong> Receive a tidy lead email with the key details.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="widget-callout">
+        <strong>Meta demo: the widget is live on this page</strong>
+        <span style="color:var(--muted);">Click the WhatsApp button in the corner to try it here.</span>
+    </div>
+
+    <section id="how" class="grid">
+        <div class="feature">
+            <h3>1. Paste the script</h3>
+            <p>Drop a single script tag onto your site. Done.</p>
+        </div>
+        <div class="feature">
+            <h3>2. Friendly chat flow</h3>
+            <p>Ask only what you need — name, email, project info, anything.</p>
+        </div>
+        <div class="feature">
+            <h3>3. Get the lead</h3>
+            <p>Receive a clean, readable lead summary in your inbox.</p>
+        </div>
+        <div class="feature">
+            <h3>4. Follow up fast</h3>
+            <p>Reply in WhatsApp or hop on a call while interest is hot.</p>
+        </div>
+    </section>
+
+    <section id="features" class="grid">
+        <div class="feature">
+            <h3>Per‑site questions</h3>
+            <p>Interior design? Marketing? Coaching? Tailor the questions per site.</p>
+        </div>
+        <div class="feature">
+            <h3>Domain allow‑list</h3>
+            <p>Keep your widget tied to approved domains.</p>
+        </div>
+        <div class="feature">
+            <h3>AI‑ready</h3>
+            <p>Plug in an AI responder when you’re ready to go beyond scripted flows.</p>
+        </div>
+        <div class="feature">
+            <h3>Local debug mode</h3>
+            <p>Test the chat flow without WhatsApp or Meta setup.</p>
+        </div>
+    </section>
+
+    <div class="cta-banner">
+        <div>
+            <h2 style="margin:0 0 8px;font-family:'Fraunces',serif;">Start a friendlier lead capture flow</h2>
+            <div style="color:var(--muted);">Want the widget on your own site? We can set you up in minutes.</div>
+        </div>
+        <a class="btn btn-primary" href="#how">See how it works</a>
+    </div>
+
+    <footer>
+        <span>LeadRelay — built for indie teams.</span>
+        <span>Questions? hello@leadrelay.dev</span>
+    </footer>
+</div>
+
+<script src="/widget/bootstrap.js?siteId=site_demo"></script>
+</body>
+</html>

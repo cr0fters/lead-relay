@@ -41,6 +41,13 @@ public sealed class DomainAllowListTests
     }
 
     [Test]
+    public void falls_back_to_request_host_when_headers_missing()
+    {
+        var allowed = new[] { "example.com" };
+        Assert.That(DomainAllowList.IsAllowedDomain(allowed, null, null, "example.com"), Is.True);
+    }
+
+    [Test]
     public void trims_whitespace_and_dots_in_allow_list()
     {
         var allowed = new[] { "  .example.com.  " };
