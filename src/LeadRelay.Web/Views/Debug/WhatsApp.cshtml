@@ -147,6 +147,14 @@
             border-radius: 10px;
         }
 
+        select {
+            font: inherit;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid var(--stroke);
+            background: #fffdfa;
+        }
+
         .meta {
             display: flex;
             gap: 10px;
@@ -218,6 +226,10 @@
         <section class="card" style="grid-column: span 5;">
             <h2>Message input</h2>
             <div class="field">
+                <label for="leadSelect">Recent leads</label>
+                <select id="leadSelect"></select>
+            </div>
+            <div class="field">
                 <label for="waId">waId (phone number)</label>
                 <input id="waId" type="text" value="15551234567" />
             </div>
@@ -277,6 +289,82 @@
     const collectedEl = document.getElementById("collected");
     const historyEl = document.getElementById("history");
     const leadIdEl = document.getElementById("leadId");
+    const leadSelect = document.getElementById("leadSelect");
+    const waIdInput = document.getElementById("waId");
+    const contactNameInput = document.getElementById("contactName");
+
+    function randomName() {
+        const first = ["Avery", "Jordan", "Taylor", "Morgan", "Riley", "Casey", "Skyler", "Parker", "Rowan", "Quinn"];
+        const last = ["Johnson", "Williams", "Brown", "Davis", "Miller", "Garcia", "Wilson", "Anderson", "Thomas", "Martinez"];
+        const firstName = first[Math.floor(Math.random() * first.length)];
+        const lastName = last[Math.floor(Math.random() * last.length)];
+        return `${firstName} ${lastName}`;
+    }
+
+    async function applySelectedLead() {
+        const selected = leadSelect.options[leadSelect.selectedIndex];
+        if (!selected) return;
+        const hasLead = !!selected.value;
+        if (hasLead) {
+            waIdInput.disabled = true;
+            contactNameInput.disabled = true;
+
+            const res = await fetch(`/debug/whatsapp/leads/${selected.value}`);
+            if (res.ok) {
+                const lead = await res.json();
+                if (lead.phone) waIdInput.value = lead.phone;
+                if (lead.name) contactNameInput.value = lead.name;
+                if (!lead.name && lead.contactName) contactNameInput.value = lead.contactName;
+                collectedEl.textContent = JSON.stringify(lead.fields || {}, null, 2);
+                historyEl.textContent = JSON.stringify(lead.conversation || [], null, 2);
+                leadIdEl.textContent = lead.id || "";
+                const lastAssistant = (lead.conversation || []).slice().reverse().find(x => x.role === "assistant");
+                replyEl.textContent = lastAssistant ? lastAssistant.text : "";
+            }
+            return;
+        }
+
+        waIdInput.disabled = false;
+        contactNameInput.disabled = false;
+        waIdInput.value = `1555${Math.floor(1000000 + Math.random() * 9000000)}`;
+        contactNameInput.value = randomName();
+        document.getElementById("message").value = "";
+        replyEl.textContent = "";
+        collectedEl.textContent = "";
+        historyEl.textContent = "";
+        leadIdEl.textContent = "";
+    }
+
+    async function loadLeads() {
+        leadSelect.innerHTML = "";
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = "New lead (start fresh)";
+        leadSelect.appendChild(placeholder);
+
+        const res = await fetch("/debug/whatsapp/leads?limit=20");
+        if (res.ok) {
+            const items = await res.json();
+            for (const lead of items) {
+                const option = document.createElement("option");
+                option.value = lead.id;
+                option.dataset.phone = lead.phone || "";
+                option.dataset.name = lead.name || "";
+                const labelParts = [];
+                if (lead.name) labelParts.push(lead.name);
+                if (lead.phone) labelParts.push(lead.phone);
+                if (labelParts.length === 0 && lead.email) labelParts.push(lead.email);
+                const created = lead.createdAtUtc ? new Date(lead.createdAtUtc).toLocaleString() : "";
+                option.textContent = `${labelParts.join(" · ") || lead.id} ${created ? "— " + created : ""}`.trim();
+                leadSelect.appendChild(option);
+            }
+        }
+
+        leadSelect.selectedIndex = 0;
+        await applySelectedLead();
+    }
+
+    leadSelect.addEventListener("change", applySelectedLead);
 
     btn.addEventListener("click", async () => {
         btn.disabled = true;
@@ -316,6 +404,8 @@
             btn.classList.remove("is-loading");
         }
     });
+
+    loadLeads();
 </script>
 </body>
 </html>

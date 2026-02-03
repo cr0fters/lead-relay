@@ -43,4 +43,50 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
 
         await db.SaveChangesAsync(ct);
     }
+
+    public async Task<IReadOnlyList<LeadSummary>> GetRecentAsync(int limit, CancellationToken ct)
+    {
+        var take = Math.Clamp(limit, 1, 200);
+        return await db.Leads.AsNoTracking()
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .Take(take)
+            .Select(x => new LeadSummary(
+                x.Id,
+                x.SiteId,
+                x.Name,
+                x.Phone,
+                x.Email,
+                x.CreatedAtUtc))
+            .ToListAsync(ct);
+    }
+
+    public async Task<Lead?> GetByIdAsync(Guid id, CancellationToken ct)
+    {
+        var record = await db.Leads.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+        return record is null ? null : Map(record);
+    }
+
+    private static Lead Map(LeadRecord record)
+    {
+        var lead = new Lead
+        {
+            Id = record.Id,
+            SiteId = record.SiteId,
+            CreatedAtUtc = record.CreatedAtUtc,
+            Name = record.Name,
+            Email = record.Email,
+            Phone = record.Phone,
+            Intent = record.Intent,
+            Notes = record.Notes,
+            PageUrl = record.PageUrl,
+            Referrer = record.Referrer,
+            Utm = new Dictionary<string, string>(record.Utm, StringComparer.OrdinalIgnoreCase),
+            Fields = new Dictionary<string, string>(record.Fields, StringComparer.OrdinalIgnoreCase)
+        };
+
+        foreach (var turn in record.Conversation)
+            lead.Conversation.Add(turn);
+
+        return lead;
+    }
 }
