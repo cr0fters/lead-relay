@@ -1,7 +1,7 @@
 # LeadRelay MVP Tasks
 
 ## Now
-- [ ] Set up persistent storage for Sites, Leads, and Conversations (schema + migrations)
+- [x] Set up persistent storage for Sites, Leads, and Conversations (schema + migrations)
 - [ ] Replace in-memory repositories with DB-backed implementations
 - [ ] Add minimal admin interface (UI or API) to create/update site config
 - [ ] Protect admin endpoints with auth/token

@@ -121,6 +121,24 @@
             cursor: default;
         }
 
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border-radius: 999px;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-top-color: #ffffff;
+            animation: spin 0.9s linear infinite;
+            display: none;
+        }
+
+        .primary.is-loading .spinner {
+            display: inline-block;
+        }
+
+        .primary.is-loading .btn-text {
+            opacity: 0.85;
+        }
+
         .ghost {
             background: transparent;
             border: 1px dashed var(--stroke);
@@ -176,6 +194,11 @@
         @@media (max-width: 900px) {
             .grid { grid-template-columns: repeat(1, minmax(0, 1fr)); }
         }
+
+        @@keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -199,6 +222,10 @@
                 <input id="waId" type="text" value="15551234567" />
             </div>
             <div class="field">
+                <label for="contactName">Contact name</label>
+                <input id="contactName" type="text" value="Avery Johnson" />
+            </div>
+            <div class="field">
                 <label for="message">Message</label>
                 <textarea id="message">Hi</textarea>
             </div>
@@ -209,7 +236,10 @@
                     <span class="ghost">Tip: tweak tone or rules live</span>
                 </div>
             </div>
-            <button id="sendBtn" class="primary" type="button">Send message</button>
+            <button id="sendBtn" class="primary" type="button">
+                <span class="btn-text">Send message</span>
+                <span class="spinner" aria-hidden="true"></span>
+            </button>
         </section>
 
         <section class="card stack" style="grid-column: span 7;">
@@ -251,35 +281,40 @@
     btn.addEventListener("click", async () => {
         btn.disabled = true;
         const waId = document.getElementById("waId").value.trim();
+        const contactName = document.getElementById("contactName").value.trim();
         const message = document.getElementById("message").value;
         const systemPrompt = document.getElementById("systemPrompt").value;
-        const body = new URLSearchParams({ waId, message, systemPrompt });
+        const body = new URLSearchParams({ waId, contactName, message, systemPrompt });
 
-        const res = await fetch("/debug/whatsapp/send", {
-            method: "POST",
-            headers: { "content-type": "application/x-www-form-urlencoded" },
-            body: body.toString()
-        });
+        btn.classList.add("is-loading");
+        try {
+            const res = await fetch("/debug/whatsapp/send", {
+                method: "POST",
+                headers: { "content-type": "application/x-www-form-urlencoded" },
+                body: body.toString()
+            });
 
-        if (!res.ok) {
-            replyEl.textContent = "Request failed.";
-            collectedEl.textContent = "";
-            historyEl.textContent = "";
-            leadIdEl.textContent = "";
+            if (!res.ok) {
+                replyEl.textContent = "Request failed.";
+                collectedEl.textContent = "";
+                historyEl.textContent = "";
+                leadIdEl.textContent = "";
+                return;
+            }
+
+            const json = await res.json();
+            if (Array.isArray(json.replies) && json.replies.length > 0) {
+                replyEl.textContent = json.replies.join("\n\n");
+            } else {
+                replyEl.textContent = json.reply || "";
+            }
+            collectedEl.textContent = JSON.stringify(json.collected || {}, null, 2);
+            historyEl.textContent = JSON.stringify(json.history || [], null, 2);
+            leadIdEl.textContent = json.leadId || "";
+        } finally {
             btn.disabled = false;
-            return;
+            btn.classList.remove("is-loading");
         }
-
-        const json = await res.json();
-        if (Array.isArray(json.replies) && json.replies.length > 0) {
-            replyEl.textContent = json.replies.join("\n\n");
-        } else {
-            replyEl.textContent = json.reply || "";
-        }
-        collectedEl.textContent = JSON.stringify(json.collected || {}, null, 2);
-        historyEl.textContent = JSON.stringify(json.history || [], null, 2);
-        leadIdEl.textContent = json.leadId || "";
-        btn.disabled = false;
     });
 </script>
 </body>

@@ -1,56 +1,105 @@
-using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using LeadRelay.Application.Abstractions;
 using LeadRelay.Domain.Sites;
+using LeadRelay.Infrastructure.Persistence;
 using LeadRelay.Web.AI;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace LeadRelay.Web.WhatsApp;
 
 public sealed class WhatsAppConversationService(
     IClock clock,
+    LeadRelayDbContext db,
     OpenAIClient openAi,
     IOptions<OpenAIOptions> openAiOptions,
     IOptions<ConversationOptions> conversationOptions,
     ILogger<WhatsAppConversationService> logger)
 {
-    private readonly ConcurrentDictionary<string, ConversationState> _states = new(StringComparer.Ordinal);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public async Task<ConversationReply> HandleMessageAsync(
         Site site,
         string waId,
         string? text,
+        string? contactName,
         string? systemPromptOverride,
         CancellationToken ct)
     {
-        var normalizedText = (text ?? "").Trim();
-        var key = $"{site.Id}:{waId}";
+        if (!conversationOptions.Value.BotEnabled)
+        {
+            return new ConversationReply(
+                "",
+                false,
+                new Dictionary<string, string>(),
+                Array.Empty<ConversationTurn>(),
+                null,
+                null,
+                false,
+                Array.Empty<string>());
+        }
 
-        if (!_states.TryGetValue(key, out var state))
+        var normalizedText = (text ?? "").Trim();
+        var normalizedContactName = string.IsNullOrWhiteSpace(contactName) ? null : contactName.Trim();
+        var state = await LoadStateAsync(site.Id, waId, ct);
+        if (state is not null && IsSessionExpired(state))
         {
             state = new ConversationState(
                 site.Id,
+                waId,
                 0,
                 new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
                 clock.UtcNow,
+                clock.UtcNow,
+                clock.UtcNow,
+                state.IsPaused,
+                normalizedContactName ?? state.ContactName,
                 new List<ConversationTurn>(),
                 NormalizeOverride(systemPromptOverride),
                 null,
                 null);
-            _states[key] = state;
+        }
+        if (state is null)
+        {
+            state = new ConversationState(
+                site.Id,
+                waId,
+                0,
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+                clock.UtcNow,
+                clock.UtcNow,
+                clock.UtcNow,
+                false,
+                normalizedContactName,
+                new List<ConversationTurn>(),
+                NormalizeOverride(systemPromptOverride),
+                null,
+                null);
 
             if (!string.IsNullOrWhiteSpace(normalizedText))
                 AppendTurn(state, "user", normalizedText);
+
+            if (state.IsPaused)
+            {
+                await SaveStateAsync(state, ct);
+                return new ConversationReply(
+                    "",
+                    false,
+                    state.Collected,
+                    state.History.ToList(),
+                    state.LeadId,
+                    state.LeadCreatedAtUtc,
+                    false,
+                    Array.Empty<string>());
+            }
 
             var leadJustCreated = false;
             if (conversationOptions.Value.SubmitLeadOnFirstMessage)
             {
                 (state, leadJustCreated) = EnsureLead(state, normalizedText);
-                _states[key] = state;
             }
 
             var firstPrompt = GetPrompt(site, state.StepIndex);
@@ -62,6 +111,7 @@ public sealed class WhatsAppConversationService(
                 AppendTurn(state, "assistant", firstPrompt);
                 replies.Add(firstPrompt);
             }
+            await SaveStateAsync(state, ct);
             return new ConversationReply(
                 intro,
                 false,
@@ -74,25 +124,43 @@ public sealed class WhatsAppConversationService(
         }
 
         AppendTurn(state, "user", normalizedText);
+        state = state with { LastActivityAtUtc = clock.UtcNow, UpdatedAtUtc = clock.UtcNow };
+        if (!string.IsNullOrWhiteSpace(normalizedContactName) &&
+            !string.Equals(state.ContactName, normalizedContactName, StringComparison.Ordinal))
+        {
+            state = state with { ContactName = normalizedContactName, UpdatedAtUtc = clock.UtcNow };
+        }
+
+        if (state.IsPaused)
+        {
+            await SaveStateAsync(state, ct);
+            return new ConversationReply(
+                "",
+                false,
+                state.Collected,
+                state.History.ToList(),
+                state.LeadId,
+                state.LeadCreatedAtUtc,
+                false,
+                Array.Empty<string>());
+        }
 
         var normalizedOverride = NormalizeOverride(systemPromptOverride);
         if (!string.IsNullOrWhiteSpace(normalizedOverride) &&
             !string.Equals(state.SystemPromptOverride, normalizedOverride, StringComparison.Ordinal))
         {
             state = state with { SystemPromptOverride = normalizedOverride, UpdatedAtUtc = clock.UtcNow };
-            _states[key] = state;
         }
 
         var leadJustCreatedExisting = false;
         if (conversationOptions.Value.SubmitLeadOnFirstMessage)
         {
             (state, leadJustCreatedExisting) = EnsureLead(state, normalizedText);
-            _states[key] = state;
         }
 
         if (conversationOptions.Value.UseLlm)
         {
-            var llmReply = await TryHandleWithLlmAsync(site, key, state, normalizedText, ct);
+            var llmReply = await TryHandleWithLlmAsync(site, state, normalizedText, ct);
             if (llmReply is not null)
                 return llmReply with
                 {
@@ -104,21 +172,22 @@ public sealed class WhatsAppConversationService(
                 };
         }
 
-        return HandleDeterministic(site, key, state, normalizedText, leadJustCreatedExisting);
+        return await HandleDeterministicAsync(site, state, normalizedText, leadJustCreatedExisting, ct);
     }
 
-    private ConversationReply HandleDeterministic(
+    private async Task<ConversationReply> HandleDeterministicAsync(
         Site site,
-        string key,
         ConversationState state,
         string normalizedText,
-        bool leadJustCreated)
+        bool leadJustCreated,
+        CancellationToken ct)
     {
         var field = GetField(site, state.StepIndex);
         if (field is null)
         {
             var completedReply = "Thanks! We’ll be in touch shortly.";
             AppendTurn(state, "assistant", completedReply);
+            await SaveStateAsync(state, ct);
             return new ConversationReply(
                 completedReply,
                 true,
@@ -133,6 +202,7 @@ public sealed class WhatsAppConversationService(
         if (!TryAcceptField(field, normalizedText, out var value, out var errorReply))
         {
             AppendTurn(state, "assistant", errorReply);
+            await SaveStateAsync(state, ct);
             return new ConversationReply(
                 errorReply,
                 false,
@@ -146,13 +216,13 @@ public sealed class WhatsAppConversationService(
 
         state.Collected[field.Key] = value;
         state = state with { StepIndex = state.StepIndex + 1, UpdatedAtUtc = clock.UtcNow };
-        _states[key] = state;
 
         var nextPrompt = GetPrompt(site, state.StepIndex);
         if (nextPrompt is null)
         {
             var completedReply = "Thanks! We’ll be in touch shortly.";
             AppendTurn(state, "assistant", completedReply);
+            await SaveStateAsync(state, ct);
             return new ConversationReply(
                 completedReply,
                 true,
@@ -165,6 +235,7 @@ public sealed class WhatsAppConversationService(
         }
 
         AppendTurn(state, "assistant", nextPrompt);
+        await SaveStateAsync(state, ct);
         return new ConversationReply(
             nextPrompt,
             false,
@@ -178,7 +249,6 @@ public sealed class WhatsAppConversationService(
 
     private async Task<ConversationReply?> TryHandleWithLlmAsync(
         Site site,
-        string key,
         ConversationState state,
         string normalizedText,
         CancellationToken ct)
@@ -278,7 +348,7 @@ public sealed class WhatsAppConversationService(
         AppendTurn(state, "assistant", replyText);
 
         state = state with { Collected = merged, UpdatedAtUtc = clock.UtcNow };
-        _states[key] = state;
+        await SaveStateAsync(state, ct);
 
         if (done)
         {
@@ -295,7 +365,7 @@ public sealed class WhatsAppConversationService(
 
         var nextIndex = GetNextStepIndex(site, merged);
         state = state with { StepIndex = nextIndex, UpdatedAtUtc = clock.UtcNow };
-        _states[key] = state;
+        await SaveStateAsync(state, ct);
 
         return new ConversationReply(
             replyText,
@@ -349,6 +419,9 @@ public sealed class WhatsAppConversationService(
     private static string BuildUserPrompt(ConversationState state, string normalizedText, int maxHistoryTurns)
     {
         var sb = new StringBuilder();
+        if (!string.IsNullOrWhiteSpace(state.ContactName))
+            sb.AppendLine($"Contact name: {state.ContactName}");
+
         sb.AppendLine($"User message: {normalizedText}");
         sb.AppendLine();
         sb.AppendLine("Collected so far (key: value):");
@@ -523,6 +596,89 @@ public sealed class WhatsAppConversationService(
         return normalized is "hi" or "hello" or "hey" or "yo" or "hiya" or "sup";
     }
 
+    private bool IsSessionExpired(ConversationState state)
+    {
+        var timeout = TimeSpan.FromHours(Math.Max(1, conversationOptions.Value.SessionTimeoutHours));
+        return clock.UtcNow - state.LastActivityAtUtc > timeout;
+    }
+
+    private async Task<ConversationState?> LoadStateAsync(string siteId, string waId, CancellationToken ct)
+    {
+        var record = await db.ConversationStates.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.SiteId == siteId && x.WaId == waId, ct);
+        if (record is null) return null;
+
+        var sessionStarted = record.SessionStartedAtUtc ?? record.UpdatedAtUtc;
+        var lastActivity = record.LastActivityAtUtc ?? record.UpdatedAtUtc;
+        return new ConversationState(
+            record.SiteId,
+            record.WaId,
+            record.StepIndex,
+            record.Collected,
+            record.UpdatedAtUtc,
+            sessionStarted,
+            lastActivity,
+            record.IsPaused,
+            record.ContactName,
+            record.History.Select(x => new ConversationTurn(x.Role, x.Text, x.AtUtc)).ToList(),
+            record.SystemPromptOverride,
+            record.LeadId,
+            record.LeadCreatedAtUtc);
+    }
+
+    private async Task SaveStateAsync(ConversationState state, CancellationToken ct)
+    {
+        var record = await db.ConversationStates
+            .FirstOrDefaultAsync(x => x.SiteId == state.SiteId && x.WaId == state.WaId, ct);
+
+        if (record is null)
+        {
+            record = new ConversationStateRecord
+            {
+                Id = $"{state.SiteId}:{state.WaId}",
+                SiteId = state.SiteId,
+                WaId = state.WaId
+            };
+            db.ConversationStates.Add(record);
+        }
+
+        record.StepIndex = state.StepIndex;
+        record.Collected = state.Collected;
+        record.UpdatedAtUtc = state.UpdatedAtUtc;
+        record.SessionStartedAtUtc = state.SessionStartedAtUtc;
+        record.LastActivityAtUtc = state.LastActivityAtUtc;
+        record.IsPaused = state.IsPaused;
+        record.ContactName = state.ContactName;
+        record.History = state.History.Select(x => new ConversationTurnRecord(x.Role, x.Text, x.AtUtc)).ToList();
+        record.SystemPromptOverride = state.SystemPromptOverride;
+        record.LeadId = state.LeadId;
+        record.LeadCreatedAtUtc = state.LeadCreatedAtUtc;
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task SetPausedAsync(string siteId, string waId, bool paused, CancellationToken ct)
+    {
+        var state = await LoadStateAsync(siteId, waId, ct)
+                    ?? new ConversationState(
+                        siteId,
+                        waId,
+                        0,
+                        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+                        clock.UtcNow,
+                        clock.UtcNow,
+                        clock.UtcNow,
+                        paused,
+                        null,
+                        new List<ConversationTurn>(),
+                        null,
+                        null,
+                        null);
+
+        state = state with { IsPaused = paused, UpdatedAtUtc = clock.UtcNow };
+        await SaveStateAsync(state, ct);
+    }
+
     private void AppendTurn(ConversationState state, string role, string text)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -640,9 +796,14 @@ public sealed record ConversationReply(
 
 public sealed record ConversationState(
     string SiteId,
+    string WaId,
     int StepIndex,
     Dictionary<string, string> Collected,
     DateTimeOffset UpdatedAtUtc,
+    DateTimeOffset SessionStartedAtUtc,
+    DateTimeOffset LastActivityAtUtc,
+    bool IsPaused,
+    string? ContactName,
     List<ConversationTurn> History,
     string? SystemPromptOverride,
     Guid? LeadId,

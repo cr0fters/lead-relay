@@ -3,17 +3,28 @@ using LeadRelay.Infrastructure.Email;
 using LeadRelay.Infrastructure.Persistence;
 using LeadRelay.Infrastructure.Time;
 using LeadRelay.Web.AI;
+using LeadRelay.Web.Leads;
 using LeadRelay.Web.WhatsApp;
+using LeadRelay.Web.Extensions;
+using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 
 builder.Services.AddSingleton<IClock, SystemClock>();
-builder.Services.AddSingleton<ISiteRepository, InMemorySiteRepository>();
-builder.Services.AddSingleton<ILeadRepository, InMemoryLeadRepository>();
+var connectionString = builder.Configuration.GetConnectionString("LeadRelay");
+builder.Services.AddDbContext<LeadRelayDbContext>(options =>
+    options.UseMySql(
+        connectionString,
+        ServerVersion.AutoDetect(connectionString),
+        mySql => mySql.MigrationsAssembly(typeof(LeadRelayDbContext).Assembly.FullName)));
+builder.Services.AddScoped<ISiteRepository, EfSiteRepository>();
+builder.Services.AddScoped<ILeadRepository, EfLeadRepository>();
 builder.Services.AddSingleton<IEmailSender, ConsoleEmailSender>();
-builder.Services.AddSingleton<WhatsAppConversationService>();
+builder.Services.AddScoped<WhatsAppConversationService>();
+builder.Services.AddScoped<LeadCaptureService>();
 
 builder.Services.Configure<ConversationOptions>(builder.Configuration.GetSection("Conversation"));
 builder.Services.Configure<OpenAIOptions>(builder.Configuration.GetSection("OpenAI"));
@@ -26,6 +37,13 @@ var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/error");
+
+if (app.Environment.IsDevelopment())
+{
+    await app.LogDatabaseInfoAsync(connectionString);
+    await app.ApplyDatabaseMigrationsAsync();
+    await app.ApplySeedDataAsync();
+}
 
 app.UseStaticFiles();
 app.MapControllers();

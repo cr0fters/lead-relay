@@ -1,5 +1,5 @@
 using LeadRelay.Application.Abstractions;
-using LeadRelay.Domain.Leads;
+using LeadRelay.Web.Leads;
 using LeadRelay.Web.WhatsApp;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -10,8 +10,7 @@ namespace LeadRelay.Web.Controllers;
 [ApiController]
 public sealed class WhatsAppWebhookController(
     ISiteRepository sites,
-    ILeadRepository leads,
-    IEmailSender emailSender,
+    LeadCaptureService leadCapture,
     WhatsAppClient whatsAppClient,
     WhatsAppConversationService conversations,
     IOptions<WhatsAppOptions> options,
@@ -38,56 +37,27 @@ public sealed class WhatsAppWebhookController(
     {
         var text = ExtractText(payload);
         var waId = ExtractWaId(payload);
+        var contactName = ExtractContactName(payload);
         if (string.IsNullOrWhiteSpace(waId)) return Ok(new { ok = true });
 
         // POC: no attribution, assume a single configured site.
         var site = await sites.GetByIdAsync("site_demo", ct);
         if (site is null) return Ok(new { ok = true });
 
-        var reply = await conversations.HandleMessageAsync(site, waId, text, null, ct);
+        var reply = await conversations.HandleMessageAsync(site, waId, text, contactName, null, ct);
         foreach (var message in reply.Replies)
             await whatsAppClient.SendTextAsync(waId, message, ct);
 
-        if (reply.LeadId is not null)
-        {
-            var lead = new Lead
-            {
-                Id = reply.LeadId.Value,
-                SiteId = site.Id,
-                CreatedAtUtc = reply.LeadCreatedAtUtc ?? DateTimeOffset.UtcNow,
-                Intent = "website chat",
-                Notes = $"waId={waId}; firstMessage={ExtractFirstUserMessage(reply.History) ?? text}"
-            };
-
-            foreach (var kv in reply.Collected)
-                lead.Fields[kv.Key] = kv.Value;
-
-            foreach (var turn in reply.History)
-                lead.Conversation.Add(new LeadConversationTurn(turn.Role, turn.Text, turn.AtUtc));
-
-            await leads.SaveAsync(lead, ct);
-
-            if (reply.LeadJustCreated)
-            {
-                var fieldsBlock = string.Join("\n", lead.Fields.Select(kv => $"{kv.Key}: {kv.Value}"));
-                var body = $"New lead for {site.Name}\n\nFields:\n{fieldsBlock}\n\nNotes: {lead.Notes}\n";
-                await emailSender.SendAsync(site.OwnerEmail, $"New WhatsApp lead ({site.Name})", body, ct);
-            }
-        }
+        await leadCapture.CaptureAsync(
+            site,
+            waId,
+            "website chat",
+            text,
+            reply,
+            contactName,
+            ct);
 
         return Ok(new { ok = true });
-    }
-
-    private static string? ExtractFirstUserMessage(IReadOnlyList<ConversationTurn> history)
-    {
-        for (var i = 0; i < history.Count; i++)
-        {
-            var turn = history[i];
-            if (string.Equals(turn.Role, "user", StringComparison.OrdinalIgnoreCase))
-                return turn.Text;
-        }
-
-        return null;
     }
 
     private string? ExtractText(JsonElement payload)
@@ -129,6 +99,32 @@ public sealed class WhatsAppWebhookController(
         catch(Exception exception)
         {
             logger.LogError(exception, "Failed to extract waId from WhatsApp message");
+        }
+
+        return null;
+    }
+
+    private string? ExtractContactName(JsonElement payload)
+    {
+        try
+        {
+            if (payload.TryGetProperty("contacts", out var contacts) &&
+                contacts.ValueKind == JsonValueKind.Array &&
+                contacts.GetArrayLength() > 0)
+            {
+                var first = contacts[0];
+                if (first.TryGetProperty("profile", out var profile) &&
+                    profile.ValueKind == JsonValueKind.Object &&
+                    profile.TryGetProperty("name", out var name) &&
+                    name.ValueKind == JsonValueKind.String)
+                {
+                    return name.GetString();
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Failed to extract contact name from WhatsApp payload");
         }
 
         return null;
