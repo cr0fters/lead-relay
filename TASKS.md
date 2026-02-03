@@ -2,7 +2,7 @@
 
 ## Now
 - [x] Set up persistent storage for Sites, Leads, and Conversations (schema + migrations)
-- [ ] Replace in-memory repositories with DB-backed implementations
+- [x] Replace in-memory repositories with DB-backed implementations
 - [ ] Add minimal admin interface (UI or API) to create/update site config
 - [ ] Protect admin endpoints with auth/token
 - [ ] Wire secrets via environment (no secrets in repo) and document required env vars

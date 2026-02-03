@@ -7,10 +7,16 @@ Drop-in “Chat via WhatsApp” widget + server-side lead capture. Includes a si
 - App binds to `http://localhost:5180` (configured in `src/LeadRelay.Web/appsettings.json`)
 - Debug console (no WhatsApp required): `http://localhost:5180/debug/whatsapp`
 
+## Database (MySQL)
+- Connection string: `src/LeadRelay.Web/appsettings.json` (`ConnectionStrings:LeadRelay`)
+- Apply migrations:
+  - `dotnet ef database update --project src/LeadRelay.Infrastructure --startup-project src/LeadRelay.Web`
+
 ## Endpoints
 - `GET /widget/bootstrap.js?siteId=...` — bootstrap script (domain allow-list enforced)
 - `GET /debug/whatsapp` — local UI to simulate chat flow
 - `POST /debug/whatsapp/send` — simulate incoming message (form-encoded)
+- `GET /debug/whatsapp/leads` — recent leads for debug UI
 - `GET /v1/webhooks/whatsapp` — Meta webhook verification
 - `POST /v1/webhooks/whatsapp` — WhatsApp webhook receiver
 
@@ -37,10 +43,16 @@ Set these in `src/LeadRelay.Web/appsettings.json`:
 ```
 
 ## Conversation configuration (per site)
-Edit the demo site in `src/LeadRelay.Infrastructure/Persistence/InMemorySiteRepository.cs`:
+Edit the demo seed in `src/LeadRelay.Infrastructure/Persistence/SeedData.cs`:
 - `BusinessSummary` — short description of the business (for future AI prompting).
 - `Fields` — ordered list of data points to collect (name, email, project description, etc.).
 
 ## Local testing (no WhatsApp required)
 Use the debug page to send messages and see replies/collected fields:
 `http://localhost:5180/debug/whatsapp`
+
+### Debug UI tips
+- Use the “Recent leads” dropdown to load an existing lead (auto-fills waId + contact name).
+- Pick “New lead (start fresh)” to generate a new waId and contact name.
+- To pause/resume a conversation (simulated human takeover):
+  - `POST /debug/whatsapp/pause` with form fields `waId` and `paused=true|false`
