@@ -1,0 +1,399 @@
+@model LeadRelay.Web.Controllers.AdminController.SiteFormModel
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LeadRelay Admin — Site</title>
+    <style>
+        @@import url("https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap");
+
+        :root {
+            --bg: #0e1117;
+            --panel: rgba(255, 255, 255, 0.04);
+            --border: rgba(255, 255, 255, 0.14);
+            --ink: #f7f6f2;
+            --muted: #b9b7b1;
+            --accent: #ffcf6a;
+            --accent-2: #6fd8c4;
+            --danger: #ff7a7a;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: var(--ink);
+            font-family: "Instrument Sans", system-ui, -apple-system, Segoe UI, sans-serif;
+            background:
+                radial-gradient(900px 500px at 10% -10%, rgba(255, 207, 106, 0.16), transparent 60%),
+                radial-gradient(900px 500px at 90% 0%, rgba(111, 216, 196, 0.14), transparent 60%),
+                linear-gradient(180deg, #0b0d12, #0e1117 60%, #0b0d12);
+            min-height: 100vh;
+        }
+
+        a { color: inherit; text-decoration: none; }
+        .wrap { max-width: 1000px; margin: 0 auto; padding: 32px 24px 80px; }
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        .brand-badge {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #ffcf6a, #ff8a5b);
+            display: grid;
+            place-items: center;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 16px;
+            color: #1b1b1b;
+        }
+
+        .nav {
+            display: flex;
+            gap: 16px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        h1 {
+            margin: 36px 0 8px;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: clamp(2rem, 3vw, 2.6rem);
+        }
+
+        .lede {
+            color: var(--muted);
+            margin: 0 0 24px;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px;
+            color: var(--ink);
+            font-family: inherit;
+            font-size: 0.95rem;
+        }
+
+        textarea { min-height: 120px; }
+
+        .grid {
+            display: grid;
+            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        }
+
+        .helper {
+            color: var(--muted);
+            font-size: 0.9rem;
+            margin-top: 4px;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border-radius: 999px;
+            font-weight: 600;
+            border: 1px solid transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #1a1a1a;
+        }
+
+        .btn-ghost {
+            border-color: var(--border);
+            color: var(--ink);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .error {
+            border: 1px solid rgba(255, 122, 122, 0.4);
+            background: rgba(255, 122, 122, 0.12);
+            color: var(--danger);
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+
+        .field-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .field-row {
+            display: grid;
+            grid-template-columns: 1.2fr 2fr 0.8fr 0.6fr auto;
+            gap: 10px;
+            align-items: center;
+            padding: 12px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .field-row input,
+        .field-row select {
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .field-row .remove-btn {
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.02);
+            color: var(--ink);
+            padding: 8px 10px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .field-header {
+            display: grid;
+            grid-template-columns: 1.2fr 2fr 0.8fr 0.6fr auto;
+            gap: 10px;
+            font-size: 0.8rem;
+            color: var(--muted);
+            padding: 0 12px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @@media (max-width: 720px) {
+            header { flex-direction: column; align-items: flex-start; }
+            .nav { flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header>
+        <div class="brand">
+            <div class="brand-badge">LR</div>
+            <span>LeadRelay Admin</span>
+        </div>
+        <nav class="nav">
+            <a href="/admin">Dashboard</a>
+            <a href="/debug/whatsapp">Debug WhatsApp</a>
+        </nav>
+    </header>
+
+    <h1>Site configuration</h1>
+    <p class="lede">Update how this site appears in WhatsApp flows and widget embeds.</p>
+
+    @if (!string.IsNullOrWhiteSpace(Model.Error))
+    {
+        <div class="error">@Model.Error</div>
+    }
+
+    <form class="panel" method="post" action="@(string.IsNullOrWhiteSpace(Model.Id) ? "/admin/sites/new" : $"/admin/sites/{Model.Id}")">
+        @if (!string.IsNullOrWhiteSpace(Model.Id))
+        {
+            <div class="helper">Site id: <strong>@Model.Id</strong></div>
+        }
+        else
+        {
+            <div style="margin-top:16px;">
+                <label for="Id">Site Id</label>
+                <input id="Id" name="Id" value="@Model.Id" placeholder="site_demo" />
+                <div class="helper">Stable id used in widget embeds and integrations.</div>
+            </div>
+        }
+
+        <div class="grid" style="margin-top:16px;">
+            <div>
+                <label for="Name">Site name</label>
+                <input id="Name" name="Name" value="@Model.Name" placeholder="Spaces by Kelly" />
+            </div>
+            <div>
+                <label for="OwnerEmail">Owner email</label>
+                <input id="OwnerEmail" name="OwnerEmail" value="@Model.OwnerEmail" placeholder="owner@example.com" />
+            </div>
+            <div>
+                <label for="WhatsAppNumber">WhatsApp number</label>
+                <input id="WhatsAppNumber" name="WhatsAppNumber" value="@Model.WhatsAppNumber" placeholder="447000000000" />
+                <div class="helper">Digits only, include country code.</div>
+            </div>
+            <div>
+                <label for="AllowedDomains">Allowed domains</label>
+                <textarea id="AllowedDomains" name="AllowedDomains" placeholder="example.com&#10;app.example.com">@Model.AllowedDomains</textarea>
+                <div class="helper">One per line or comma-separated. Empty = allow any.</div>
+            </div>
+        </div>
+
+        <div style="margin-top:16px;">
+            <label for="BusinessSummary">Business summary</label>
+            <textarea id="BusinessSummary" name="BusinessSummary" placeholder="Short summary for AI/system prompts.">@Model.BusinessSummary</textarea>
+        </div>
+
+        <div style="margin-top:16px;">
+            <label for="IntroMessage">Intro message</label>
+            <textarea id="IntroMessage" name="IntroMessage" placeholder="Hey, thanks for reaching out!">@Model.IntroMessage</textarea>
+        </div>
+
+        <div style="margin-top:16px;">
+            <label>Required fields</label>
+            <div class="field-header">
+                <span>Key</span>
+                <span>Prompt</span>
+                <span>Type</span>
+                <span>Required</span>
+                <span></span>
+            </div>
+            <div class="field-list" id="required-fields"></div>
+            <div style="margin-top:12px;">
+                <button class="btn btn-ghost" type="button" data-add="required">Add required field</button>
+            </div>
+            <textarea id="FieldsJson" name="FieldsJson" class="hidden">@Model.FieldsJson</textarea>
+        </div>
+
+        <div style="margin-top:16px;">
+            <label>Optional fields</label>
+            <div class="field-header">
+                <span>Key</span>
+                <span>Prompt</span>
+                <span>Type</span>
+                <span>Required</span>
+                <span></span>
+            </div>
+            <div class="field-list" id="optional-fields"></div>
+            <div style="margin-top:12px;">
+                <button class="btn btn-ghost" type="button" data-add="optional">Add optional field</button>
+            </div>
+            <textarea id="OptionalFieldsJson" name="OptionalFieldsJson" class="hidden">@Model.OptionalFieldsJson</textarea>
+        </div>
+
+        <div style="margin-top:20px; display:flex; gap:12px; flex-wrap: wrap;">
+            <button class="btn btn-primary" type="submit">Save site</button>
+            <a class="btn btn-ghost" href="/admin">Back to dashboard</a>
+        </div>
+    </form>
+</div>
+
+<template id="field-row-template">
+    <div class="field-row">
+        <input type="text" data-field="key" placeholder="key_name" />
+        <input type="text" data-field="prompt" placeholder="Ask the visitor..." />
+        <select data-field="type">
+            <option value="Text">Text</option>
+            <option value="Email">Email</option>
+            <option value="Phone">Phone</option>
+        </select>
+        <label style="display:flex; align-items:center; gap:8px; font-weight:500;">
+            <input type="checkbox" data-field="required" />
+            <span>Yes</span>
+        </label>
+        <button class="remove-btn" type="button" data-remove>Remove</button>
+    </div>
+</template>
+
+<script>
+    const requiredContainer = document.getElementById("required-fields");
+    const optionalContainer = document.getElementById("optional-fields");
+    const template = document.getElementById("field-row-template");
+    const requiredJson = document.getElementById("FieldsJson");
+    const optionalJson = document.getElementById("OptionalFieldsJson");
+
+    function parseFields(value) {
+        if (!value || !value.trim()) return [];
+        try {
+            return JSON.parse(value);
+        } catch {
+            return [];
+        }
+    }
+
+    function createRow(field, container) {
+        const fragment = template.content.cloneNode(true);
+        const row = fragment.querySelector(".field-row");
+        row.querySelector('[data-field="key"]').value = field.key || "";
+        row.querySelector('[data-field="prompt"]').value = field.prompt || "";
+        row.querySelector('[data-field="type"]').value = field.type || "Text";
+        row.querySelector('[data-field="required"]').checked = field.required ?? true;
+        row.querySelector('[data-remove]').addEventListener("click", () => {
+            row.remove();
+        });
+        container.appendChild(row);
+    }
+
+    function bootstrap(container, jsonField, fallbackRequired) {
+        const fields = parseFields(jsonField.value);
+        if (fields.length === 0) {
+            createRow({ key: "", prompt: "", type: "Text", required: fallbackRequired }, container);
+            return;
+        }
+        fields.forEach(field => createRow({
+            key: field.key,
+            prompt: field.prompt,
+            type: field.type || "Text",
+            required: field.required ?? fallbackRequired
+        }, container));
+    }
+
+    function serialize(container, jsonField) {
+        const items = [];
+        container.querySelectorAll(".field-row").forEach(row => {
+            const key = row.querySelector('[data-field="key"]').value.trim();
+            const prompt = row.querySelector('[data-field="prompt"]').value.trim();
+            const type = row.querySelector('[data-field="type"]').value;
+            const required = row.querySelector('[data-field="required"]').checked;
+            if (!key && !prompt) return;
+            items.push({ key, prompt, type, required });
+        });
+        jsonField.value = JSON.stringify(items, null, 2);
+    }
+
+    document.querySelectorAll("[data-add]").forEach(button => {
+        button.addEventListener("click", () => {
+            const target = button.getAttribute("data-add");
+            if (target === "required") {
+                createRow({ key: "", prompt: "", type: "Text", required: true }, requiredContainer);
+            } else {
+                createRow({ key: "", prompt: "", type: "Text", required: false }, optionalContainer);
+            }
+        });
+    });
+
+    const form = document.querySelector("form");
+    form.addEventListener("submit", () => {
+        serialize(requiredContainer, requiredJson);
+        serialize(optionalContainer, optionalJson);
+    });
+
+    bootstrap(requiredContainer, requiredJson, true);
+    bootstrap(optionalContainer, optionalJson, false);
+</script>
+</body>
+</html>

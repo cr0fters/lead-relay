@@ -5,7 +5,7 @@ namespace LeadRelay.Infrastructure.Persistence;
 
 public sealed class InMemorySiteRepository : ISiteRepository
 {
-    private static readonly Site[] Sites =
+    private static readonly List<Site> Sites =
     [
         new()
         {
@@ -46,4 +46,26 @@ public sealed class InMemorySiteRepository : ISiteRepository
     ];
 
     public Task<Site?> GetByIdAsync(string siteId, CancellationToken ct) => Task.FromResult(Sites.FirstOrDefault(x => x.Id == siteId));
+
+    public Task<IReadOnlyList<Site>> GetAllAsync(CancellationToken ct)
+    {
+        return Task.FromResult<IReadOnlyList<Site>>(Sites
+            .OrderBy(x => x.Name)
+            .ToList());
+    }
+
+    public Task UpsertAsync(Site site, CancellationToken ct)
+    {
+        var index = Sites.FindIndex(x => x.Id == site.Id);
+        if (index >= 0)
+        {
+            Sites[index] = site;
+        }
+        else
+        {
+            Sites.Add(site);
+        }
+
+        return Task.CompletedTask;
+    }
 }

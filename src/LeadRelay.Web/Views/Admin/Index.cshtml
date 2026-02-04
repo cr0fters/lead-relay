@@ -1,0 +1,219 @@
+@model LeadRelay.Web.Controllers.AdminController.AdminDashboardModel
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LeadRelay Admin</title>
+    <style>
+        @@import url("https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap");
+
+        :root {
+            --bg: #0f1115;
+            --panel: rgba(255, 255, 255, 0.04);
+            --border: rgba(255, 255, 255, 0.12);
+            --ink: #f7f6f2;
+            --muted: #b9b7b1;
+            --accent: #ffcf6a;
+            --accent-2: #6fd8c4;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: var(--ink);
+            font-family: "Instrument Sans", system-ui, -apple-system, Segoe UI, sans-serif;
+            background:
+                radial-gradient(900px 500px at 15% -10%, rgba(255, 207, 106, 0.18), transparent 60%),
+                radial-gradient(900px 500px at 100% 0%, rgba(111, 216, 196, 0.16), transparent 60%),
+                linear-gradient(180deg, #0b0d12, #0f1115 55%, #0b0d12);
+            min-height: 100vh;
+        }
+
+        a { color: inherit; text-decoration: none; }
+        .wrap { max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; }
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        .brand-badge {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #ffcf6a, #ff8a5b);
+            display: grid;
+            place-items: center;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 16px;
+            color: #1b1b1b;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+        }
+
+        .nav {
+            display: flex;
+            gap: 16px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        h1 {
+            margin: 36px 0 8px;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: clamp(2rem, 3vw, 2.6rem);
+        }
+
+        .lede {
+            color: var(--muted);
+            margin: 0 0 24px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 18px;
+        }
+
+        .card h3 { margin: 0 0 8px; font-size: 1.05rem; }
+        .card p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+        .card a { display: inline-flex; gap: 8px; align-items: center; font-weight: 600; }
+
+        .sites {
+            margin-top: 24px;
+            display: grid;
+            gap: 12px;
+        }
+
+        .site-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            padding: 16px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .site-meta {
+            display: grid;
+            gap: 4px;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border-radius: 999px;
+            font-weight: 600;
+            border: 1px solid transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #1a1a1a;
+        }
+
+        .btn-ghost {
+            border-color: var(--border);
+            color: var(--ink);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        @@media (max-width: 720px) {
+            header { flex-direction: column; align-items: flex-start; }
+            .nav { flex-wrap: wrap; }
+            .site-row { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header>
+        <div class="brand">
+            <div class="brand-badge">LR</div>
+            <span>LeadRelay Admin</span>
+        </div>
+        <nav class="nav">
+            <a href="/">Marketing</a>
+            <a href="/debug/whatsapp">Debug WhatsApp</a>
+        </nav>
+    </header>
+
+    <h1>Admin dashboard</h1>
+    <p class="lede">Manage site configuration, review flows, and keep things tidy.</p>
+
+    <div class="grid">
+        <div class="card">
+            <h3>Sites</h3>
+            <p>Manage site-specific configuration, widget domains, and WhatsApp numbers.</p>
+            <div style="margin-top:12px;">
+                <a class="btn btn-primary" href="/admin/sites/new">Create new site</a>
+            </div>
+        </div>
+        <div class="card">
+            <h3>Debug console</h3>
+            <p>Test WhatsApp conversation flows without leaving the browser.</p>
+            <div style="margin-top:12px;">
+                <a class="btn btn-ghost" href="/debug/whatsapp">Open debug tool</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="sites">
+        @if (Model.Sites.Count == 0)
+        {
+            <div class="site-row">
+                <div class="site-meta">
+                    <strong>No sites yet</strong>
+                    <span class="pill">Create your first site to get started.</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            @foreach (var site in Model.Sites)
+            {
+                <div class="site-row">
+                    <div class="site-meta">
+                        <strong>@site.Name</strong>
+                        <span class="pill">@site.Id</span>
+                        <span style="color:var(--muted);font-size:0.9rem;">@site.OwnerEmail</span>
+                    </div>
+                    <a class="btn btn-ghost" href="/admin/sites/@site.Id">Edit site</a>
+                </div>
+            }
+        }
+    </div>
+</div>
+</body>
+</html>
