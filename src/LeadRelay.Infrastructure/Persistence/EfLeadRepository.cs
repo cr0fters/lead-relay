@@ -80,6 +80,43 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
             .ToListAsync(ct);
     }
 
+    public async Task<LeadPageResult> SearchBySiteAsync(string siteId, string? query, int page, int pageSize, CancellationToken ct)
+    {
+        var normalizedSiteId = (siteId ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(normalizedSiteId))
+            return new LeadPageResult(Array.Empty<LeadSummary>(), 0, 1, Math.Clamp(pageSize, 1, 100));
+
+        var normalizedQuery = (query ?? "").Trim();
+        var effectivePageSize = Math.Clamp(pageSize, 1, 100);
+        var effectivePage = Math.Max(1, page);
+
+        var baseQuery = db.Leads.AsNoTracking().Where(x => x.SiteId == normalizedSiteId);
+        if (!string.IsNullOrWhiteSpace(normalizedQuery))
+        {
+            var pattern = $"%{normalizedQuery}%";
+            baseQuery = baseQuery.Where(x =>
+                (x.Name != null && EF.Functions.Like(x.Name, pattern)) ||
+                (x.Email != null && EF.Functions.Like(x.Email, pattern)) ||
+                (x.Phone != null && EF.Functions.Like(x.Phone, pattern)));
+        }
+
+        var totalCount = await baseQuery.CountAsync(ct);
+        var items = await baseQuery
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .Skip((effectivePage - 1) * effectivePageSize)
+            .Take(effectivePageSize)
+            .Select(x => new LeadSummary(
+                x.Id,
+                x.SiteId,
+                x.Name,
+                x.Phone,
+                x.Email,
+                x.CreatedAtUtc))
+            .ToListAsync(ct);
+
+        return new LeadPageResult(items, totalCount, effectivePage, effectivePageSize);
+    }
+
     public async Task<Lead?> GetByIdAsync(Guid id, CancellationToken ct)
     {
         var record = await db.Leads.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);

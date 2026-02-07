@@ -28,11 +28,19 @@ public sealed class DebugController(
         var reply = await conversations.HandleMessageAsync(site, waId, message, contactName, systemPrompt, ct);
         await leadCapture.CaptureAsync(
             site,
-            waId,
-            "website chat (debug)",
-            message,
-            reply,
-            null,
+            new LeadCaptureInput(
+                Channel: "whatsapp",
+                ExternalContactId: waId,
+                ContactName: contactName,
+                Intent: "website chat (debug)",
+                FallbackMessage: message,
+                Fields: reply.Collected,
+                Conversation: reply.History
+                    .Select(x => new LeadCaptureTurn(x.Role, x.Text, x.AtUtc))
+                    .ToList(),
+                LeadId: reply.LeadId,
+                LeadCreatedAtUtc: reply.LeadCreatedAtUtc,
+                NotifyOwner: reply.LeadJustCreated),
             ct);
 
         return Ok(new

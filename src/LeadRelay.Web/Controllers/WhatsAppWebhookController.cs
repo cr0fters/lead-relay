@@ -50,11 +50,19 @@ public sealed class WhatsAppWebhookController(
 
         await leadCapture.CaptureAsync(
             site,
-            waId,
-            "website chat",
-            text,
-            reply,
-            contactName,
+            new LeadCaptureInput(
+                Channel: "whatsapp",
+                ExternalContactId: waId,
+                ContactName: contactName,
+                Intent: "website chat",
+                FallbackMessage: text,
+                Fields: reply.Collected,
+                Conversation: reply.History
+                    .Select(x => new LeadCaptureTurn(x.Role, x.Text, x.AtUtc))
+                    .ToList(),
+                LeadId: reply.LeadId,
+                LeadCreatedAtUtc: reply.LeadCreatedAtUtc,
+                NotifyOwner: reply.LeadJustCreated),
             ct);
 
         return Ok(new { ok = true });

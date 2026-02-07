@@ -4,87 +4,502 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Lead Detail</title>
+    <title>Lead CRM View</title>
     <style>
-        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f6f8fc; color: #182438; }
-        .wrap { max-width: 920px; margin: 0 auto; padding: 28px 20px 56px; }
-        h1 { margin: 0 0 12px; }
-        .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
-        .card { background: #fff; border: 1px solid #d6e1f0; border-radius: 10px; padding: 12px; }
-        .k { color: #5a6c84; font-size: 0.85rem; margin-bottom: 4px; }
-        .error { border: 1px solid #efb4b4; background: #fff3f3; color: #a02222; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
-        .success { border: 1px solid #b7e4c7; background: #f3fff7; color: #1f6c3a; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
-        textarea { width: 100%; box-sizing: border-box; min-height: 110px; border: 1px solid #b4c3da; border-radius: 8px; padding: 10px; font: inherit; }
-        button { border: none; border-radius: 8px; padding: 10px 12px; background: #0f62fe; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
-        a { color: #0f62fe; text-decoration: none; }
-        .conv { white-space: pre-wrap; line-height: 1.4; }
+        @@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap");
+
+        :root {
+            --bg: #f3f5f9;
+            --ink: #152132;
+            --muted: #5f6f86;
+            --panel: #ffffff;
+            --line: #d9e1ec;
+            --accent: #0f62fe;
+            --accent-2: #13b886;
+            --danger: #c53838;
+            --danger-bg: #fff1f1;
+            --ok: #126b3f;
+            --ok-bg: #eefcf4;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            color: var(--ink);
+            background:
+                radial-gradient(720px 380px at 0 -10%, rgba(15, 98, 254, 0.08), transparent 60%),
+                radial-gradient(900px 420px at 100% -20%, rgba(19, 184, 134, 0.08), transparent 60%),
+                var(--bg);
+            font-family: "Manrope", system-ui, -apple-system, Segoe UI, sans-serif;
+        }
+
+        a { color: var(--accent); text-decoration: none; }
+
+        .wrap {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 28px 18px 42px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .crumb {
+            color: var(--muted);
+            font-size: 0.94rem;
+        }
+
+        .headline {
+            display: grid;
+            gap: 4px;
+            margin-bottom: 16px;
+        }
+
+        .headline h1 {
+            margin: 0;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: clamp(1.45rem, 2.8vw, 2rem);
+            letter-spacing: -0.02em;
+        }
+
+        .subline {
+            color: var(--muted);
+            font-size: 0.95rem;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .flash {
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 14px;
+            border: 1px solid transparent;
+            font-size: 0.95rem;
+        }
+
+        .flash-error {
+            color: var(--danger);
+            background: var(--danger-bg);
+            border-color: #efb6b6;
+        }
+
+        .flash-ok {
+            color: var(--ok);
+            background: var(--ok-bg);
+            border-color: #bde8cf;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 350px minmax(0, 1fr);
+            gap: 14px;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+        }
+
+        .section {
+            padding: 14px;
+            border-bottom: 1px solid #edf1f7;
+        }
+
+        .section:last-child { border-bottom: 0; }
+
+        .kicker {
+            margin: 0 0 10px;
+            font-size: 0.76rem;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .field-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .field {
+            border: 1px solid #e4ebf4;
+            border-radius: 10px;
+            padding: 10px;
+            background: #fafcfe;
+        }
+
+        .field .label {
+            color: var(--muted);
+            font-size: 0.76rem;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 700;
+        }
+
+        .field .value {
+            font-weight: 600;
+            font-size: 0.95rem;
+            overflow-wrap: anywhere;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        select,
+        textarea {
+            width: 100%;
+            border: 1px solid #c8d5e7;
+            border-radius: 10px;
+            font: inherit;
+            padding: 10px 11px;
+            background: #fff;
+            color: var(--ink);
+        }
+
+        textarea {
+            min-height: 112px;
+            resize: vertical;
+        }
+
+        .btn {
+            border: 0;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: #eef3fb;
+            color: #24364e;
+            border: 1px solid #cfdbee;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .meta-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            display: grid;
+            gap: 8px;
+        }
+
+        .meta-list li {
+            padding: 9px 10px;
+            border: 1px solid #e5ebf5;
+            border-radius: 10px;
+            background: #fbfcff;
+            font-size: 0.93rem;
+        }
+
+        .timeline {
+            display: grid;
+            gap: 8px;
+            max-height: 460px;
+            overflow: auto;
+            padding-right: 4px;
+            background:
+                linear-gradient(180deg, rgba(8, 127, 91, 0.06), rgba(8, 127, 91, 0.02)),
+                #f6faf8;
+            border: 1px solid #d6e7de;
+            border-radius: 12px;
+            padding: 12px;
+        }
+
+        .chat-msg {
+            display: grid;
+            gap: 4px;
+            max-width: 86%;
+        }
+
+        .chat-msg.incoming {
+            justify-self: start;
+        }
+
+        .chat-msg.outgoing {
+            justify-self: end;
+        }
+
+        .chat-meta {
+            display: flex;
+            gap: 8px;
+            font-size: 0.8rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .chat-bubble {
+            white-space: pre-wrap;
+            line-height: 1.4;
+            font-size: 0.94rem;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid #d8e2df;
+            background: #fff;
+            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
+        }
+
+        .chat-msg.incoming .chat-bubble {
+            border-bottom-left-radius: 6px;
+            background: #ffffff;
+            position: relative;
+        }
+
+        .chat-msg.incoming .chat-bubble::before {
+            content: "";
+            position: absolute;
+            left: -6px;
+            top: 10px;
+            width: 10px;
+            height: 10px;
+            background: #ffffff;
+            border-left: 1px solid #d8e2df;
+            border-bottom: 1px solid #d8e2df;
+            transform: rotate(45deg);
+        }
+
+        .chat-msg.outgoing .chat-bubble {
+            border-bottom-right-radius: 6px;
+            border-color: #b8dfc5;
+            background: #dcf8c6;
+            position: relative;
+        }
+
+        .chat-msg.outgoing .chat-bubble::after {
+            content: "";
+            position: absolute;
+            right: -6px;
+            top: 10px;
+            width: 10px;
+            height: 10px;
+            background: #dcf8c6;
+            border-right: 1px solid #b8dfc5;
+            border-top: 1px solid #b8dfc5;
+            transform: rotate(45deg);
+        }
+
+        .composer {
+            border-top: 1px solid #edf1f7;
+            background: #fff;
+            padding-top: 14px;
+        }
+
+        .helper {
+            color: var(--muted);
+            font-size: 0.84rem;
+            margin-top: 6px;
+        }
+
+        @@media (max-width: 980px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .timeline {
+                max-height: none;
+            }
+        }
     </style>
 </head>
 <body>
 <div class="wrap">
-    <p><a href="/owner">← Back to leads</a></p>
-    <h1>Lead @Model.Id</h1>
+    <div class="topbar">
+        <div class="crumb"><a href="/owner">Leads</a> / @Model.Id</div>
+        <form method="post" action="/owner/logout" style="margin:0;">
+            @Html.AntiForgeryToken()
+            <button class="btn btn-secondary" type="submit">Sign out</button>
+        </form>
+    </div>
+
+    <div class="headline">
+        <h1>Lead Workspace</h1>
+        <div class="subline">
+            <span>Site: <strong>@Model.SiteId</strong></span>
+            <span>Owner: <strong>@Model.OwnerEmail</strong></span>
+            <span>Created: <strong>@Model.CreatedAtUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm") UTC</strong></span>
+        </div>
+    </div>
 
     @if (!string.IsNullOrWhiteSpace(Model.Error))
     {
-        <div class="error">@Model.Error</div>
+        <div class="flash flash-error">@Model.Error</div>
     }
+
     @if (!string.IsNullOrWhiteSpace(Model.Success))
     {
-        <div class="success">@Model.Success</div>
+        <div class="flash flash-ok">@Model.Success</div>
     }
 
-    <div class="row">
-        <div class="card"><div class="k">Name</div><div>@(Model.Name ?? "-")</div></div>
-        <div class="card"><div class="k">Email</div><div>@(Model.Email ?? "-")</div></div>
-        <div class="card"><div class="k">Phone</div><div>@(Model.Phone ?? "-")</div></div>
-        <div class="card"><div class="k">Created</div><div>@Model.CreatedAtUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm") UTC</div></div>
-    </div>
+    <div class="layout">
+        <aside class="panel">
+            <section class="section">
+                <h2 class="kicker">Contact Profile</h2>
+                <div class="field-grid">
+                    <div class="field">
+                        <div class="label">Name</div>
+                        <div class="value">@(string.IsNullOrWhiteSpace(Model.Name) ? "-" : Model.Name)</div>
+                    </div>
+                    <div class="field">
+                        <div class="label">Channel</div>
+                        <div class="value">@Model.ReplyChannel</div>
+                    </div>
+                    <div class="field">
+                        <div class="label">Email</div>
+                        <div class="value">@(string.IsNullOrWhiteSpace(Model.Email) ? "-" : Model.Email)</div>
+                    </div>
+                    <div class="field">
+                        <div class="label">Phone</div>
+                        <div class="value">@(string.IsNullOrWhiteSpace(Model.Phone) ? "-" : Model.Phone)</div>
+                    </div>
+                </div>
+            </section>
 
-    <div class="card" style="margin-bottom:16px;">
-        <div class="k">Captured fields</div>
-        @if (Model.Fields.Count == 0)
-        {
-            <div>-</div>
-        }
-        else
-        {
-            <ul>
-                @foreach (var field in Model.Fields)
+            <section class="section">
+                <h2 class="kicker">Edit Contact</h2>
+                <form method="post" action="/owner/leads/@Model.Id/contact">
+                    @Html.AntiForgeryToken()
+
+                    <label for="name">Name</label>
+                    <input id="name" name="name" type="text" value="@Model.Name" />
+
+                    <label for="email">Email</label>
+                    <input id="email" name="email" type="email" value="@Model.Email" />
+
+                    <label for="phone">Phone</label>
+                    <input id="phone" name="phone" type="tel" value="@Model.Phone" />
+
+                    <div class="btn-row">
+                        <button class="btn btn-secondary" type="submit">Save Contact</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="section">
+                <h2 class="kicker">Captured Fields</h2>
+                @if (Model.Fields.Count == 0)
                 {
-                    <li><strong>@field.Key</strong>: @field.Value</li>
+                    <div class="helper">No captured fields.</div>
                 }
-            </ul>
-        }
-    </div>
-
-    <div class="card" style="margin-bottom:16px;">
-        <div class="k">Conversation</div>
-        @if (Model.Conversation.Count == 0)
-        {
-            <div>-</div>
-        }
-        else
-        {
-            <div class="conv">
-                @foreach (var turn in Model.Conversation)
+                else
                 {
-<text>[</text>@turn.AtUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm")<text>] </text>@turn.Role<text>: </text>@turn.Text<text>
-</text>                }
-            </div>
-        }
-    </div>
+                    <ul class="meta-list">
+                        @foreach (var field in Model.Fields)
+                        {
+                            <li><strong>@field.Key</strong>: @field.Value</li>
+                        }
+                    </ul>
+                }
+            </section>
+        </aside>
 
-    <div class="card">
-        <div class="k">Reply via WhatsApp</div>
-        <form method="post" action="/owner/leads/@Model.Id/reply">
-            @Html.AntiForgeryToken()
-            <textarea name="message" placeholder="Type your reply..." required></textarea>
-            <div style="margin-top:10px;">
-                <button type="submit">Send reply</button>
-            </div>
-        </form>
+        <main class="panel">
+            <section class="section">
+                <h2 class="kicker">Conversation History</h2>
+                @if (Model.Conversation.Count == 0)
+                {
+                    <div class="helper">No messages yet.</div>
+                }
+                else
+                {
+                    <div id="conversationTimeline" class="timeline">
+                        @foreach (var turn in Model.Conversation)
+                        {
+                            var isIncoming = string.Equals(turn.Role, "user", StringComparison.OrdinalIgnoreCase) ||
+                                             string.Equals(turn.Role, "customer", StringComparison.OrdinalIgnoreCase);
+                            var roleLabel = isIncoming ? "Customer" : "LeadRelay";
+                            <article class="chat-msg @(isIncoming ? "incoming" : "outgoing")">
+                                <div class="chat-meta">
+                                    <span>@roleLabel</span>
+                                    <span>@turn.AtUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm") UTC</span>
+                                </div>
+                                <div class="chat-bubble">@turn.Text</div>
+                            </article>
+                        }
+                    </div>
+                }
+            </section>
+
+            <section class="section composer">
+                <h2 class="kicker">Reply Composer</h2>
+                <form method="post" action="/owner/leads/@Model.Id/reply">
+                    @Html.AntiForgeryToken()
+
+                    <label for="replyChannel">Send Via</label>
+                    <select id="replyChannel" name="replyChannel">
+                        @if (Model.CanReplyViaWhatsApp)
+                        {
+                            if (string.Equals(Model.ReplyChannel, "whatsapp", StringComparison.OrdinalIgnoreCase))
+                            {
+                                <option value="whatsapp" selected>WhatsApp</option>
+                            }
+                            else
+                            {
+                                <option value="whatsapp">WhatsApp</option>
+                            }
+                        }
+                        @if (Model.CanReplyViaEmail)
+                        {
+                            if (string.Equals(Model.ReplyChannel, "email", StringComparison.OrdinalIgnoreCase))
+                            {
+                                <option value="email" selected>Email</option>
+                            }
+                            else
+                            {
+                                <option value="email">Email</option>
+                            }
+                        }
+                    </select>
+
+                    <label for="message">Message</label>
+                    <textarea id="message" name="message" placeholder="Write your message to the customer..." required></textarea>
+                    <div class="helper">Use channel based on available contact details.</div>
+
+                    <div class="btn-row">
+                        <button class="btn btn-primary" type="submit">Send Reply</button>
+                    </div>
+                </form>
+            </section>
+        </main>
     </div>
 </div>
+<script>
+    (function () {
+        var timeline = document.getElementById("conversationTimeline");
+        if (!timeline) return;
+        timeline.scrollTop = timeline.scrollHeight;
+    })();
+</script>
 </body>
 </html>

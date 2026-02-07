@@ -55,6 +55,44 @@ public sealed class InMemoryLeadRepository : ILeadRepository
         return Task.FromResult<IReadOnlyList<LeadSummary>>(items);
     }
 
+    public Task<LeadPageResult> SearchBySiteAsync(string siteId, string? query, int page, int pageSize, CancellationToken ct)
+    {
+        var normalizedSiteId = (siteId ?? "").Trim();
+        var normalizedQuery = (query ?? "").Trim();
+        var effectivePageSize = Math.Clamp(pageSize, 1, 100);
+        var effectivePage = Math.Max(1, page);
+
+        if (string.IsNullOrWhiteSpace(normalizedSiteId))
+            return Task.FromResult(new LeadPageResult(Array.Empty<LeadSummary>(), 0, effectivePage, effectivePageSize));
+
+        var filtered = Store.Values
+            .Where(x => string.Equals(x.SiteId, normalizedSiteId, StringComparison.Ordinal));
+
+        if (!string.IsNullOrWhiteSpace(normalizedQuery))
+        {
+            filtered = filtered.Where(x =>
+                Contains(x.Name, normalizedQuery) ||
+                Contains(x.Email, normalizedQuery) ||
+                Contains(x.Phone, normalizedQuery));
+        }
+
+        var ordered = filtered.OrderByDescending(x => x.CreatedAtUtc).ToList();
+        var total = ordered.Count;
+        var items = ordered
+            .Skip((effectivePage - 1) * effectivePageSize)
+            .Take(effectivePageSize)
+            .Select(x => new LeadSummary(
+                x.Id,
+                x.SiteId,
+                x.Name,
+                x.Phone,
+                x.Email,
+                x.CreatedAtUtc))
+            .ToList();
+
+        return Task.FromResult(new LeadPageResult(items, total, effectivePage, effectivePageSize));
+    }
+
     public Task<Lead?> GetByIdAsync(Guid id, CancellationToken ct)
     {
         Store.TryGetValue(id, out var lead);
@@ -71,5 +109,11 @@ public sealed class InMemoryLeadRepository : ILeadRepository
             return Task.FromResult<Lead?>(null);
 
         return Task.FromResult<Lead?>(lead);
+    }
+
+    private static bool Contains(string? value, string query)
+    {
+        return !string.IsNullOrWhiteSpace(value) &&
+               value.Contains(query, StringComparison.OrdinalIgnoreCase);
     }
 }

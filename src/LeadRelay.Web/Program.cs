@@ -4,6 +4,7 @@ using LeadRelay.Infrastructure.Persistence;
 using LeadRelay.Infrastructure.Time;
 using LeadRelay.Web.AI;
 using LeadRelay.Web.Leads;
+using LeadRelay.Web.Messaging;
 using LeadRelay.Web.Security;
 using LeadRelay.Web.WhatsApp;
 using LeadRelay.Web.Extensions;
@@ -34,6 +35,9 @@ builder.Services.Configure<AdminAuthOptions>(builder.Configuration.GetSection("A
 builder.Services.Configure<OwnerPortalOptions>(builder.Configuration.GetSection("OwnerPortal"));
 builder.Services.AddScoped<OwnerSessionService>();
 builder.Services.AddScoped<IOwnerPasswordAuthService, OwnerPasswordAuthService>();
+builder.Services.AddSingleton<IMessageChannel, WhatsAppMessageChannel>();
+builder.Services.AddSingleton<IMessageChannel, EmailMessageChannel>();
+builder.Services.AddScoped<IMessageDispatcher, MessageDispatcher>();
 builder.Services.AddHttpClient<WhatsAppClient>();
 builder.Services.AddHttpClient<OpenAIClient>();
 

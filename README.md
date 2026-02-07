@@ -18,6 +18,7 @@ Drop-in “Chat via WhatsApp” widget + server-side lead capture. Includes a si
 - `GET /admin/sites/new` — admin site create view (requires admin token)
 - `GET /admin/sites/{siteId}` — admin site edit view (requires admin token)
 - `GET/POST/PUT /admin/api/sites...` — admin API (requires admin token)
+- `POST /admin/api/leads/intake` — channel-agnostic lead intake API (requires admin token)
 - `GET /owner/login` — site owner login
 - `GET /owner/password/forgot` — request password reset
 - `GET /owner/password/reset` — set new password with reset token
@@ -70,10 +71,21 @@ Site owners can log into `/owner` and:
 - open lead details
 - send WhatsApp replies to leads
 
+Owner inbox supports:
+- search: `/owner?q=alice`
+- paging: `/owner?page=2&pageSize=20`
+
 Owner sessions are signed tokens and require `OwnerPortal:SigningSecret` to be set.  
 Owners sign in from `/owner/login` with email and password.  
 Password reset is available via `/owner/password/forgot` (email link) and `/owner/password/reset`.  
 Admin site edit pages include the owner login URL (`/owner/login`) to share as the canonical entry point.
+
+## Channel-agnostic lead intake
+Leads can now be ingested through an API independent of WhatsApp:
+- `POST /admin/api/leads/intake`
+- includes `siteId`, optional `channel` (defaults to `api`), contact details, fields, and optional conversation turns
+- uses the same lead capture pipeline as WhatsApp/debug flows
+- current outbound channels supported by dispatcher: `whatsapp`, `email`
 
 ## Conversation configuration (per site)
 Edit the demo seed in `src/LeadRelay.Infrastructure/Persistence/SeedData.cs`:
