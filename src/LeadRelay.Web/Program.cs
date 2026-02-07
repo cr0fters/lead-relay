@@ -4,6 +4,7 @@ using LeadRelay.Infrastructure.Persistence;
 using LeadRelay.Infrastructure.Time;
 using LeadRelay.Web.AI;
 using LeadRelay.Web.Leads;
+using LeadRelay.Web.Security;
 using LeadRelay.Web.WhatsApp;
 using LeadRelay.Web.Extensions;
 using Microsoft.EntityFrameworkCore;
@@ -29,6 +30,7 @@ builder.Services.AddScoped<LeadCaptureService>();
 builder.Services.Configure<ConversationOptions>(builder.Configuration.GetSection("Conversation"));
 builder.Services.Configure<OpenAIOptions>(builder.Configuration.GetSection("OpenAI"));
 builder.Services.Configure<WhatsAppOptions>(builder.Configuration.GetSection("WhatsApp"));
+builder.Services.Configure<AdminAuthOptions>(builder.Configuration.GetSection("AdminAuth"));
 builder.Services.AddHttpClient<WhatsAppClient>();
 builder.Services.AddHttpClient<OpenAIClient>();
 
@@ -46,6 +48,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseStaticFiles();
+app.UseMiddleware<AdminTokenMiddleware>();
 app.MapControllers();
 app.MapControllerRoute(
     name: "default",

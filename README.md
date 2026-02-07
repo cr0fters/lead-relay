@@ -14,6 +14,10 @@ Drop-in “Chat via WhatsApp” widget + server-side lead capture. Includes a si
 
 ## Endpoints
 - `GET /widget/bootstrap.js?siteId=...` — bootstrap script (domain allow-list enforced)
+- `GET /admin` — admin dashboard (requires admin token)
+- `GET /admin/sites/new` — admin site create view (requires admin token)
+- `GET /admin/sites/{siteId}` — admin site edit view (requires admin token)
+- `GET/POST/PUT /admin/api/sites...` — admin API (requires admin token)
 - `GET /debug/whatsapp` — local UI to simulate chat flow
 - `POST /debug/whatsapp/send` — simulate incoming message (form-encoded)
 - `GET /debug/whatsapp/leads` — recent leads for debug UI
@@ -41,6 +45,18 @@ Set these in `src/LeadRelay.Web/appsettings.json`:
   }
 }
 ```
+
+## Admin auth token
+All `/admin` endpoints are protected by a shared token configured under `AdminAuth`.
+
+Set `AdminAuth:Token` via environment for non-local environments.  
+For local testing:
+- Access `/admin` and enter the token in the login form.
+- You can still deep-link with `http://localhost:5180/admin?adminToken=your_token`.
+
+For API requests, send:
+- Header `X-Admin-Token: your_token`
+- or `Authorization: Bearer your_token`
 
 ## Conversation configuration (per site)
 Edit the demo seed in `src/LeadRelay.Infrastructure/Persistence/SeedData.cs`:
