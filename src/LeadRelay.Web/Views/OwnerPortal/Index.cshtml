@@ -1,0 +1,67 @@
+@model LeadRelay.Web.Controllers.OwnerPortalController.OwnerDashboardModel
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Owner Leads</title>
+    <style>
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f6f8fc; color: #182438; }
+        .wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 56px; }
+        h1 { margin: 0 0 6px; }
+        .meta { color: #526178; margin-bottom: 18px; }
+        .top { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+        table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #d6e1f0; border-radius: 10px; overflow: hidden; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e8eef7; }
+        th { background: #f0f5fc; font-size: 0.92rem; }
+        tr:last-child td { border-bottom: 0; }
+        a { color: #0f62fe; text-decoration: none; }
+        button { border: 1px solid #c4d3e8; border-radius: 8px; background: #fff; padding: 8px 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="top">
+        <div>
+            <h1>Owner leads</h1>
+            <div class="meta">Site: <strong>@Model.SiteId</strong> · @Model.OwnerEmail</div>
+        </div>
+        <form method="post" action="/owner/logout">
+            @Html.AntiForgeryToken()
+            <button type="submit">Sign out</button>
+        </form>
+    </div>
+
+    @if (Model.Leads.Count == 0)
+    {
+        <p>No leads yet for this site.</p>
+    }
+    else
+    {
+        <table>
+            <thead>
+            <tr>
+                <th>Created</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var lead in Model.Leads)
+            {
+                <tr>
+                    <td>@lead.CreatedAtUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>@(string.IsNullOrWhiteSpace(lead.Name) ? "-" : lead.Name)</td>
+                    <td>@(string.IsNullOrWhiteSpace(lead.Email) ? "-" : lead.Email)</td>
+                    <td>@(string.IsNullOrWhiteSpace(lead.Phone) ? "-" : lead.Phone)</td>
+                    <td><a href="/owner/leads/@lead.Id">Open</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
+</body>
+</html>

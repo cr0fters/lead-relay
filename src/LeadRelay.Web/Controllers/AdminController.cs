@@ -192,6 +192,8 @@ public sealed class AdminController(ISiteRepository sites) : Controller
             };
         }
 
+        public string? OwnerLoginPath { get; set; }
+
         public static SiteFormModel FromSite(Site site)
         {
             return new SiteFormModel
@@ -204,7 +206,8 @@ public sealed class AdminController(ISiteRepository sites) : Controller
                 OptionalFieldsJson = JsonSerializer.Serialize(site.OptionalFields, JsonOptions),
                 IntroMessage = site.IntroMessage,
                 OwnerEmail = site.OwnerEmail,
-                WhatsAppNumber = site.WhatsAppNumber
+                WhatsAppNumber = site.WhatsAppNumber,
+                OwnerLoginPath = "/owner/login"
             };
         }
     }

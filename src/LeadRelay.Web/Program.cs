@@ -31,6 +31,9 @@ builder.Services.Configure<ConversationOptions>(builder.Configuration.GetSection
 builder.Services.Configure<OpenAIOptions>(builder.Configuration.GetSection("OpenAI"));
 builder.Services.Configure<WhatsAppOptions>(builder.Configuration.GetSection("WhatsApp"));
 builder.Services.Configure<AdminAuthOptions>(builder.Configuration.GetSection("AdminAuth"));
+builder.Services.Configure<OwnerPortalOptions>(builder.Configuration.GetSection("OwnerPortal"));
+builder.Services.AddScoped<OwnerSessionService>();
+builder.Services.AddScoped<IOwnerPasswordAuthService, OwnerPasswordAuthService>();
 builder.Services.AddHttpClient<WhatsAppClient>();
 builder.Services.AddHttpClient<OpenAIClient>();
 
@@ -49,6 +52,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseStaticFiles();
 app.UseMiddleware<AdminTokenMiddleware>();
+app.UseMiddleware<OwnerAuthMiddleware>();
 app.MapControllers();
 app.MapControllerRoute(
     name: "default",

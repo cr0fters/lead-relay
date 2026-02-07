@@ -253,6 +253,15 @@
             </div>
         </div>
 
+        @if (!string.IsNullOrWhiteSpace(Model.OwnerLoginPath))
+        {
+            <div style="margin-top:16px;">
+                <label for="OwnerLoginPath">Owner portal login link</label>
+                <input id="OwnerLoginPath" value="@Model.OwnerLoginPath" readonly />
+                <div class="helper">Share this link with the site owner. They can sign in or reset password from here.</div>
+            </div>
+        }
+
         <div style="margin-top:16px;">
             <label for="BusinessSummary">Business summary</label>
             <textarea id="BusinessSummary" name="BusinessSummary" placeholder="Short summary for AI/system prompts.">@Model.BusinessSummary</textarea>

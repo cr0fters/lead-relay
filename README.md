@@ -18,6 +18,12 @@ Drop-in “Chat via WhatsApp” widget + server-side lead capture. Includes a si
 - `GET /admin/sites/new` — admin site create view (requires admin token)
 - `GET /admin/sites/{siteId}` — admin site edit view (requires admin token)
 - `GET/POST/PUT /admin/api/sites...` — admin API (requires admin token)
+- `GET /owner/login` — site owner login
+- `GET /owner/password/forgot` — request password reset
+- `GET /owner/password/reset` — set new password with reset token
+- `GET /owner` — site owner lead inbox
+- `GET /owner/leads/{id}` — lead detail view
+- `POST /owner/leads/{id}/reply` — send WhatsApp reply to lead
 - `GET /debug/whatsapp` — local UI to simulate chat flow
 - `POST /debug/whatsapp/send` — simulate incoming message (form-encoded)
 - `GET /debug/whatsapp/leads` — recent leads for debug UI
@@ -57,6 +63,17 @@ For local testing:
 For API requests, send:
 - Header `X-Admin-Token: your_token`
 - or `Authorization: Bearer your_token`
+
+## Owner portal
+Site owners can log into `/owner` and:
+- view leads scoped to their site
+- open lead details
+- send WhatsApp replies to leads
+
+Owner sessions are signed tokens and require `OwnerPortal:SigningSecret` to be set.  
+Owners sign in from `/owner/login` with email and password.  
+Password reset is available via `/owner/password/forgot` (email link) and `/owner/password/reset`.  
+Admin site edit pages include the owner login URL (`/owner/login`) to share as the canonical entry point.
 
 ## Conversation configuration (per site)
 Edit the demo seed in `src/LeadRelay.Infrastructure/Persistence/SeedData.cs`:

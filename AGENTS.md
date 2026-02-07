@@ -42,12 +42,30 @@ This file defines the default engineering standards for all contributors (human 
 - Use environment/configuration for sensitive values.
 - Validate and sanitize external inputs at system boundaries.
 
+## Real-World Product Usage
+- Design and implement features with a complete real-user journey, not just technical endpoint coverage.
+- New user-facing capabilities must be discoverable from an expected entry point in the UI (for example: navigation, CTA, or contextual link), not only via hidden routes.
+- Prefer conventional UX patterns over custom/implicit behavior unless there is a strong product reason.
+- Before closing a feature, validate: how a first-time user finds it, starts it, completes it, and recovers from failure.
+
+## Authentication and Access UX
+- Authentication flows must follow standard, expected patterns for the target user type.
+- Avoid requiring users to manually know deep links and separately source opaque tokens unless explicitly intended for internal/admin-only workflows.
+- For end-user auth flows, include core lifecycle paths where applicable:
+  - sign in
+  - sign out
+  - credential/token recovery or reset
+  - clear error states and retry paths
+- If a shortcut auth mechanism is introduced for MVP speed, document it as temporary and create follow-up tasks for a production-grade flow.
+
 ## Pull Request / Change Checklist
 - [ ] New/changed behavior has tests.
 - [ ] Existing tests pass.
 - [ ] Code follows SOLID and keeps layer boundaries clean.
 - [ ] No duplicated logic introduced without clear reason.
 - [ ] Documentation updated when behavior/config changes.
+- [ ] User journey is realistic and discoverable from the UI.
+- [ ] Auth flows follow standard expectations for the intended users.
 
 ## Working Agreement for Agents
 - If a requested change cannot reasonably include tests, explain why and propose the smallest acceptable follow-up.

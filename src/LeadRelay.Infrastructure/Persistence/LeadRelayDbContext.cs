@@ -14,6 +14,7 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
     public DbSet<SiteRecord> Sites => Set<SiteRecord>();
     public DbSet<LeadRecord> Leads => Set<LeadRecord>();
     public DbSet<ConversationStateRecord> ConversationStates => Set<ConversationStateRecord>();
+    public DbSet<OwnerAccountRecord> OwnerAccounts => Set<OwnerAccountRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -109,6 +110,17 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
                 .Metadata.SetValueComparer(BuildJsonComparer<List<ConversationTurnRecord>>());
 
             entity.HasIndex(x => new { x.SiteId, x.WaId }).IsUnique();
+        });
+
+        modelBuilder.Entity<OwnerAccountRecord>(entity =>
+        {
+            entity.ToTable("OwnerAccounts");
+            entity.HasKey(x => x.SiteId);
+            entity.Property(x => x.SiteId).HasColumnName("SiteId");
+            entity.Property(x => x.PasswordHash).HasColumnName("PasswordHash");
+            entity.Property(x => x.ResetTokenHash).HasColumnName("ResetTokenHash");
+            entity.Property(x => x.ResetTokenExpiresAtUtc).HasColumnName("ResetTokenExpiresAtUtc");
+            entity.Property(x => x.UpdatedAtUtc).HasColumnName("UpdatedAtUtc");
         });
     }
 

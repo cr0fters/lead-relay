@@ -60,9 +60,39 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<LeadSummary>> GetRecentBySiteAsync(string siteId, int limit, CancellationToken ct)
+    {
+        var normalizedSiteId = (siteId ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(normalizedSiteId)) return Array.Empty<LeadSummary>();
+
+        var take = Math.Clamp(limit, 1, 200);
+        return await db.Leads.AsNoTracking()
+            .Where(x => x.SiteId == normalizedSiteId)
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .Take(take)
+            .Select(x => new LeadSummary(
+                x.Id,
+                x.SiteId,
+                x.Name,
+                x.Phone,
+                x.Email,
+                x.CreatedAtUtc))
+            .ToListAsync(ct);
+    }
+
     public async Task<Lead?> GetByIdAsync(Guid id, CancellationToken ct)
     {
         var record = await db.Leads.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+        return record is null ? null : Map(record);
+    }
+
+    public async Task<Lead?> GetByIdForSiteAsync(Guid id, string siteId, CancellationToken ct)
+    {
+        var normalizedSiteId = (siteId ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(normalizedSiteId)) return null;
+
+        var record = await db.Leads.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id && x.SiteId == normalizedSiteId, ct);
         return record is null ? null : Map(record);
     }
 
