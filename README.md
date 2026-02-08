@@ -45,24 +45,16 @@ WhatsApp__MessagesEndpoint=...
 OpenAI__ApiKey=...
 ```
 
-## CI/CD (GitHub -> Production)
-This repo includes `.github/workflows/ci-cd.yml`:
-- runs tests on every PR and push
-- deploys automatically on push to `main` (only if tests pass)
+## CI/CD (GitHub tests + Railway deploy)
+This repo includes `.github/workflows/ci-cd.yml` to run tests on every PR and push.
 
-Deployment target is Railway (via `railway up`) and uses `railway.toml`.
-
-### One-time GitHub setup
-1. Create a GitHub environment named `production`.
-2. Add these environment secrets:
-   - `RAILWAY_TOKEN`
-   - `RAILWAY_PROJECT_ID`
-   - `RAILWAY_ENVIRONMENT`
-   - `RAILWAY_SERVICE`
-3. Push to `main` to trigger deploy.
+Deployment is managed by Railway GitHub autodeploy (not GitHub CLI deploy).
 
 ### One-time Railway setup
-Set app runtime variables in Railway service:
+1. Connect the Railway service to this GitHub repo.
+2. Enable Railway setting: `Wait for CI`.
+3. Configure Railway to monitor your production branch (typically `main`).
+4. Set app runtime variables in Railway service:
 - `ConnectionStrings__LeadRelay`
 - `AdminAuth__Token`
 - `OwnerPortal__SigningSecret`
