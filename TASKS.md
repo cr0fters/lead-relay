@@ -6,7 +6,7 @@
 - [x] Add minimal admin interface (UI or API) to create/update site config
 - [x] Protect admin endpoints with auth/token
 - [x] Add login area for site owners to view and respond to leads
-- [ ] Wire secrets via environment (no secrets in repo) and document required env vars
+- [x] Wire secrets via environment (no secrets in repo) and document required env vars
 
 ## Next
 - [ ] Harden WhatsApp webhook verification and signature validation

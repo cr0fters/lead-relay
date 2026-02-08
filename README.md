@@ -7,6 +7,44 @@ Drop-in “Chat via WhatsApp” widget + server-side lead capture. Includes a si
 - App binds to `http://localhost:5180` (configured in `src/LeadRelay.Web/appsettings.json`)
 - Debug console (no WhatsApp required): `http://localhost:5180/debug/whatsapp`
 
+## Configuration and Secrets
+Sensitive values are intentionally blank in `src/LeadRelay.Web/appsettings.json`.
+
+Required outside Development:
+- `ConnectionStrings:LeadRelay`
+- `AdminAuth:Token`
+- `OwnerPortal:SigningSecret`
+
+The app fails fast on startup in non-Development if these are missing.
+
+### Local development
+Use .NET user-secrets for local values:
+```bash
+dotnet user-secrets set "ConnectionStrings:LeadRelay" "Server=localhost;Port=3307;User ID=root;Password=root;Database=LeadRelay" --project src/LeadRelay.Web
+dotnet user-secrets set "AdminAuth:Token" "dev_admin_token_change_me" --project src/LeadRelay.Web
+dotnet user-secrets set "OwnerPortal:SigningSecret" "dev_owner_signing_secret_change_me" --project src/LeadRelay.Web
+```
+
+Optional local settings (only if using these integrations):
+```bash
+dotnet user-secrets set "WhatsApp:VerifyToken" "dev_verify_token" --project src/LeadRelay.Web
+dotnet user-secrets set "WhatsApp:AccessToken" "<meta_cloud_api_access_token>" --project src/LeadRelay.Web
+dotnet user-secrets set "WhatsApp:MessagesEndpoint" "https://graph.facebook.com/v20.0/<PHONE_NUMBER_ID>/messages" --project src/LeadRelay.Web
+dotnet user-secrets set "OpenAI:ApiKey" "<openai_api_key>" --project src/LeadRelay.Web
+```
+
+### Production
+Provide values via environment variables (double underscore maps to `:`):
+```bash
+ConnectionStrings__LeadRelay=...
+AdminAuth__Token=...
+OwnerPortal__SigningSecret=...
+WhatsApp__VerifyToken=...
+WhatsApp__AccessToken=...
+WhatsApp__MessagesEndpoint=...
+OpenAI__ApiKey=...
+```
+
 ## Database (MySQL)
 - Connection string: `src/LeadRelay.Web/appsettings.json` (`ConnectionStrings:LeadRelay`)
 - Apply migrations:
@@ -46,8 +84,8 @@ Set these in `src/LeadRelay.Web/appsettings.json`:
 ```json
 {
   "WhatsApp": {
-    "VerifyToken": "change_me_in_real_env",
-    "AccessToken": "paste_your_cloud_api_access_token",
+    "VerifyToken": "set_via_user_secrets_or_env",
+    "AccessToken": "set_via_user_secrets_or_env",
     "MessagesEndpoint": "https://graph.facebook.com/v20.0/<PHONE_NUMBER_ID>/messages"
   }
 }
@@ -56,7 +94,7 @@ Set these in `src/LeadRelay.Web/appsettings.json`:
 ## Admin auth token
 All `/admin` endpoints are protected by a shared token configured under `AdminAuth`.
 
-Set `AdminAuth:Token` via environment for non-local environments.  
+Set `AdminAuth:Token` via user-secrets (dev) or environment (non-dev).  
 For local testing:
 - Access `/admin` and enter the token in the login form.
 - You can still deep-link with `http://localhost:5180/admin?adminToken=your_token`.

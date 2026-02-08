@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.ValidateRequiredSecrets();
 
 builder.Services.AddControllersWithViews();
 
