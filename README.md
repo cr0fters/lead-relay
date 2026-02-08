@@ -45,6 +45,34 @@ WhatsApp__MessagesEndpoint=...
 OpenAI__ApiKey=...
 ```
 
+## CI/CD (GitHub -> Production)
+This repo includes `.github/workflows/ci-cd.yml`:
+- runs tests on every PR and push
+- deploys automatically on push to `main` (only if tests pass)
+
+Deployment target is Railway (via `railway up`) and uses `railway.toml`.
+
+### One-time GitHub setup
+1. Create a GitHub environment named `production`.
+2. Add these environment secrets:
+   - `RAILWAY_TOKEN`
+   - `RAILWAY_PROJECT_ID`
+   - `RAILWAY_ENVIRONMENT`
+   - `RAILWAY_SERVICE`
+3. Push to `main` to trigger deploy.
+
+### One-time Railway setup
+Set app runtime variables in Railway service:
+- `ConnectionStrings__LeadRelay`
+- `AdminAuth__Token`
+- `OwnerPortal__SigningSecret`
+- optional integrations (`WhatsApp__...`, `OpenAI__ApiKey`)
+
+Also run DB migrations as part of your release process:
+```bash
+dotnet ef database update --project src/LeadRelay.Infrastructure --startup-project src/LeadRelay.Web
+```
+
 ## Database (MySQL)
 - Connection string: `src/LeadRelay.Web/appsettings.json` (`ConnectionStrings:LeadRelay`)
 - Apply migrations:
