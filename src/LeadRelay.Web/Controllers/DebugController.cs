@@ -2,7 +2,6 @@ using LeadRelay.Application.Abstractions;
 using LeadRelay.Web.Leads;
 using LeadRelay.Web.WhatsApp;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace LeadRelay.Web.Controllers;
 
@@ -10,7 +9,6 @@ public sealed class DebugController(
     ISiteRepository sites,
     LeadCaptureService leadCapture,
     ILeadRepository leads,
-    LeadRelay.Infrastructure.Persistence.LeadRelayDbContext db,
     WhatsAppConversationService conversations) : Controller
 {
     [HttpGet("/debug/whatsapp")]
@@ -20,17 +18,17 @@ public sealed class DebugController(
     }
 
     [HttpPost("/debug/whatsapp/send")]
-    public async Task<IActionResult> Send([FromForm] string waId, [FromForm] string message, [FromForm] string? contactName, [FromForm] string? systemPrompt, CancellationToken ct)
+    public async Task<IActionResult> Send([FromForm] string contactId, [FromForm] string message, [FromForm] string? contactName, [FromForm] string? systemPrompt, CancellationToken ct)
     {
-        var site = await sites.GetByIdAsync("site_demo", ct);
+        var site = await ResolveDefaultSiteAsync(ct);
         if (site is null) return NotFound();
 
-        var reply = await conversations.HandleMessageAsync(site, waId, message, contactName, systemPrompt, ct);
+        var reply = await conversations.HandleMessageAsync(site, contactId, message, contactName, systemPrompt, ct);
         var captured = await leadCapture.CaptureAsync(
             site,
             new LeadCaptureInput(
                 Channel: "whatsapp",
-                ExternalContactId: waId,
+                ExternalContactId: contactId,
                 ContactName: contactName,
                 FallbackMessage: message,
                 Fields: reply.Collected,
@@ -39,11 +37,9 @@ public sealed class DebugController(
                     .ToList(),
                 LeadId: reply.LeadId,
                 LeadCreatedAtUtc: reply.LeadCreatedAtUtc,
-                NotifyOwner: reply.LeadJustCreated),
+                NotifyOwner: reply.LeadJustCreated,
+                ProjectSummary: reply.ProjectSummary),
             ct);
-
-        if (captured.Lead is not null)
-            await conversations.BindLeadAsync(site.Id, waId, captured.Lead.Id, captured.Lead.CreatedAtUtc, ct);
 
         return Ok(new
         {
@@ -51,6 +47,7 @@ public sealed class DebugController(
             replies = reply.Replies,
             completed = reply.IsComplete,
             collected = reply.Collected,
+            projectSummary = reply.ProjectSummary,
             history = reply.History,
             leadId = captured.Lead?.Id ?? reply.LeadId
         });
@@ -77,29 +74,33 @@ public sealed class DebugController(
         var lead = await leads.GetByIdAsync(id, ct);
         if (lead is null) return NotFound();
 
-        var contactName = await db.ConversationStates.AsNoTracking()
-            .Where(x => x.SiteId == lead.SiteId && x.WaId == lead.Phone)
-            .Select(x => x.ContactName)
-            .FirstOrDefaultAsync(ct);
-
         return Ok(new
         {
             id = lead.Id,
             siteId = lead.SiteId,
             name = lead.Name,
-            contactName,
             phone = lead.Phone,
             email = lead.Email,
             createdAtUtc = lead.CreatedAtUtc,
+            projectSummary = lead.ProjectSummary,
             fields = lead.Fields,
             conversation = lead.Conversation
         });
     }
 
     [HttpPost("/debug/whatsapp/pause")]
-    public async Task<IActionResult> Pause([FromForm] string waId, [FromForm] bool paused, CancellationToken ct)
+    public async Task<IActionResult> Pause([FromForm] Guid leadId, [FromForm] bool paused, CancellationToken ct)
     {
-        await conversations.SetPausedAsync("site_demo", waId, paused, ct);
+        var lead = await leads.GetByIdAsync(leadId, ct);
+        if (lead is null) return NotFound();
+        lead.IsBotPaused = paused;
+        await leads.SaveAsync(lead, ct);
         return Ok(new { ok = true, paused });
+    }
+
+    private async Task<LeadRelay.Domain.Sites.Site?> ResolveDefaultSiteAsync(CancellationToken ct)
+    {
+        var allSites = await sites.GetAllAsync(ct);
+        return allSites.FirstOrDefault();
     }
 }

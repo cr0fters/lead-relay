@@ -21,6 +21,7 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
         record.ProjectId = lead.ProjectId;
         record.Channel = NormalizeChannel(lead.Channel);
         record.Status = NormalizeStatus(lead.Status);
+        record.IsBotPaused = lead.IsBotPaused;
         record.Utm = lead.Utm;
         record.Conversation = lead.Conversation;
 
@@ -33,6 +34,25 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
             customer.Email = NormalizeText(lead.Email) ?? customer.Email;
             customer.Phone = NormalizeText(lead.Phone) ?? customer.Phone;
             customer.UpdatedAtUtc = DateTimeOffset.UtcNow;
+        }
+
+        var project = await db.Projects.FirstOrDefaultAsync(
+            x => x.SiteId == record.SiteId && x.Id == record.ProjectId,
+            ct);
+        if (project is not null)
+        {
+            foreach (var pair in lead.Fields)
+            {
+                var key = (pair.Key ?? "").Trim();
+                var value = (pair.Value ?? "").Trim();
+                if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
+                    continue;
+
+                project.Fields[key] = value;
+            }
+            if (!string.IsNullOrWhiteSpace(lead.ProjectSummary))
+                project.Summary = lead.ProjectSummary.Trim();
+            project.UpdatedAtUtc = DateTimeOffset.UtcNow;
         }
 
         await db.SaveChangesAsync(ct);
@@ -191,6 +211,8 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
             ProjectId = record.ProjectId,
             Channel = NormalizeChannel(record.Channel),
             Status = NormalizeStatus(record.Status),
+            IsBotPaused = record.IsBotPaused,
+            ProjectSummary = project?.Summary,
             Name = customer?.Name,
             Email = customer?.Email,
             Phone = customer?.Phone,

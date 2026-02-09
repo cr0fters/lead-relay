@@ -42,7 +42,6 @@ public sealed class EfSiteRepository(LeadRelayDbContext db) : ISiteRepository
         record.BusinessSummary = site.BusinessSummary;
         record.AllowedDomains = site.AllowedDomains.ToList();
         record.Fields = site.Fields.ToList();
-        record.OptionalFields = site.OptionalFields.ToList();
         record.IntroMessage = site.IntroMessage;
         record.OwnerEmail = site.OwnerEmail;
         record.WhatsAppNumber = site.WhatsAppNumber;
@@ -59,7 +58,6 @@ public sealed class EfSiteRepository(LeadRelayDbContext db) : ISiteRepository
             BusinessSummary = record.BusinessSummary,
             AllowedDomains = record.AllowedDomains,
             Fields = record.Fields,
-            OptionalFields = record.OptionalFields,
             IntroMessage = record.IntroMessage,
             OwnerEmail = record.OwnerEmail,
             WhatsAppNumber = record.WhatsAppNumber

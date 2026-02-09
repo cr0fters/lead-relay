@@ -1,5 +1,7 @@
 using LeadRelay.Application.Abstractions;
 using LeadRelay.Domain.Leads;
+using LeadRelay.Domain.Sites;
+using LeadRelay.Infrastructure.Persistence;
 using LeadRelay.Web.Controllers;
 using LeadRelay.Web.Security;
 using Microsoft.AspNetCore.Http;
@@ -13,10 +15,11 @@ public sealed class OwnerPortalReplyChannelTests
     [Test]
     public async Task reply_uses_selected_email_channel()
     {
+        var siteId = InMemorySiteRepository.DefaultSiteId;
         var lead = new Lead
         {
             Id = Guid.NewGuid(),
-            SiteId = "site_demo",
+            SiteId = siteId,
             CreatedAtUtc = DateTimeOffset.UtcNow,
             Email = "lead@example.com",
             Phone = "447000000000",
@@ -27,14 +30,14 @@ public sealed class OwnerPortalReplyChannelTests
 
         var repository = new FakeLeadRepository(lead);
         var dispatcher = new RecordingDispatcher();
-        var controller = new OwnerPortalController(repository, dispatcher)
+        var controller = new OwnerPortalController(repository, dispatcher, new LeadRelay.Infrastructure.Persistence.InMemorySiteRepository())
         {
             ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext()
             }
         };
-        controller.HttpContext.Items[OwnerAuthMiddleware.ContextKey] = new OwnerAuthContext("site_demo", "owner@example.com");
+        controller.HttpContext.Items[OwnerAuthMiddleware.ContextKey] = new OwnerAuthContext(siteId, "owner@example.com");
 
         var result = await controller.Reply(lead.Id, "hello", "email", CancellationToken.None);
 
@@ -46,10 +49,11 @@ public sealed class OwnerPortalReplyChannelTests
     [Test]
     public async Task update_contact_saves_email_and_phone()
     {
+        var siteId = InMemorySiteRepository.DefaultSiteId;
         var lead = new Lead
         {
             Id = Guid.NewGuid(),
-            SiteId = "site_demo",
+            SiteId = siteId,
             CreatedAtUtc = DateTimeOffset.UtcNow,
             Channel = "api",
             CustomerId = Guid.NewGuid(),
@@ -59,14 +63,14 @@ public sealed class OwnerPortalReplyChannelTests
         };
 
         var repository = new FakeLeadRepository(lead);
-        var controller = new OwnerPortalController(repository, new RecordingDispatcher())
+        var controller = new OwnerPortalController(repository, new RecordingDispatcher(), new LeadRelay.Infrastructure.Persistence.InMemorySiteRepository())
         {
             ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext()
             }
         };
-        controller.HttpContext.Items[OwnerAuthMiddleware.ContextKey] = new OwnerAuthContext("site_demo", "owner@example.com");
+        controller.HttpContext.Items[OwnerAuthMiddleware.ContextKey] = new OwnerAuthContext(siteId, "owner@example.com");
 
         var result = await controller.UpdateContact(lead.Id, "Jane Owner", "jane@example.com", "+44 7000 000000", CancellationToken.None);
 
@@ -75,6 +79,102 @@ public sealed class OwnerPortalReplyChannelTests
         Assert.That(repository.SavedLead!.Name, Is.EqualTo("Jane Owner"));
         Assert.That(repository.SavedLead.Email, Is.EqualTo("jane@example.com"));
         Assert.That(repository.SavedLead.Phone, Is.EqualTo("447000000000"));
+    }
+
+    [Test]
+    public async Task update_site_fields_saves_owner_defined_field_definitions()
+    {
+        var siteId = InMemorySiteRepository.DefaultSiteId;
+        var lead = BuildLead(siteId);
+        var repository = new FakeLeadRepository(lead);
+        var siteRepository = new InMemorySiteRepository();
+        var controller = CreateController(repository, siteRepository, siteId);
+
+        var result = await controller.UpdateSiteFields(
+            new List<OwnerPortalController.OwnerFieldInputModel>
+            {
+                new() { Id = "project_overview", Name = "Project overview", Description = "Scope and goals" },
+                new() { Id = "budget", Name = "Budget", Description = "Budget range" }
+            },
+            CancellationToken.None);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var updatedSite = await siteRepository.GetByIdAsync(siteId, CancellationToken.None);
+        Assert.That(updatedSite, Is.Not.Null);
+        Assert.That(updatedSite!.Fields.Count, Is.EqualTo(2));
+        Assert.That(updatedSite.Fields[0].Id, Is.EqualTo("project_overview"));
+        Assert.That(updatedSite.Fields[1].Id, Is.EqualTo("budget"));
+    }
+
+    [Test]
+    public async Task update_site_fields_rejects_duplicate_ids()
+    {
+        var siteId = InMemorySiteRepository.DefaultSiteId;
+        var lead = BuildLead(siteId);
+        var repository = new FakeLeadRepository(lead);
+        var siteRepository = new InMemorySiteRepository();
+        var before = await siteRepository.GetByIdAsync(siteId, CancellationToken.None);
+        var beforeCount = before?.Fields.Count ?? 0;
+        var controller = CreateController(repository, siteRepository, siteId);
+
+        var result = await controller.UpdateSiteFields(
+            new List<OwnerPortalController.OwnerFieldInputModel>
+            {
+                new() { Id = "project_overview", Name = "Project overview", Description = "Scope and goals" },
+                new() { Id = "project_overview", Name = "Duplicate", Description = "Duplicate id" }
+            },
+            CancellationToken.None);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var view = (ViewResult)result;
+        var model = view.Model as OwnerPortalController.OwnerSiteSettingsModel;
+        Assert.That(model, Is.Not.Null);
+        Assert.That(model!.Error, Is.EqualTo("Field ids must be unique."));
+
+        var after = await siteRepository.GetByIdAsync(siteId, CancellationToken.None);
+        Assert.That(after, Is.Not.Null);
+        Assert.That(after!.Fields.Count, Is.EqualTo(beforeCount));
+    }
+
+    [Test]
+    public async Task set_paused_updates_bot_pause_flag()
+    {
+        var siteId = InMemorySiteRepository.DefaultSiteId;
+        var lead = BuildLead(siteId);
+        var repository = new FakeLeadRepository(lead);
+        var controller = CreateController(repository, new InMemorySiteRepository(), siteId);
+
+        var result = await controller.SetPaused(lead.Id, true, CancellationToken.None);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        Assert.That(repository.SavedLead, Is.Not.Null);
+        Assert.That(repository.SavedLead!.IsBotPaused, Is.True);
+    }
+
+    private static Lead BuildLead(string siteId)
+    {
+        return new Lead
+        {
+            Id = Guid.NewGuid(),
+            SiteId = siteId,
+            CreatedAtUtc = DateTimeOffset.UtcNow,
+            Channel = "api",
+            CustomerId = Guid.NewGuid(),
+            ProjectId = Guid.NewGuid()
+        };
+    }
+
+    private static OwnerPortalController CreateController(FakeLeadRepository repository, ISiteRepository siteRepository, string siteId)
+    {
+        var controller = new OwnerPortalController(repository, new RecordingDispatcher(), siteRepository)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            }
+        };
+        controller.HttpContext.Items[OwnerAuthMiddleware.ContextKey] = new OwnerAuthContext(siteId, "owner@example.com");
+        return controller;
     }
 
     private sealed class FakeLeadRepository : ILeadRepository

@@ -15,7 +15,6 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
     public DbSet<LeadRecord> Leads => Set<LeadRecord>();
     public DbSet<CustomerRecord> Customers => Set<CustomerRecord>();
     public DbSet<ProjectRecord> Projects => Set<ProjectRecord>();
-    public DbSet<ConversationStateRecord> ConversationStates => Set<ConversationStateRecord>();
     public DbSet<OwnerAccountRecord> OwnerAccounts => Set<OwnerAccountRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -24,7 +23,6 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
         var conversationFieldListConverter = BuildJsonConverter<List<ConversationField>>();
         var leadConversationConverter = BuildJsonConverter<List<LeadConversationTurn>>();
         var dictionaryConverter = BuildJsonConverter<Dictionary<string, string>>();
-        var conversationTurnConverter = BuildJsonConverter<List<ConversationTurnRecord>>();
 
         modelBuilder.Entity<SiteRecord>(entity =>
         {
@@ -47,10 +45,6 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
                 .HasConversion(conversationFieldListConverter)
                 .Metadata.SetValueComparer(BuildJsonComparer<List<ConversationField>>());
 
-            entity.Property(x => x.OptionalFields)
-                .HasColumnName("OptionalFieldsJson")
-                .HasConversion(conversationFieldListConverter)
-                .Metadata.SetValueComparer(BuildJsonComparer<List<ConversationField>>());
         });
 
         modelBuilder.Entity<LeadRecord>(entity =>
@@ -64,6 +58,7 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
             entity.Property(x => x.ProjectId).HasColumnName("ProjectId").IsRequired();
             entity.Property(x => x.Channel).HasColumnName("Channel").HasMaxLength(32).IsRequired();
             entity.Property(x => x.Status).HasColumnName("Status").HasMaxLength(32).IsRequired();
+            entity.Property(x => x.IsBotPaused).HasColumnName("IsBotPaused").IsRequired();
 
             entity.Property(x => x.Utm)
                 .HasColumnName("UtmJson")
@@ -157,49 +152,6 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
                 .HasPrincipalKey(x => x.Id)
                 .OnDelete(DeleteBehavior.Restrict);
 
-        });
-
-        modelBuilder.Entity<ConversationStateRecord>(entity =>
-        {
-            entity.ToTable("ConversationStates");
-            entity.HasKey(x => x.Id);
-            entity.Property(x => x.Id).HasColumnName("Id");
-            entity.Property(x => x.SiteId).HasColumnName("SiteId").HasMaxLength(255).IsRequired();
-            entity.Property(x => x.WaId).HasColumnName("WaId").IsRequired();
-            entity.Property(x => x.StepIndex).HasColumnName("StepIndex");
-            entity.Property(x => x.UpdatedAtUtc).HasColumnName("UpdatedAtUtc");
-            entity.Property(x => x.SessionStartedAtUtc).HasColumnName("SessionStartedAtUtc");
-            entity.Property(x => x.LastActivityAtUtc).HasColumnName("LastActivityAtUtc");
-            entity.Property(x => x.IsPaused).HasColumnName("IsPaused");
-            entity.Property(x => x.ContactName).HasColumnName("ContactName");
-            entity.Property(x => x.SystemPromptOverride).HasColumnName("SystemPromptOverride");
-            entity.Property(x => x.LeadId).HasColumnName("LeadId");
-            entity.Property(x => x.LeadCreatedAtUtc).HasColumnName("LeadCreatedAtUtc");
-
-            entity.Property(x => x.Collected)
-                .HasColumnName("CollectedJson")
-                .HasConversion(dictionaryConverter)
-                .Metadata.SetValueComparer(BuildJsonComparer<Dictionary<string, string>>());
-
-            entity.Property(x => x.History)
-                .HasColumnName("HistoryJson")
-                .HasConversion(conversationTurnConverter)
-                .Metadata.SetValueComparer(BuildJsonComparer<List<ConversationTurnRecord>>());
-
-            entity.HasIndex(x => new { x.SiteId, x.WaId }).IsUnique();
-            entity.HasIndex(x => new { x.SiteId, x.LeadId });
-
-            entity.HasOne<SiteRecord>()
-                .WithMany()
-                .HasForeignKey(x => x.SiteId)
-                .HasPrincipalKey(x => x.Id)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne<LeadRecord>()
-                .WithMany()
-                .HasForeignKey(x => new { x.SiteId, x.LeadId })
-                .HasPrincipalKey(x => new { x.SiteId, x.Id })
-                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<OwnerAccountRecord>(entity =>

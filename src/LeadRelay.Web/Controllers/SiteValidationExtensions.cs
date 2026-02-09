@@ -30,15 +30,19 @@ internal static class SiteValidationExtensions
             return false;
         }
 
-        if (site.Fields.Any(x => string.IsNullOrWhiteSpace(x.Key) || string.IsNullOrWhiteSpace(x.Prompt)))
+        if (site.Fields.Any(x => string.IsNullOrWhiteSpace(x.Id) || string.IsNullOrWhiteSpace(x.Name)))
         {
-            error = "All required fields must include a key and prompt.";
+            error = "All fields must include an id and name.";
             return false;
         }
 
-        if (site.OptionalFields.Any(x => string.IsNullOrWhiteSpace(x.Key) || string.IsNullOrWhiteSpace(x.Prompt)))
+        if (site.Fields
+            .Select(x => x.Id.Trim())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count() != site.Fields.Count)
         {
-            error = "All optional fields must include a key and prompt.";
+            error = "Field ids must be unique.";
             return false;
         }
 

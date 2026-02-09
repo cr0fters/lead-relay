@@ -12,6 +12,7 @@ public sealed class OwnerPortalAuthTests
     [Test]
     public async Task session_service_validates_site_owner_token()
     {
+        var siteId = InMemorySiteRepository.DefaultSiteId;
         var options = Options.Create(new OwnerPortalOptions { SigningSecret = "test-secret" });
         var service = new OwnerSessionService(options, new InMemorySiteRepository());
         var tokenService = new HmacTokenService("test-secret");
@@ -19,7 +20,7 @@ public sealed class OwnerPortalAuthTests
         var token = tokenService.CreateSignedToken(
             new Dictionary<string, string>
             {
-                ["siteId"] = "site_demo",
+                ["siteId"] = siteId,
                 ["ownerEmail"] = "owner@example.com"
             },
             TimeSpan.FromMinutes(5));
@@ -27,13 +28,14 @@ public sealed class OwnerPortalAuthTests
         var auth = await service.ValidateAsync(token, CancellationToken.None);
 
         Assert.That(auth, Is.Not.Null);
-        Assert.That(auth!.SiteId, Is.EqualTo("site_demo"));
+        Assert.That(auth!.SiteId, Is.EqualTo(siteId));
         Assert.That(auth.OwnerEmail, Is.EqualTo("owner@example.com"));
     }
 
     [Test]
     public async Task session_service_rejects_wrong_owner_email_claim()
     {
+        var siteId = InMemorySiteRepository.DefaultSiteId;
         var options = Options.Create(new OwnerPortalOptions { SigningSecret = "test-secret" });
         var service = new OwnerSessionService(options, new InMemorySiteRepository());
         var tokenService = new HmacTokenService("test-secret");
@@ -41,7 +43,7 @@ public sealed class OwnerPortalAuthTests
         var token = tokenService.CreateSignedToken(
             new Dictionary<string, string>
             {
-                ["siteId"] = "site_demo",
+                ["siteId"] = siteId,
                 ["ownerEmail"] = "intruder@example.com"
             },
             TimeSpan.FromMinutes(5));
@@ -67,6 +69,7 @@ public sealed class OwnerPortalAuthTests
     [Test]
     public async Task middleware_allows_owner_route_with_valid_cookie_token()
     {
+        var siteId = InMemorySiteRepository.DefaultSiteId;
         var nextCalled = false;
         var middleware = new OwnerAuthMiddleware(_ =>
         {
@@ -80,7 +83,7 @@ public sealed class OwnerPortalAuthTests
         var token = tokenService.CreateSignedToken(
             new Dictionary<string, string>
             {
-                ["siteId"] = "site_demo",
+                ["siteId"] = siteId,
                 ["ownerEmail"] = "owner@example.com"
             },
             TimeSpan.FromMinutes(5));

@@ -29,6 +29,7 @@ public sealed class LeadCaptureService(ILeadRepository leads, IEmailSender email
             Channel = NormalizeChannel(input.Channel),
             Status = LeadStatuses.Open,
         };
+        string? projectSummaryForLead = null;
 
         lead.Name = input.ExplicitName?.Trim() ?? ExtractName(input.Fields) ?? input.ContactName ?? lead.Name;
         lead.Email = input.ExplicitEmail?.Trim() ?? ExtractEmail(input.Fields) ?? lead.Email;
@@ -57,6 +58,7 @@ public sealed class LeadCaptureService(ILeadRepository leads, IEmailSender email
             var project = CreateProject(site.Id, effectiveCustomerId, input, now);
             db.Projects.Add(project);
             projectId = project.Id;
+            projectSummaryForLead = project.Summary;
         }
         else
         {
@@ -68,11 +70,13 @@ public sealed class LeadCaptureService(ILeadRepository leads, IEmailSender email
                 MergeProjectFields(existingProject, input.Fields);
                 existingProject.Summary = ResolveProjectSummary(input, existingProject.Summary);
                 existingProject.UpdatedAtUtc = now;
+                projectSummaryForLead = existingProject.Summary;
             }
         }
 
         lead.CustomerId = effectiveCustomerId;
         lead.ProjectId = projectId ?? throw new InvalidOperationException("ProjectId resolution failed.");
+        lead.ProjectSummary = projectSummaryForLead;
 
         foreach (var turn in input.Conversation)
             lead.Conversation.Add(new LeadConversationTurn(turn.Role, turn.Text, turn.AtUtc));
@@ -180,6 +184,7 @@ public sealed class LeadCaptureService(ILeadRepository leads, IEmailSender email
         var projectName = BuildProjectName(input, summary, now);
         var fields = input.Fields
             .Where(x => !string.IsNullOrWhiteSpace(x.Key))
+            .Where(x => !string.Equals(x.Key.Trim(), "project_summary", StringComparison.OrdinalIgnoreCase))
             .ToDictionary(
                 x => x.Key.Trim(),
                 x => (x.Value ?? "").Trim(),
@@ -201,7 +206,7 @@ public sealed class LeadCaptureService(ILeadRepository leads, IEmailSender email
 
     private static string BuildProjectName(LeadCaptureInput input, string? summary, DateTimeOffset now)
     {
-        var projectDescription = GetFieldValue(input.Fields, "project_description", "project", "scope", "brief");
+        var projectDescription = GetFieldValue(input.Fields, "project_overview", "project_description", "project", "scope", "brief");
         if (!string.IsNullOrWhiteSpace(projectDescription))
             return projectDescription.Length > 64 ? projectDescription[..64] : projectDescription;
 
@@ -217,16 +222,21 @@ public sealed class LeadCaptureService(ILeadRepository leads, IEmailSender email
 
     private static string? ResolveProjectSummary(LeadCaptureInput input, string? existingSummary)
     {
-        if (input.Fields.TryGetValue("project_summary", out var projectSummary) &&
-            !string.IsNullOrWhiteSpace(projectSummary))
-            return projectSummary.Trim();
+        var providedSummary = NormalizeString(input.ProjectSummary);
+        if (IsMeaningfulSummaryText(providedSummary))
+            return providedSummary;
+
+        var projectOverview = GetFieldValue(input.Fields, "project_overview", "project_description", "project", "scope", "brief");
+        if (IsMeaningfulSummaryText(projectOverview))
+            return NormalizeString(projectOverview);
 
         var firstUserMessage = ExtractFirstUserMessage(input.Conversation);
-        if (!string.IsNullOrWhiteSpace(firstUserMessage))
-            return firstUserMessage.Trim();
+        if (IsMeaningfulSummaryText(firstUserMessage))
+            return NormalizeString(firstUserMessage);
 
-        if (!string.IsNullOrWhiteSpace(input.FallbackMessage))
-            return input.FallbackMessage.Trim();
+        var fallbackMessage = NormalizeString(input.FallbackMessage);
+        if (IsMeaningfulSummaryText(fallbackMessage))
+            return fallbackMessage;
 
         return existingSummary;
     }
@@ -237,6 +247,8 @@ public sealed class LeadCaptureService(ILeadRepository leads, IEmailSender email
         {
             var key = (pair.Key ?? "").Trim();
             if (string.IsNullOrWhiteSpace(key))
+                continue;
+            if (string.Equals(key, "project_summary", StringComparison.OrdinalIgnoreCase))
                 continue;
 
             project.Fields[key] = (pair.Value ?? "").Trim();
@@ -294,5 +306,23 @@ public sealed class LeadCaptureService(ILeadRepository leads, IEmailSender email
         if (string.IsNullOrWhiteSpace(input)) return null;
         var digits = new string(input.Where(char.IsDigit).ToArray());
         return digits.Length >= 7 ? digits : null;
+    }
+
+    private static bool IsMeaningfulSummaryText(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        var normalized = value.Trim();
+        if (normalized.Length < 4)
+            return false;
+
+        return !IsGreetingOnly(normalized);
+    }
+
+    private static bool IsGreetingOnly(string text)
+    {
+        var normalized = text.Trim().ToLowerInvariant();
+        return normalized is "hi" or "hello" or "hey" or "yo" or "hiya" or "sup";
     }
 }

@@ -5,11 +5,13 @@ namespace LeadRelay.Infrastructure.Persistence;
 
 public sealed class InMemorySiteRepository : ISiteRepository
 {
+    public const string DefaultSiteId = "2c7f9e0e-487f-4adf-8f0c-68c0f0d7b204";
+
     private static readonly List<Site> Sites =
     [
         new()
         {
-            Id = "site_demo",
+            Id = DefaultSiteId,
             Name = "Spaces by Kelly",
             BusinessSummary = "Interior design company specialising in modern, family-friendly spaces.",
             OwnerEmail = "owner@example.com",
@@ -20,26 +22,28 @@ public sealed class InMemorySiteRepository : ISiteRepository
             [
                 new()
                 {
-                    Key = "project_description",
-                    Prompt = "Tell me a little about your project! What space are you designing? What's your biggest challenge? Any inspiration?"
+                    Id = "project_overview",
+                    Name = "Project overview",
+                    Description = "What space is being designed and what is the main challenge?"
                 }
-            ],
-            OptionalFields =
-            [
+                ,
                 new()
                 {
-                    Key = "timeline",
-                    Prompt = "Do you have a rough timeline in mind?"
+                    Id = "timeline",
+                    Name = "Timeline",
+                    Description = "When would you like to start or complete this project?"
                 },
                 new()
                 {
-                    Key = "budget",
-                    Prompt = "Do you have a rough budget range you're aiming for?"
+                    Id = "budget",
+                    Name = "Budget",
+                    Description = "What budget range are you aiming for?"
                 },
                 new()
                 {
-                    Key = "location",
-                    Prompt = "Where is the project located?"
+                    Id = "location",
+                    Name = "Location",
+                    Description = "Where is the project located?"
                 }
             ]
         }

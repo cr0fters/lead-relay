@@ -9,6 +9,8 @@ public sealed class Lead
     public Guid ProjectId { get; set; }
     public string Channel { get; set; } = "api";
     public string Status { get; set; } = LeadStatuses.Open;
+    public bool IsBotPaused { get; set; }
+    public string? ProjectSummary { get; set; }
     public string? Name { get; set; }
     public string? Email { get; set; }
     public string? Phone { get; set; }

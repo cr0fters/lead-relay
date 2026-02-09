@@ -1,12 +1,19 @@
+using LeadRelay.Application.Abstractions;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LeadRelay.Web.Controllers;
 
-public sealed class HomeController : Controller
+public sealed class HomeController(ISiteRepository sites) : Controller
 {
     [HttpGet("/")]
-    public ViewResult Index()
+    public async Task<ViewResult> Index(CancellationToken ct)
     {
-        return View();
+        var siteId = (await sites.GetAllAsync(ct)).FirstOrDefault()?.Id ?? "";
+        return View(new HomeViewModel { WidgetSiteId = siteId });
+    }
+
+    public sealed class HomeViewModel
+    {
+        public string WidgetSiteId { get; set; } = "";
     }
 }

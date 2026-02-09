@@ -154,7 +154,7 @@
 
         .field-row {
             display: grid;
-            grid-template-columns: 1.2fr 2fr 0.8fr 0.6fr auto;
+            grid-template-columns: 1fr 1.2fr 2fr auto;
             gap: 10px;
             align-items: center;
             padding: 12px;
@@ -180,7 +180,7 @@
 
         .field-header {
             display: grid;
-            grid-template-columns: 1.2fr 2fr 0.8fr 0.6fr auto;
+            grid-template-columns: 1fr 1.2fr 2fr auto;
             gap: 10px;
             font-size: 0.8rem;
             color: var(--muted);
@@ -260,35 +260,18 @@
         </div>
 
         <div style="margin-top:16px;">
-            <label>Required fields</label>
+            <label>Project fields</label>
             <div class="field-header">
-                <span>Key</span>
-                <span>Prompt</span>
-                <span>Type</span>
-                <span>Required</span>
+                <span>Field ID</span>
+                <span>Name</span>
+                <span>Description</span>
                 <span></span>
             </div>
-            <div class="field-list" id="required-fields"></div>
+            <div class="field-list" id="fields"></div>
             <div style="margin-top:12px;">
-                <button class="btn btn-ghost" type="button" data-add="required">Add required field</button>
+                <button class="btn btn-ghost" type="button" id="add-field">Add field</button>
             </div>
             <textarea id="FieldsJson" name="FieldsJson" class="hidden">@Model.FieldsJson</textarea>
-        </div>
-
-        <div style="margin-top:16px;">
-            <label>Optional fields</label>
-            <div class="field-header">
-                <span>Key</span>
-                <span>Prompt</span>
-                <span>Type</span>
-                <span>Required</span>
-                <span></span>
-            </div>
-            <div class="field-list" id="optional-fields"></div>
-            <div style="margin-top:12px;">
-                <button class="btn btn-ghost" type="button" data-add="optional">Add optional field</button>
-            </div>
-            <textarea id="OptionalFieldsJson" name="OptionalFieldsJson" class="hidden">@Model.OptionalFieldsJson</textarea>
         </div>
 
         <div style="margin-top:20px; display:flex; gap:12px; flex-wrap: wrap;">
@@ -300,27 +283,17 @@
 
 <template id="field-row-template">
     <div class="field-row">
-        <input type="text" data-field="key" placeholder="key_name" />
-        <input type="text" data-field="prompt" placeholder="Ask the visitor..." />
-        <select data-field="type">
-            <option value="Text">Text</option>
-            <option value="Email">Email</option>
-            <option value="Phone">Phone</option>
-        </select>
-        <label style="display:flex; align-items:center; gap:8px; font-weight:500;">
-            <input type="checkbox" data-field="required" />
-            <span>Yes</span>
-        </label>
+        <input type="text" data-field="id" placeholder="project_overview" />
+        <input type="text" data-field="name" placeholder="Project overview" />
+        <input type="text" data-field="description" placeholder="Optional hint for this field" />
         <button class="remove-btn" type="button" data-remove>Remove</button>
     </div>
 </template>
 
 <script>
-    const requiredContainer = document.getElementById("required-fields");
-    const optionalContainer = document.getElementById("optional-fields");
+    const fieldsContainer = document.getElementById("fields");
     const template = document.getElementById("field-row-template");
-    const requiredJson = document.getElementById("FieldsJson");
-    const optionalJson = document.getElementById("OptionalFieldsJson");
+    const fieldsJson = document.getElementById("FieldsJson");
 
     function parseFields(value) {
         if (!value || !value.trim()) return [];
@@ -334,62 +307,50 @@
     function createRow(field, container) {
         const fragment = template.content.cloneNode(true);
         const row = fragment.querySelector(".field-row");
-        row.querySelector('[data-field="key"]').value = field.key || "";
-        row.querySelector('[data-field="prompt"]').value = field.prompt || "";
-        row.querySelector('[data-field="type"]').value = field.type || "Text";
-        row.querySelector('[data-field="required"]').checked = field.required ?? true;
+        row.querySelector('[data-field="id"]').value = field.id || "";
+        row.querySelector('[data-field="name"]').value = field.name || "";
+        row.querySelector('[data-field="description"]').value = field.description || "";
         row.querySelector('[data-remove]').addEventListener("click", () => {
             row.remove();
         });
         container.appendChild(row);
     }
 
-    function bootstrap(container, jsonField, fallbackRequired) {
+    function bootstrap(container, jsonField) {
         const fields = parseFields(jsonField.value);
         if (fields.length === 0) {
-            createRow({ key: "", prompt: "", type: "Text", required: fallbackRequired }, container);
+            createRow({ id: "", name: "", description: "" }, container);
             return;
         }
         fields.forEach(field => createRow({
-            key: field.key,
-            prompt: field.prompt,
-            type: field.type || "Text",
-            required: field.required ?? fallbackRequired
+            id: field.id || field.key,
+            name: field.name || field.key,
+            description: field.description || field.prompt
         }, container));
     }
 
     function serialize(container, jsonField) {
         const items = [];
         container.querySelectorAll(".field-row").forEach(row => {
-            const key = row.querySelector('[data-field="key"]').value.trim();
-            const prompt = row.querySelector('[data-field="prompt"]').value.trim();
-            const type = row.querySelector('[data-field="type"]').value;
-            const required = row.querySelector('[data-field="required"]').checked;
-            if (!key && !prompt) return;
-            items.push({ key, prompt, type, required });
+            const id = row.querySelector('[data-field="id"]').value.trim();
+            const name = row.querySelector('[data-field="name"]').value.trim();
+            const description = row.querySelector('[data-field="description"]').value.trim();
+            if (!id && !name && !description) return;
+            items.push({ id, name, description });
         });
         jsonField.value = JSON.stringify(items, null, 2);
     }
 
-    document.querySelectorAll("[data-add]").forEach(button => {
-        button.addEventListener("click", () => {
-            const target = button.getAttribute("data-add");
-            if (target === "required") {
-                createRow({ key: "", prompt: "", type: "Text", required: true }, requiredContainer);
-            } else {
-                createRow({ key: "", prompt: "", type: "Text", required: false }, optionalContainer);
-            }
-        });
+    document.getElementById("add-field").addEventListener("click", () => {
+        createRow({ id: "", name: "", description: "" }, fieldsContainer);
     });
 
     const form = document.querySelector("form");
     form.addEventListener("submit", () => {
-        serialize(requiredContainer, requiredJson);
-        serialize(optionalContainer, optionalJson);
+        serialize(fieldsContainer, fieldsJson);
     });
 
-    bootstrap(requiredContainer, requiredJson, true);
-    bootstrap(optionalContainer, optionalJson, false);
+    bootstrap(fieldsContainer, fieldsJson);
 </script>
 </body>
 </html>

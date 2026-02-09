@@ -24,7 +24,7 @@ public sealed class WhatsAppConversationService(
 
     public async Task<ConversationReply> HandleMessageAsync(
         Site site,
-        string waId,
+        string contactId,
         string? text,
         string? contactName,
         string? systemPromptOverride,
@@ -44,65 +44,47 @@ public sealed class WhatsAppConversationService(
         }
 
         var normalizedText = (text ?? "").Trim();
+        var normalizedContactId = (contactId ?? "").Trim();
         var normalizedContactName = string.IsNullOrWhiteSpace(contactName) ? null : contactName.Trim();
-        var state = await LoadStateAsync(site.Id, waId, ct);
-        if (state is not null && IsSessionExpired(state))
+        var state = new ConversationState(
+            site.Id,
+            normalizedContactId,
+            0,
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+            clock.UtcNow,
+            clock.UtcNow,
+            clock.UtcNow,
+            false,
+            normalizedContactName,
+            new List<ConversationTurn>(),
+            NormalizeOverride(systemPromptOverride),
+            null,
+            null);
+
+        var leadJustCreated = false;
+        if (conversationOptions.Value.SubmitLeadOnFirstMessage)
+            (state, leadJustCreated) = await EnsureLeadAsync(state, normalizedText, ct);
+
+        state = await ReconcileStateWithProjectAsync(site, state, ct);
+
+        if (!string.IsNullOrWhiteSpace(normalizedText))
+            AppendTurn(state, "user", normalizedText);
+
+        if (state.IsPaused)
         {
-            state = new ConversationState(
-                site.Id,
-                waId,
-                0,
-                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
-                clock.UtcNow,
-                clock.UtcNow,
-                clock.UtcNow,
-                state.IsPaused,
-                normalizedContactName ?? state.ContactName,
-                new List<ConversationTurn>(),
-                NormalizeOverride(systemPromptOverride),
-                null,
-                null);
-        }
-        if (state is null)
-        {
-            state = new ConversationState(
-                site.Id,
-                waId,
-                0,
-                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
-                clock.UtcNow,
-                clock.UtcNow,
-                clock.UtcNow,
+            return new ConversationReply(
+                "",
                 false,
-                normalizedContactName,
-                new List<ConversationTurn>(),
-                NormalizeOverride(systemPromptOverride),
-                null,
-                null);
+                state.Collected,
+                state.History.ToList(),
+                state.LeadId,
+                state.LeadCreatedAtUtc,
+                leadJustCreated,
+                Array.Empty<string>());
+        }
 
-            if (!string.IsNullOrWhiteSpace(normalizedText))
-                AppendTurn(state, "user", normalizedText);
-
-            if (state.IsPaused)
-            {
-                await SaveStateAsync(state, ct);
-                return new ConversationReply(
-                    "",
-                    false,
-                    state.Collected,
-                    state.History.ToList(),
-                    state.LeadId,
-                    state.LeadCreatedAtUtc,
-                    false,
-                    Array.Empty<string>());
-            }
-
-            var leadJustCreated = false;
-            if (conversationOptions.Value.SubmitLeadOnFirstMessage)
-            {
-                (state, leadJustCreated) = await EnsureLeadAsync(state, normalizedText, ct);
-            }
-
+        if (!state.LeadId.HasValue)
+        {
             var firstPrompt = GetPrompt(site, state.StepIndex);
             var intro = BuildIntro(site);
             AppendTurn(state, "assistant", intro);
@@ -112,51 +94,16 @@ public sealed class WhatsAppConversationService(
                 AppendTurn(state, "assistant", firstPrompt);
                 replies.Add(firstPrompt);
             }
-            await SaveStateAsync(state, ct);
+
             return new ConversationReply(
                 intro,
                 false,
-                new Dictionary<string, string>(),
-                state.History.ToList(),
-                state.LeadId,
-                state.LeadCreatedAtUtc,
-                leadJustCreated,
-                replies);
-        }
-
-        AppendTurn(state, "user", normalizedText);
-        state = state with { LastActivityAtUtc = clock.UtcNow, UpdatedAtUtc = clock.UtcNow };
-        if (!string.IsNullOrWhiteSpace(normalizedContactName) &&
-            !string.Equals(state.ContactName, normalizedContactName, StringComparison.Ordinal))
-        {
-            state = state with { ContactName = normalizedContactName, UpdatedAtUtc = clock.UtcNow };
-        }
-
-        if (state.IsPaused)
-        {
-            await SaveStateAsync(state, ct);
-            return new ConversationReply(
-                "",
-                false,
                 state.Collected,
                 state.History.ToList(),
-                state.LeadId,
-                state.LeadCreatedAtUtc,
-                false,
-                Array.Empty<string>());
-        }
-
-        var normalizedOverride = NormalizeOverride(systemPromptOverride);
-        if (!string.IsNullOrWhiteSpace(normalizedOverride) &&
-            !string.Equals(state.SystemPromptOverride, normalizedOverride, StringComparison.Ordinal))
-        {
-            state = state with { SystemPromptOverride = normalizedOverride, UpdatedAtUtc = clock.UtcNow };
-        }
-
-        var leadJustCreatedExisting = false;
-        if (conversationOptions.Value.SubmitLeadOnFirstMessage)
-        {
-            (state, leadJustCreatedExisting) = await EnsureLeadAsync(state, normalizedText, ct);
+                null,
+                null,
+                leadJustCreated,
+                replies);
         }
 
         if (conversationOptions.Value.UseLlm)
@@ -168,27 +115,25 @@ public sealed class WhatsAppConversationService(
                     History = state.History.ToList(),
                     LeadId = state.LeadId,
                     LeadCreatedAtUtc = state.LeadCreatedAtUtc,
-                    LeadJustCreated = leadJustCreatedExisting,
+                    LeadJustCreated = leadJustCreated,
                     Replies = new[] { llmReply.ReplyText }
                 };
         }
 
-        return await HandleDeterministicAsync(site, state, normalizedText, leadJustCreatedExisting, ct);
+        return HandleDeterministic(site, state, normalizedText, leadJustCreated);
     }
 
-    private async Task<ConversationReply> HandleDeterministicAsync(
+    private ConversationReply HandleDeterministic(
         Site site,
         ConversationState state,
         string normalizedText,
-        bool leadJustCreated,
-        CancellationToken ct)
+        bool leadJustCreated)
     {
         var field = GetField(site, state.StepIndex);
         if (field is null)
         {
             var completedReply = "Thanks! We’ll be in touch shortly.";
             AppendTurn(state, "assistant", completedReply);
-            await SaveStateAsync(state, ct);
             return new ConversationReply(
                 completedReply,
                 true,
@@ -200,10 +145,10 @@ public sealed class WhatsAppConversationService(
                 new[] { completedReply });
         }
 
-        if (!TryAcceptField(field, normalizedText, out var value, out var errorReply))
+        if (!TryAcceptField(normalizedText, out var value))
         {
+            var errorReply = BuildPrompt(field);
             AppendTurn(state, "assistant", errorReply);
-            await SaveStateAsync(state, ct);
             return new ConversationReply(
                 errorReply,
                 false,
@@ -215,7 +160,7 @@ public sealed class WhatsAppConversationService(
                 new[] { errorReply });
         }
 
-        state.Collected[field.Key] = value;
+        state.Collected[GetFieldId(field)] = value;
         state = state with { StepIndex = state.StepIndex + 1, UpdatedAtUtc = clock.UtcNow };
 
         var nextPrompt = GetPrompt(site, state.StepIndex);
@@ -223,7 +168,6 @@ public sealed class WhatsAppConversationService(
         {
             var completedReply = "Thanks! We’ll be in touch shortly.";
             AppendTurn(state, "assistant", completedReply);
-            await SaveStateAsync(state, ct);
             return new ConversationReply(
                 completedReply,
                 true,
@@ -236,7 +180,6 @@ public sealed class WhatsAppConversationService(
         }
 
         AppendTurn(state, "assistant", nextPrompt);
-        await SaveStateAsync(state, ct);
         return new ConversationReply(
             nextPrompt,
             false,
@@ -341,15 +284,16 @@ public sealed class WhatsAppConversationService(
 
         var merged = MergeCollected(site, state.Collected, proposed);
         merged = TryInferFromCurrentField(site, state, normalizedText, merged);
-        merged = UpdateProjectSummary(merged, reply.ProjectSummary, state, normalizedText);
-        var requiredComplete = AreRequiredFieldsFilled(site, merged);
-        var done = reply.Done || (requiredComplete && site.OptionalFields.Count == 0);
+        var projectSummary = ResolveProjectSummary(reply.ProjectSummary, state, normalizedText, merged);
+        var allConfiguredFieldsFilled = AreAllConfiguredFieldsFilled(site, merged);
+        var done = reply.Done || allConfiguredFieldsFilled;
         var replyText = reply.ReplyText.Trim();
 
         AppendTurn(state, "assistant", replyText);
-
-        state = state with { Collected = merged, UpdatedAtUtc = clock.UtcNow };
-        await SaveStateAsync(state, ct);
+        state.Collected.Clear();
+        foreach (var pair in merged)
+            state.Collected[pair.Key] = pair.Value;
+        state = state with { StepIndex = GetNextStepIndex(site, merged), UpdatedAtUtc = clock.UtcNow };
 
         if (done)
         {
@@ -361,12 +305,9 @@ public sealed class WhatsAppConversationService(
                 state.LeadId,
                 state.LeadCreatedAtUtc,
                 false,
-                new[] { replyText });
+                new[] { replyText },
+                projectSummary);
         }
-
-        var nextIndex = GetNextStepIndex(site, merged);
-        state = state with { StepIndex = nextIndex, UpdatedAtUtc = clock.UtcNow };
-        await SaveStateAsync(state, ct);
 
         return new ConversationReply(
             replyText,
@@ -376,7 +317,8 @@ public sealed class WhatsAppConversationService(
             state.LeadId,
             state.LeadCreatedAtUtc,
             false,
-            new[] { replyText });
+            new[] { replyText },
+            projectSummary);
     }
 
     private static string BuildSystemPrompt(Site site, ConversationOptions options, string? systemPromptOverride)
@@ -393,25 +335,15 @@ public sealed class WhatsAppConversationService(
         var sb = new StringBuilder();
         sb.AppendLine(template);
         sb.AppendLine();
-        sb.AppendLine("Required fields (key | type | required | prompt):");
+        sb.AppendLine("Configured project fields (id | name | description):");
         foreach (var field in site.Fields)
-            sb.AppendLine($"- {field.Key} | {field.Type} | {field.Required} | {field.Prompt}");
-
-        sb.AppendLine();
-        if (site.OptionalFields.Count > 0)
-        {
-            sb.AppendLine("Nice-to-have fields (optional):");
-            foreach (var field in site.OptionalFields)
-                sb.AppendLine($"- {field.Key} | {field.Type} | {field.Prompt}");
-            sb.AppendLine();
-        }
+            sb.AppendLine($"- {GetFieldId(field)} | {GetFieldName(field)} | {GetFieldDescription(field)}");
 
         sb.AppendLine("Rules:");
         sb.AppendLine("- Be concise, friendly, and conversational.");
         sb.AppendLine("- Ask at most one question per reply.");
         sb.AppendLine("- If the user already provided a field, do not ask again.");
-        sb.AppendLine("- If missing required fields, ask for one missing field.");
-        sb.AppendLine("- Optional fields are nice-to-have; never block completion.");
+        sb.AppendLine("- If missing configured fields, ask for one missing field.");
         sb.AppendLine("- If the user goes off-topic, answer briefly and steer back.");
 
         return sb.ToString();
@@ -464,48 +396,36 @@ public sealed class WhatsAppConversationService(
     {
         var merged = new Dictionary<string, string>(existing, StringComparer.OrdinalIgnoreCase);
 
-        foreach (var field in EnumerateAllFields(site))
+        foreach (var field in site.Fields)
         {
-            if (!proposed.TryGetValue(field.Key, out var raw))
+            if (!TryResolveFieldId(site, proposed, field, out var raw))
                 continue;
 
-            if (!TryAcceptField(field, raw, out var value, out _))
+            if (!TryAcceptField(raw, out var value))
                 continue;
 
-            merged[field.Key] = value;
+            merged[GetFieldId(field)] = value;
         }
 
         return merged;
-    }
-
-    private static IEnumerable<ConversationField> EnumerateAllFields(Site site)
-    {
-        foreach (var field in site.Fields)
-            yield return field;
-
-        foreach (var field in site.OptionalFields)
-            yield return field;
     }
 
     private static int GetNextStepIndex(Site site, Dictionary<string, string> collected)
     {
         for (var i = 0; i < site.Fields.Count; i++)
         {
-            if (!collected.ContainsKey(site.Fields[i].Key))
+            if (!collected.ContainsKey(GetFieldId(site.Fields[i])))
                 return i;
         }
 
         return site.Fields.Count;
     }
 
-    private static bool AreRequiredFieldsFilled(Site site, Dictionary<string, string> collected)
+    private static bool AreAllConfiguredFieldsFilled(Site site, Dictionary<string, string> collected)
     {
         foreach (var field in site.Fields)
         {
-            if (!field.Required)
-                continue;
-
-            if (!collected.ContainsKey(field.Key))
+            if (!collected.ContainsKey(GetFieldId(field)))
                 return false;
         }
 
@@ -521,163 +441,94 @@ public sealed class WhatsAppConversationService(
         if (string.IsNullOrWhiteSpace(normalizedText))
             return collected;
 
-        if (!ShouldUseForFieldInference(state, normalizedText))
-            return collected;
-
         var field = GetField(site, state.StepIndex);
         if (field is null)
             return collected;
 
-        if (collected.ContainsKey(field.Key))
+        if (!WasCurrentFieldJustPrompted(state, field))
             return collected;
 
-        if (!TryAcceptField(field, normalizedText, out var value, out _))
+        if (IsGreetingOnly(normalizedText))
+            return collected;
+
+        if (collected.ContainsKey(GetFieldId(field)))
+            return collected;
+
+        if (!TryAcceptField(normalizedText, out var value))
             return collected;
 
         var updated = new Dictionary<string, string>(collected, StringComparer.OrdinalIgnoreCase)
         {
-            [field.Key] = value
+            [GetFieldId(field)] = value
         };
 
         return updated;
     }
 
-    private static Dictionary<string, string> UpdateProjectSummary(
-        Dictionary<string, string> collected,
+    private static bool WasCurrentFieldJustPrompted(ConversationState state, ConversationField field)
+    {
+        var lastAssistantTurn = state.History
+            .LastOrDefault(x => string.Equals(x.Role, "assistant", StringComparison.OrdinalIgnoreCase));
+        if (lastAssistantTurn is null || string.IsNullOrWhiteSpace(lastAssistantTurn.Text))
+            return false;
+
+        var lastAssistantText = NormalizeForMatch(lastAssistantTurn.Text);
+        var fieldId = NormalizeForMatch(GetFieldId(field));
+        if (!string.IsNullOrWhiteSpace(fieldId) && lastAssistantText.Contains(fieldId, StringComparison.Ordinal))
+            return true;
+
+        var fieldName = NormalizeForMatch(GetFieldName(field));
+        return !string.IsNullOrWhiteSpace(fieldName) && lastAssistantText.Contains(fieldName, StringComparison.Ordinal);
+    }
+
+    private static string NormalizeForMatch(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return "";
+
+        return Regex.Replace(text.Trim().ToLowerInvariant(), @"[^a-z0-9]+", " ").Trim();
+    }
+
+    private static string? ResolveProjectSummary(
         string? summary,
         ConversationState state,
-        string normalizedText)
+        string normalizedText,
+        Dictionary<string, string> collected)
     {
         var resolved = string.IsNullOrWhiteSpace(summary)
-            ? BuildSummaryFallback(collected, normalizedText)
+            ? BuildSummaryFallback(state, collected, normalizedText)
             : summary.Trim();
 
-        if (string.IsNullOrWhiteSpace(resolved))
-            return collected;
-
-        var updated = new Dictionary<string, string>(collected, StringComparer.OrdinalIgnoreCase)
-        {
-            ["project_summary"] = resolved
-        };
-
-        return updated;
+        return string.IsNullOrWhiteSpace(resolved) ? null : resolved;
     }
 
-    private static string? BuildSummaryFallback(Dictionary<string, string> collected, string normalizedText)
+    private static string? BuildSummaryFallback(
+        ConversationState state,
+        Dictionary<string, string> collected,
+        string normalizedText)
     {
         if (IsGreetingOnly(normalizedText) || normalizedText.Length < 6)
-            return collected.TryGetValue("project_summary", out var existingSummary) ? existingSummary : null;
+            return null;
 
-        if (collected.TryGetValue("project_summary", out var existing) && !string.IsNullOrWhiteSpace(existing))
-            return $"{existing} {normalizedText}".Trim();
+        var priorUserText = state.History
+            .Where(x => string.Equals(x.Role, "user", StringComparison.OrdinalIgnoreCase))
+            .Select(x => x.Text)
+            .LastOrDefault(x => !string.IsNullOrWhiteSpace(x));
 
-        if (collected.TryGetValue("project_description", out var description) && !string.IsNullOrWhiteSpace(description))
+        if (!string.IsNullOrWhiteSpace(priorUserText) &&
+            !string.Equals(priorUserText.Trim(), normalizedText.Trim(), StringComparison.OrdinalIgnoreCase))
+            return $"{priorUserText.Trim()} {normalizedText}".Trim();
+
+        if (collected.TryGetValue("project_overview", out var description) && !string.IsNullOrWhiteSpace(description))
             return $"{description} {normalizedText}".Trim();
 
         return normalizedText;
-    }
-
-    private static bool ShouldUseForFieldInference(ConversationState state, string normalizedText)
-    {
-        if (string.IsNullOrWhiteSpace(normalizedText))
-            return false;
-
-        if (state.StepIndex == 0 && state.History.Count <= 1)
-            return false;
-
-        if (IsGreetingOnly(normalizedText))
-            return false;
-
-        return normalizedText.Length >= 6;
     }
 
     private static bool IsGreetingOnly(string text)
     {
         var normalized = text.Trim().ToLowerInvariant();
         return normalized is "hi" or "hello" or "hey" or "yo" or "hiya" or "sup";
-    }
-
-    private bool IsSessionExpired(ConversationState state)
-    {
-        var timeout = TimeSpan.FromHours(Math.Max(1, conversationOptions.Value.SessionTimeoutHours));
-        return clock.UtcNow - state.LastActivityAtUtc > timeout;
-    }
-
-    private async Task<ConversationState?> LoadStateAsync(string siteId, string waId, CancellationToken ct)
-    {
-        var record = await db.ConversationStates.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.SiteId == siteId && x.WaId == waId, ct);
-        if (record is null) return null;
-
-        var sessionStarted = record.SessionStartedAtUtc ?? record.UpdatedAtUtc;
-        var lastActivity = record.LastActivityAtUtc ?? record.UpdatedAtUtc;
-        return new ConversationState(
-            record.SiteId,
-            record.WaId,
-            record.StepIndex,
-            record.Collected,
-            record.UpdatedAtUtc,
-            sessionStarted,
-            lastActivity,
-            record.IsPaused,
-            record.ContactName,
-            record.History.Select(x => new ConversationTurn(x.Role, x.Text, x.AtUtc)).ToList(),
-            record.SystemPromptOverride,
-            record.LeadId,
-            record.LeadCreatedAtUtc);
-    }
-
-    private async Task SaveStateAsync(ConversationState state, CancellationToken ct)
-    {
-        var record = await db.ConversationStates
-            .FirstOrDefaultAsync(x => x.SiteId == state.SiteId && x.WaId == state.WaId, ct);
-
-        if (record is null)
-        {
-            record = new ConversationStateRecord
-            {
-                Id = $"{state.SiteId}:{state.WaId}",
-                SiteId = state.SiteId,
-                WaId = state.WaId
-            };
-            db.ConversationStates.Add(record);
-        }
-
-        record.StepIndex = state.StepIndex;
-        record.Collected = state.Collected;
-        record.UpdatedAtUtc = state.UpdatedAtUtc;
-        record.SessionStartedAtUtc = state.SessionStartedAtUtc;
-        record.LastActivityAtUtc = state.LastActivityAtUtc;
-        record.IsPaused = state.IsPaused;
-        record.ContactName = state.ContactName;
-        record.History = state.History.Select(x => new ConversationTurnRecord(x.Role, x.Text, x.AtUtc)).ToList();
-        record.SystemPromptOverride = state.SystemPromptOverride;
-        record.LeadId = state.LeadId;
-        record.LeadCreatedAtUtc = state.LeadCreatedAtUtc;
-
-        await db.SaveChangesAsync(ct);
-    }
-
-    public async Task SetPausedAsync(string siteId, string waId, bool paused, CancellationToken ct)
-    {
-        var state = await LoadStateAsync(siteId, waId, ct)
-                    ?? new ConversationState(
-                        siteId,
-                        waId,
-                        0,
-                        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
-                        clock.UtcNow,
-                        clock.UtcNow,
-                        clock.UtcNow,
-                        paused,
-                        null,
-                        new List<ConversationTurn>(),
-                        null,
-                        null,
-                        null);
-
-        state = state with { IsPaused = paused, UpdatedAtUtc = clock.UtcNow };
-        await SaveStateAsync(state, ct);
     }
 
     private void AppendTurn(ConversationState state, string role, string text)
@@ -704,7 +555,7 @@ public sealed class WhatsAppConversationService(
         if (state.LeadId.HasValue || string.IsNullOrWhiteSpace(normalizedText))
             return (state, false);
 
-        var reusableLead = await TryGetReusableOpenLeadAsync(state.SiteId, state.WaId, ct);
+        var reusableLead = await TryGetReusableOpenLeadAsync(state.SiteId, state.ContactId, ct);
         if (reusableLead is not null)
         {
             return (state with
@@ -715,21 +566,20 @@ public sealed class WhatsAppConversationService(
         }
 
         // New lead is created by LeadCaptureService after this method returns.
-        // Keep state unbound until the lead row exists, then bind via BindLeadAsync.
         return (state, true);
     }
 
     private async Task<(Guid Id, DateTimeOffset CreatedAtUtc)?> TryGetReusableOpenLeadAsync(
         string siteId,
-        string waId,
+        string contactId,
         CancellationToken ct)
     {
-        var normalizedWaId = NormalizePhone(waId);
+        var normalizedContactId = NormalizePhone(contactId);
         var customer = await db.Customers.AsNoTracking()
             .Where(x => x.SiteId == siteId)
             .FirstOrDefaultAsync(x =>
-                x.ExternalContactId == waId ||
-                (!string.IsNullOrWhiteSpace(normalizedWaId) && x.Phone == normalizedWaId), ct);
+                x.ExternalContactId == contactId ||
+                (!string.IsNullOrWhiteSpace(normalizedContactId) && x.Phone == normalizedContactId), ct);
         if (customer is null)
             return null;
 
@@ -749,39 +599,130 @@ public sealed class WhatsAppConversationService(
         return lead is null ? null : (lead.Id, lead.CreatedAtUtc);
     }
 
-    public async Task BindLeadAsync(
-        string siteId,
-        string waId,
-        Guid leadId,
-        DateTimeOffset leadCreatedAtUtc,
+    private async Task<ConversationState> ReconcileStateWithProjectAsync(
+        Site site,
+        ConversationState state,
         CancellationToken ct)
     {
-        var state = await LoadStateAsync(siteId, waId, ct)
-                    ?? new ConversationState(
-                        siteId,
-                        waId,
-                        0,
-                        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
-                        clock.UtcNow,
-                        clock.UtcNow,
-                        clock.UtcNow,
-                        false,
-                        null,
-                        new List<ConversationTurn>(),
-                        null,
-                        null,
-                        null);
+        if (!state.LeadId.HasValue)
+            return state;
 
-        if (state.LeadId == leadId)
-            return;
+        var persisted = await LoadLeadConversationStateAsync(
+            site,
+            state.LeadId.Value,
+            state.ContactId,
+            state.ContactName,
+            state.SystemPromptOverride,
+            ct);
+        if (persisted is null)
+            return state;
 
-        state = state with
+        if (persisted.Collected.Count == 0 && state.Collected.Count == 0)
+            return persisted;
+
+        var merged = new Dictionary<string, string>(persisted.Collected, StringComparer.OrdinalIgnoreCase);
+        foreach (var pair in state.Collected)
         {
-            LeadId = leadId,
-            LeadCreatedAtUtc = leadCreatedAtUtc,
-            UpdatedAtUtc = clock.UtcNow
-        };
-        await SaveStateAsync(state, ct);
+            var key = (pair.Key ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(key))
+                continue;
+            if (string.Equals(key, "project_summary", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var value = (pair.Value ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(value))
+                continue;
+
+            merged[key] = value;
+        }
+
+        var nextStep = GetNextStepIndex(site, merged);
+        if (nextStep == persisted.StepIndex && DictionaryEquals(persisted.Collected, merged))
+            return persisted;
+
+        persisted.Collected.Clear();
+        foreach (var pair in merged)
+            persisted.Collected[pair.Key] = pair.Value;
+        return persisted with { StepIndex = nextStep, UpdatedAtUtc = clock.UtcNow };
+    }
+
+    private async Task<ConversationState?> LoadLeadConversationStateAsync(
+        Site site,
+        Guid leadId,
+        string contactId,
+        string? contactName,
+        string? systemPromptOverride,
+        CancellationToken ct)
+    {
+        var row = await (
+            from lead in db.Leads.AsNoTracking()
+            join project in db.Projects.AsNoTracking()
+                on new { lead.SiteId, ProjectId = lead.ProjectId } equals new { project.SiteId, ProjectId = project.Id }
+            where lead.SiteId == site.Id && lead.Id == leadId
+            select new
+            {
+                lead.Id,
+                lead.SiteId,
+                lead.CreatedAtUtc,
+                lead.Status,
+                lead.IsBotPaused,
+                lead.Conversation,
+                project.Fields,
+                project.Summary
+            }).FirstOrDefaultAsync(ct);
+
+        if (row is null)
+            return null;
+
+        var collected = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var pair in row.Fields)
+        {
+            var key = (pair.Key ?? "").Trim();
+            var value = (pair.Value ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
+                continue;
+            if (string.Equals(key, "project_summary", StringComparison.OrdinalIgnoreCase))
+                continue;
+            collected[key] = value;
+        }
+
+        var history = row.Conversation
+            .Select(x => new ConversationTurn(x.Role, x.Text, x.AtUtc))
+            .ToList();
+
+        return new ConversationState(
+            row.SiteId,
+            contactId,
+            GetNextStepIndex(site, collected),
+            collected,
+            clock.UtcNow,
+            row.CreatedAtUtc,
+            clock.UtcNow,
+            row.IsBotPaused,
+            contactName,
+            history,
+            NormalizeOverride(systemPromptOverride),
+            row.Id,
+            row.CreatedAtUtc);
+    }
+
+    private static bool DictionaryEquals(
+        IReadOnlyDictionary<string, string> left,
+        IReadOnlyDictionary<string, string> right)
+    {
+        if (left.Count != right.Count)
+            return false;
+
+        foreach (var pair in left)
+        {
+            if (!right.TryGetValue(pair.Key, out var rightValue))
+                return false;
+
+            if (!string.Equals((pair.Value ?? "").Trim(), (rightValue ?? "").Trim(), StringComparison.Ordinal))
+                return false;
+        }
+
+        return true;
     }
 
     private static string BuildIntro(Site site)
@@ -810,50 +751,14 @@ public sealed class WhatsAppConversationService(
     private static string? GetPrompt(Site site, int index)
     {
         var field = GetField(site, index);
-        return field?.Prompt;
+        return field is null ? null : BuildPrompt(field);
     }
 
-    private static bool TryAcceptField(ConversationField field, string input, out string value, out string errorReply)
+    private static bool TryAcceptField(string input, out string value)
     {
         value = "";
-        errorReply = field.Prompt;
-
-        if (string.IsNullOrWhiteSpace(input))
-            return !field.Required;
-
-        switch (field.Type)
-        {
-            case ConversationFieldType.Email:
-                if (!TryExtractEmail(input, out var email))
-                {
-                    errorReply = "Could you share a valid email address?";
-                    return false;
-                }
-                value = email;
-                return true;
-            case ConversationFieldType.Phone:
-                value = NormalizePhone(input);
-                if (string.IsNullOrWhiteSpace(value))
-                {
-                    errorReply = "Could you share a valid phone number?";
-                    return false;
-                }
-                return true;
-            default:
-                value = input.Trim();
-                return true;
-        }
-    }
-
-    private static bool TryExtractEmail(string input, out string email)
-    {
-        email = "";
         if (string.IsNullOrWhiteSpace(input)) return false;
-
-        var match = Regex.Match(input, @"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", RegexOptions.IgnoreCase);
-        if (!match.Success) return false;
-
-        email = match.Value;
+        value = input.Trim();
         return true;
     }
 
@@ -861,6 +766,90 @@ public sealed class WhatsAppConversationService(
     {
         var digits = new string(input.Where(char.IsDigit).ToArray());
         return digits.Length >= 7 ? digits : "";
+    }
+
+    private static bool TryResolveFieldId(
+        Site site,
+        IReadOnlyDictionary<string, string> proposed,
+        ConversationField field,
+        out string value)
+    {
+        var fieldId = GetFieldId(field);
+        if (proposed.TryGetValue(fieldId, out var direct) && !string.IsNullOrWhiteSpace(direct))
+        {
+            value = direct.Trim();
+            return true;
+        }
+
+        var fieldName = GetFieldName(field);
+        foreach (var pair in proposed)
+        {
+            if (!string.Equals(pair.Key, fieldName, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (!string.IsNullOrWhiteSpace(pair.Value))
+            {
+                value = pair.Value.Trim();
+                return true;
+            }
+        }
+
+        value = "";
+        return false;
+    }
+
+    private static string BuildPrompt(ConversationField field)
+    {
+        var name = BuildSentenceFieldName(field);
+        var description = GetFieldDescription(field);
+        return string.IsNullOrWhiteSpace(description)
+            ? $"Could you share your {name}?"
+            : $"Could you share your {name}? {description}";
+    }
+
+    private static string BuildSentenceFieldName(ConversationField field)
+    {
+        var name = GetFieldName(field);
+        if (string.IsNullOrWhiteSpace(name))
+            return "details";
+
+        if (name.Length == 1)
+            return name.ToLowerInvariant();
+
+        return char.IsUpper(name[0]) && char.IsLower(name[1])
+            ? $"{char.ToLowerInvariant(name[0])}{name[1..]}"
+            : name;
+    }
+
+    private static string GetFieldId(ConversationField field)
+    {
+        var id = (field.Id ?? "").Trim();
+        if (!string.IsNullOrWhiteSpace(id))
+            return id;
+
+        return Slugify(field.Name);
+    }
+
+    private static string GetFieldName(ConversationField field)
+    {
+        var name = (field.Name ?? "").Trim();
+        if (!string.IsNullOrWhiteSpace(name))
+            return name;
+
+        return GetFieldId(field);
+    }
+
+    private static string GetFieldDescription(ConversationField field)
+        => (field.Description ?? "").Trim();
+
+    private static string Slugify(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return "field";
+
+        var normalized = Regex.Replace(input.Trim().ToLowerInvariant(), @"[^a-z0-9]+", "_");
+        normalized = normalized.Trim('_');
+        return string.IsNullOrWhiteSpace(normalized) ? "field" : normalized;
     }
 }
 
@@ -872,11 +861,12 @@ public sealed record ConversationReply(
     Guid? LeadId,
     DateTimeOffset? LeadCreatedAtUtc,
     bool LeadJustCreated,
-    IReadOnlyList<string> Replies);
+    IReadOnlyList<string> Replies,
+    string? ProjectSummary = null);
 
 public sealed record ConversationState(
     string SiteId,
-    string WaId,
+    string ContactId,
     int StepIndex,
     Dictionary<string, string> Collected,
     DateTimeOffset UpdatedAtUtc,

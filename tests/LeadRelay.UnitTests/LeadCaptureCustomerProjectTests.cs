@@ -24,9 +24,9 @@ public sealed class LeadCaptureCustomerProjectTests
                 FallbackMessage: "Need help with kitchen",
                 Fields: new Dictionary<string, string>
                 {
-                    ["project_summary"] = "Customer needs interior design for a full kitchen renovation.",
                     ["budget"] = "25000"
                 },
+                ProjectSummary: "Customer needs interior design for a full kitchen renovation.",
                 Conversation: new[] { new LeadCaptureTurn("user", "Need help with kitchen", DateTimeOffset.UtcNow) }),
             CancellationToken.None);
 
@@ -53,6 +53,7 @@ public sealed class LeadCaptureCustomerProjectTests
         var firstProject = await db.Projects.FirstAsync(x => x.Id == first.Lead.ProjectId);
         Assert.That(firstProject.Summary, Is.EqualTo("Customer needs interior design for a full kitchen renovation."));
         Assert.That(firstProject.Fields["budget"], Is.EqualTo("25000"));
+        Assert.That(firstProject.Fields.ContainsKey("project_summary"), Is.False);
     }
 
     [Test]
@@ -89,6 +90,49 @@ public sealed class LeadCaptureCustomerProjectTests
         Assert.That(second.Lead, Is.Not.Null);
         Assert.That(second.Lead!.CustomerId, Is.EqualTo(first.Lead!.CustomerId));
         Assert.That(second.Lead.ProjectId, Is.EqualTo(first.Lead.ProjectId));
+    }
+
+    [Test]
+    public async Task greeting_only_message_does_not_set_summary_and_project_overview_can_set_it_later()
+    {
+        await using var db = CreateDb();
+        var service = new LeadCaptureService(new InMemoryLeadRepository(), new NoOpEmailSender(), db);
+        var site = BuildSite();
+
+        var first = await service.CaptureAsync(
+            site,
+            new LeadCaptureInput(
+                Channel: "whatsapp",
+                ExternalContactId: "447000000333",
+                ContactName: "Morgan",
+                FallbackMessage: "hi",
+                Fields: new Dictionary<string, string>(),
+                Conversation: new[] { new LeadCaptureTurn("user", "hi", DateTimeOffset.UtcNow) }),
+            CancellationToken.None);
+
+        Assert.That(first.Lead, Is.Not.Null);
+        var firstLead = first.Lead!;
+        var firstProject = await db.Projects.FirstAsync(x => x.Id == firstLead.ProjectId);
+        Assert.That(firstProject.Summary, Is.Null);
+
+        await service.CaptureAsync(
+            site,
+            new LeadCaptureInput(
+                Channel: "whatsapp",
+                ExternalContactId: "447000000333",
+                ContactName: "Morgan",
+                FallbackMessage: "I'm looking for a bathroom redesign",
+                Fields: new Dictionary<string, string>
+                {
+                    ["project_overview"] = "Bathroom redesign"
+                },
+                Conversation: new[] { new LeadCaptureTurn("user", "I'm looking for a bathroom redesign", DateTimeOffset.UtcNow) },
+                LeadId: firstLead.Id,
+                LeadCreatedAtUtc: firstLead.CreatedAtUtc),
+            CancellationToken.None);
+
+        var updatedProject = await db.Projects.FirstAsync(x => x.Id == firstLead.ProjectId);
+        Assert.That(updatedProject.Summary, Is.EqualTo("Bathroom redesign"));
     }
 
     private static LeadRelayDbContext CreateDb()

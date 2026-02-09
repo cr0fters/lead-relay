@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace LeadRelay.Domain.Sites;
 
 public sealed class Site
@@ -7,7 +9,6 @@ public sealed class Site
     public string? BusinessSummary { get; init; }
     public IReadOnlyList<string> AllowedDomains { get; init; } = Array.Empty<string>();
     public IReadOnlyList<ConversationField> Fields { get; init; } = Array.Empty<ConversationField>();
-    public IReadOnlyList<ConversationField> OptionalFields { get; init; } = Array.Empty<ConversationField>();
     public string? IntroMessage { get; init; }
     public required string OwnerEmail { get; init; }
     public required string WhatsAppNumber { get; init; }
@@ -15,15 +16,29 @@ public sealed class Site
 
 public sealed class ConversationField
 {
-    public required string Key { get; init; }
-    public required string Prompt { get; init; }
-    public bool Required { get; init; } = true;
-    public ConversationFieldType Type { get; init; } = ConversationFieldType.Text;
-}
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string? Description { get; set; }
 
-public enum ConversationFieldType
-{
-    Text = 0,
-    Email = 1,
-    Phone = 2
+    [JsonPropertyName("key")]
+    public string? LegacyKey
+    {
+        set
+        {
+            if (string.IsNullOrWhiteSpace(Id))
+                Id = value?.Trim() ?? "";
+            if (string.IsNullOrWhiteSpace(Name))
+                Name = value?.Trim() ?? "";
+        }
+    }
+
+    [JsonPropertyName("prompt")]
+    public string? LegacyPrompt
+    {
+        set
+        {
+            if (string.IsNullOrWhiteSpace(Description))
+                Description = value?.Trim();
+        }
+    }
 }

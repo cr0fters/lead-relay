@@ -1,0 +1,275 @@
+@model LeadRelay.Web.Controllers.OwnerPortalController.OwnerSiteSettingsModel
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Owner Settings</title>
+    <style>
+        @@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap");
+
+        :root {
+            --bg: #f3f5f9;
+            --ink: #152132;
+            --muted: #5f6f86;
+            --panel: #ffffff;
+            --line: #d9e1ec;
+            --accent: #0f62fe;
+            --danger: #c53838;
+            --danger-bg: #fff1f1;
+            --ok: #126b3f;
+            --ok-bg: #eefcf4;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            color: var(--ink);
+            background:
+                radial-gradient(720px 380px at 0 -10%, rgba(15, 98, 254, 0.08), transparent 60%),
+                radial-gradient(900px 420px at 100% -20%, rgba(19, 184, 134, 0.08), transparent 60%),
+                var(--bg);
+            font-family: "Manrope", system-ui, -apple-system, Segoe UI, sans-serif;
+        }
+
+        .wrap {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 28px 18px 40px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .crumb {
+            color: var(--muted);
+            font-size: 0.94rem;
+        }
+
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 14px;
+        }
+
+        h1 {
+            margin: 0 0 12px;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: clamp(1.35rem, 2.4vw, 1.9rem);
+            letter-spacing: -0.02em;
+        }
+
+        .meta {
+            margin-bottom: 14px;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .flash {
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            border: 1px solid transparent;
+            font-size: 0.95rem;
+        }
+
+        .flash-error {
+            color: var(--danger);
+            background: var(--danger-bg);
+            border-color: #efb6b6;
+        }
+
+        .flash-ok {
+            color: var(--ok);
+            background: var(--ok-bg);
+            border-color: #bde8cf;
+        }
+
+        .field-header,
+        .field-row {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr 2fr auto;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .field-header {
+            margin-bottom: 6px;
+            font-size: 0.78rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 700;
+        }
+
+        .field-row {
+            border: 1px solid #dce6f3;
+            background: #f9fbff;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            border: 1px solid #c8d5e7;
+            border-radius: 10px;
+            font: inherit;
+            padding: 9px 10px;
+            background: #fff;
+            color: var(--ink);
+        }
+
+        .btn {
+            border-radius: 10px;
+            border: 1px solid #cfdbee;
+            padding: 10px 12px;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            background: #eef3fb;
+            color: #24364e;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            border-color: #0f62fe;
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .btn-row {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="topbar">
+        <div class="crumb"><a href="/owner">Leads</a> / Settings</div>
+        <div class="actions">
+            <a class="btn" href="/owner">Back to leads</a>
+            <form method="post" action="/owner/logout" style="margin:0;">
+                @Html.AntiForgeryToken()
+                <button class="btn" type="submit">Sign out</button>
+            </form>
+        </div>
+    </div>
+
+    <section class="panel">
+        <h1>Project Field Definitions</h1>
+        <div class="meta">@Model.SiteName · @Model.OwnerEmail</div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Error))
+        {
+            <div class="flash flash-error">@Model.Error</div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.Success))
+        {
+            <div class="flash flash-ok">@Model.Success</div>
+        }
+
+        <form method="post" action="/owner/settings/fields" id="settings-form">
+            @Html.AntiForgeryToken()
+
+            <div class="field-header">
+                <span>Field ID</span>
+                <span>Name</span>
+                <span>Description</span>
+                <span></span>
+            </div>
+
+            <div id="field-rows">
+                @if (Model.Fields.Count == 0)
+                {
+                    <div class="field-row">
+                        <input type="text" data-key="id" placeholder="project_overview" />
+                        <input type="text" data-key="name" placeholder="Project overview" />
+                        <input type="text" data-key="description" placeholder="Optional guidance prompt" />
+                        <button class="btn" type="button" data-remove>Remove</button>
+                    </div>
+                }
+                else
+                {
+                    foreach (var field in Model.Fields)
+                    {
+                        <div class="field-row">
+                            <input type="text" data-key="id" value="@field.Id" />
+                            <input type="text" data-key="name" value="@field.Name" />
+                            <input type="text" data-key="description" value="@field.Description" />
+                            <button class="btn" type="button" data-remove>Remove</button>
+                        </div>
+                    }
+                }
+            </div>
+
+            <div class="btn-row">
+                <button class="btn" type="button" id="add-field">Add field</button>
+                <button class="btn btn-primary" type="submit">Save field definitions</button>
+            </div>
+        </form>
+    </section>
+</div>
+
+<template id="field-template">
+    <div class="field-row">
+        <input type="text" data-key="id" placeholder="project_overview" />
+        <input type="text" data-key="name" placeholder="Project overview" />
+        <input type="text" data-key="description" placeholder="Optional guidance prompt" />
+        <button class="btn" type="button" data-remove>Remove</button>
+    </div>
+</template>
+
+<script>
+    const rows = document.getElementById("field-rows");
+    const template = document.getElementById("field-template");
+    const form = document.getElementById("settings-form");
+    const addButton = document.getElementById("add-field");
+
+    function wireRemove(button) {
+        button.addEventListener("click", () => {
+            button.closest(".field-row")?.remove();
+        });
+    }
+
+    rows.querySelectorAll("[data-remove]").forEach(wireRemove);
+
+    addButton.addEventListener("click", () => {
+        const node = template.content.cloneNode(true);
+        const button = node.querySelector("[data-remove]");
+        if (button) wireRemove(button);
+        rows.appendChild(node);
+    });
+
+    form.addEventListener("submit", () => {
+        rows.querySelectorAll(".field-row").forEach((row, index) => {
+            const id = row.querySelector('[data-key="id"]');
+            const name = row.querySelector('[data-key="name"]');
+            const description = row.querySelector('[data-key="description"]');
+            id.name = `fields[${index}].Id`;
+            name.name = `fields[${index}].Name`;
+            description.name = `fields[${index}].Description`;
+        });
+    });
+</script>
+</body>
+</html>

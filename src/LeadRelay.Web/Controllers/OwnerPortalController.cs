@@ -1,12 +1,13 @@
 using LeadRelay.Application.Abstractions;
 using LeadRelay.Domain.Leads;
+using LeadRelay.Domain.Sites;
 using LeadRelay.Web.Security;
 using Microsoft.AspNetCore.Mvc;
 using System.Net.Mail;
 
 namespace LeadRelay.Web.Controllers;
 
-public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatcher messages) : Controller
+public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatcher messages, ISiteRepository sites) : Controller
 {
     [HttpGet("/owner")]
     public async Task<IActionResult> Index([FromQuery] string? q = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
@@ -46,7 +47,56 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
         var lead = await leads.GetByIdForSiteAsync(id, auth.SiteId, ct);
         if (lead is null) return NotFound();
 
-        return View(ToDetailModel(auth, lead));
+        var site = await sites.GetByIdAsync(auth.SiteId, ct);
+        return View(ToDetailModel(auth, lead, site));
+    }
+
+    [HttpGet("/owner/settings")]
+    public async Task<IActionResult> Settings(CancellationToken ct)
+    {
+        var auth = GetAuthContext();
+        if (auth is null) return Redirect("/owner/login");
+
+        var site = await sites.GetByIdAsync(auth.SiteId, ct);
+        if (site is null) return NotFound();
+
+        return View(ToSettingsModel(auth, site));
+    }
+
+    [HttpPost("/owner/settings/fields")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateSiteFields([FromForm] List<OwnerFieldInputModel>? fields, CancellationToken ct)
+    {
+        var auth = GetAuthContext();
+        if (auth is null) return Redirect("/owner/login");
+
+        var site = await sites.GetByIdAsync(auth.SiteId, ct);
+        if (site is null) return NotFound();
+
+        var parsed = ParseAndNormalizeFields(fields);
+        if (parsed.Error is not null)
+        {
+            var invalidModel = ToSettingsModel(auth, site);
+            invalidModel.Error = parsed.Error;
+            return View("Settings", invalidModel);
+        }
+
+        site = new Site
+        {
+            Id = site.Id,
+            Name = site.Name,
+            BusinessSummary = site.BusinessSummary,
+            AllowedDomains = site.AllowedDomains,
+            Fields = parsed.Fields,
+            IntroMessage = site.IntroMessage,
+            OwnerEmail = site.OwnerEmail,
+            WhatsAppNumber = site.WhatsAppNumber
+        };
+
+        await sites.UpsertAsync(site, ct);
+        var updated = ToSettingsModel(auth, site);
+        updated.Success = "Site field definitions updated.";
+        return View("Settings", updated);
     }
 
     [HttpPost("/owner/leads/{id:guid}/reply")]
@@ -59,7 +109,8 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
         var lead = await leads.GetByIdForSiteAsync(id, auth.SiteId, ct);
         if (lead is null) return NotFound();
 
-        var model = ToDetailModel(auth, lead);
+        var site = await sites.GetByIdAsync(auth.SiteId, ct);
+        var model = ToDetailModel(auth, lead, site);
         var text = message?.Trim() ?? "";
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -99,7 +150,8 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
         var lead = await leads.GetByIdForSiteAsync(id, auth.SiteId, ct);
         if (lead is null) return NotFound();
 
-        var model = ToDetailModel(auth, lead);
+        var site = await sites.GetByIdAsync(auth.SiteId, ct);
+        var model = ToDetailModel(auth, lead, site);
         var normalizedName = NormalizeText(name);
         var normalizedEmail = NormalizeEmail(email);
         var normalizedPhone = NormalizePhone(phone);
@@ -121,8 +173,62 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
         lead.Phone = normalizedPhone;
         await leads.SaveAsync(lead, ct);
 
-        var updatedModel = ToDetailModel(auth, lead);
+        var updatedModel = ToDetailModel(auth, lead, site);
         updatedModel.Success = "Contact details updated.";
+        return View("Lead", updatedModel);
+    }
+
+    [HttpPost("/owner/leads/{id:guid}/fields")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateFields([FromRoute] Guid id, [FromForm] Dictionary<string, string>? fields, CancellationToken ct)
+    {
+        var auth = GetAuthContext();
+        if (auth is null) return Redirect("/owner/login");
+
+        var lead = await leads.GetByIdForSiteAsync(id, auth.SiteId, ct);
+        if (lead is null) return NotFound();
+
+        var site = await sites.GetByIdAsync(auth.SiteId, ct);
+        lead.Fields.Clear();
+        if (fields is not null)
+        {
+            foreach (var pair in fields)
+            {
+                var key = (pair.Key ?? "").Trim();
+                var value = (pair.Value ?? "").Trim();
+                if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
+                    continue;
+                if (string.Equals(key, "project_summary", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                lead.Fields[key] = value;
+            }
+        }
+
+        await leads.SaveAsync(lead, ct);
+        var updatedModel = ToDetailModel(auth, lead, site);
+        updatedModel.Success = "Project fields updated.";
+        return View("Lead", updatedModel);
+    }
+
+    [HttpPost("/owner/leads/{id:guid}/pause")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetPaused([FromRoute] Guid id, [FromForm] bool paused, CancellationToken ct)
+    {
+        var auth = GetAuthContext();
+        if (auth is null) return Redirect("/owner/login");
+
+        var lead = await leads.GetByIdForSiteAsync(id, auth.SiteId, ct);
+        if (lead is null) return NotFound();
+
+        var site = await sites.GetByIdAsync(auth.SiteId, ct);
+        lead.IsBotPaused = paused;
+        await leads.SaveAsync(lead, ct);
+
+        var updatedModel = ToDetailModel(auth, lead, site);
+        updatedModel.Success = paused
+            ? "Conversation paused."
+            : "Conversation resumed.";
         return View("Lead", updatedModel);
     }
 
@@ -133,7 +239,7 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
             : null;
     }
 
-    private static OwnerLeadDetailModel ToDetailModel(OwnerAuthContext auth, Lead lead)
+    private static OwnerLeadDetailModel ToDetailModel(OwnerAuthContext auth, Lead lead, Site? site)
     {
         var inferred = InferChannel(lead);
         var defaultChannel = NormalizeReplyChannel(inferred, lead);
@@ -147,13 +253,108 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
             Email = lead.Email,
             Phone = lead.Phone,
             Channel = lead.Channel,
+            Status = lead.Status,
             CreatedAtUtc = lead.CreatedAtUtc,
+            ProjectSummary = lead.ProjectSummary,
             Fields = lead.Fields,
+            FieldDefinitions = BuildFieldDefinitions(site, lead.Fields),
             Conversation = lead.Conversation,
             ReplyChannel = defaultChannel,
             CanReplyViaWhatsApp = !string.IsNullOrWhiteSpace(lead.Phone),
-            CanReplyViaEmail = !string.IsNullOrWhiteSpace(lead.Email)
+            CanReplyViaEmail = !string.IsNullOrWhiteSpace(lead.Email),
+            IsPaused = lead.IsBotPaused
         };
+    }
+
+    private static OwnerSiteSettingsModel ToSettingsModel(OwnerAuthContext auth, Site site)
+    {
+        var fields = site.Fields
+            .Select(x => new OwnerFieldInputModel
+            {
+                Id = x.Id,
+                Name = x.Name,
+                Description = x.Description
+            })
+            .ToList();
+
+        return new OwnerSiteSettingsModel
+        {
+            SiteId = auth.SiteId,
+            OwnerEmail = auth.OwnerEmail,
+            SiteName = site.Name,
+            Fields = fields
+        };
+    }
+
+    private static (List<ConversationField> Fields, string? Error) ParseAndNormalizeFields(List<OwnerFieldInputModel>? fields)
+    {
+        var normalized = new List<ConversationField>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in fields ?? [])
+        {
+            var id = (entry.Id ?? "").Trim();
+            var name = (entry.Name ?? "").Trim();
+            var description = (entry.Description ?? "").Trim();
+
+            if (string.IsNullOrWhiteSpace(id) && string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(description))
+                continue;
+
+            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(name))
+                return (normalized, "Each field needs both an id and a name.");
+
+            if (!seen.Add(id))
+                return (normalized, "Field ids must be unique.");
+
+            normalized.Add(new ConversationField
+            {
+                Id = id,
+                Name = name,
+                Description = string.IsNullOrWhiteSpace(description) ? null : description
+            });
+        }
+
+        return (normalized, null);
+    }
+
+    private static IReadOnlyList<OwnerFieldDefinitionModel> BuildFieldDefinitions(
+        Site? site,
+        IReadOnlyDictionary<string, string> values)
+    {
+        var items = new List<OwnerFieldDefinitionModel>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var field in site?.Fields ?? Array.Empty<ConversationField>())
+        {
+            var id = (field.Id ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(id) || !seen.Add(id))
+                continue;
+
+            values.TryGetValue(id, out var value);
+            items.Add(new OwnerFieldDefinitionModel
+            {
+                Id = id,
+                Name = string.IsNullOrWhiteSpace(field.Name) ? id : field.Name,
+                Description = field.Description,
+                Value = value
+            });
+        }
+
+        foreach (var pair in values)
+        {
+            if (string.Equals(pair.Key, "project_summary", StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (!seen.Add(pair.Key))
+                continue;
+
+            items.Add(new OwnerFieldDefinitionModel
+            {
+                Id = pair.Key,
+                Name = pair.Key,
+                Value = pair.Value
+            });
+        }
+
+        return items;
     }
 
     private static string? InferChannel(Lead lead)
@@ -269,13 +470,42 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
         public string? Email { get; set; }
         public string? Phone { get; set; }
         public string Channel { get; set; } = "api";
+        public string Status { get; set; } = LeadStatuses.Open;
         public DateTimeOffset CreatedAtUtc { get; set; }
+        public string? ProjectSummary { get; set; }
         public IReadOnlyDictionary<string, string> Fields { get; set; } = new Dictionary<string, string>();
+        public IReadOnlyList<OwnerFieldDefinitionModel> FieldDefinitions { get; set; } = Array.Empty<OwnerFieldDefinitionModel>();
         public IReadOnlyList<LeadConversationTurn> Conversation { get; set; } = Array.Empty<LeadConversationTurn>();
         public string? Error { get; set; }
         public string? Success { get; set; }
         public string ReplyChannel { get; set; } = "whatsapp";
         public bool CanReplyViaWhatsApp { get; set; }
         public bool CanReplyViaEmail { get; set; }
+        public bool IsPaused { get; set; }
+    }
+
+    public sealed class OwnerFieldDefinitionModel
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string? Description { get; set; }
+        public string? Value { get; set; }
+    }
+
+    public sealed class OwnerSiteSettingsModel
+    {
+        public string SiteId { get; set; } = "";
+        public string SiteName { get; set; } = "";
+        public string OwnerEmail { get; set; } = "";
+        public List<OwnerFieldInputModel> Fields { get; set; } = new();
+        public string? Error { get; set; }
+        public string? Success { get; set; }
+    }
+
+    public sealed class OwnerFieldInputModel
+    {
+        public string? Id { get; set; }
+        public string? Name { get; set; }
+        public string? Description { get; set; }
     }
 }

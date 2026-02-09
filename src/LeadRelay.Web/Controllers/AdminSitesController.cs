@@ -47,7 +47,6 @@ public sealed class AdminSitesController(ISiteRepository sites) : ControllerBase
         public string? BusinessSummary { get; init; }
         public List<string>? AllowedDomains { get; init; }
         public List<ConversationFieldRequest>? Fields { get; init; }
-        public List<ConversationFieldRequest>? OptionalFields { get; init; }
         public string? IntroMessage { get; init; }
         public string? OwnerEmail { get; init; }
         public string? WhatsAppNumber { get; init; }
@@ -66,9 +65,6 @@ public sealed class AdminSitesController(ISiteRepository sites) : ControllerBase
                 Fields = (Fields ?? [])
                     .Select(x => x.ToField())
                     .ToList(),
-                OptionalFields = (OptionalFields ?? [])
-                    .Select(x => x.ToField())
-                    .ToList(),
                 IntroMessage = string.IsNullOrWhiteSpace(IntroMessage) ? null : IntroMessage.Trim(),
                 OwnerEmail = OwnerEmail?.Trim() ?? "",
                 WhatsAppNumber = WhatsAppNumber?.Trim() ?? ""
@@ -78,19 +74,17 @@ public sealed class AdminSitesController(ISiteRepository sites) : ControllerBase
 
     public sealed record ConversationFieldRequest
     {
-        public string? Key { get; init; }
-        public string? Prompt { get; init; }
-        public bool Required { get; init; } = true;
-        public ConversationFieldType Type { get; init; } = ConversationFieldType.Text;
+        public string? Id { get; init; }
+        public string? Name { get; init; }
+        public string? Description { get; init; }
 
         public ConversationField ToField()
         {
             return new ConversationField
             {
-                Key = Key?.Trim() ?? "",
-                Prompt = Prompt?.Trim() ?? "",
-                Required = Required,
-                Type = Type
+                Id = Id?.Trim() ?? "",
+                Name = Name?.Trim() ?? "",
+                Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim()
             };
         }
     }
@@ -101,7 +95,6 @@ public sealed class AdminSitesController(ISiteRepository sites) : ControllerBase
         string? BusinessSummary,
         IReadOnlyList<string> AllowedDomains,
         IReadOnlyList<ConversationField> Fields,
-        IReadOnlyList<ConversationField> OptionalFields,
         string? IntroMessage,
         string OwnerEmail,
         string WhatsAppNumber)
@@ -114,7 +107,6 @@ public sealed class AdminSitesController(ISiteRepository sites) : ControllerBase
                 site.BusinessSummary,
                 site.AllowedDomains,
                 site.Fields,
-                site.OptionalFields,
                 site.IntroMessage,
                 site.OwnerEmail,
                 site.WhatsAppNumber);

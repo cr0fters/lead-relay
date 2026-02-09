@@ -5,14 +5,16 @@ namespace LeadRelay.Infrastructure.Persistence;
 
 public static class SeedData
 {
+    private const string DefaultSeedSiteId = "2c7f9e0e-487f-4adf-8f0c-68c0f0d7b204";
+
     public static async Task EnsureSeededAsync(LeadRelayDbContext db, CancellationToken ct)
     {
-        if (await db.Sites.AsNoTracking().AnyAsync(x => x.Id == "site_demo", ct))
+        if (await db.Sites.AsNoTracking().AnyAsync(ct))
             return;
 
         db.Sites.Add(new SiteRecord
         {
-            Id = "site_demo",
+            Id = DefaultSeedSiteId,
             Name = "Spaces by Kelly",
             BusinessSummary = "Interior design company specialising in modern, family-friendly spaces.",
             OwnerEmail = "owner@example.com",
@@ -24,27 +26,27 @@ public static class SeedData
             [
                 new ConversationField
                 {
-                    Key = "project_description",
-                    Prompt =
-                        "Tell me a little about your project! What space are you designing? What's your biggest challenge? Any inspiration?"
-                }
-            ],
-            OptionalFields =
-            [
-                new ConversationField
-                {
-                    Key = "timeline",
-                    Prompt = "Do you have a rough timeline in mind?"
+                    Id = "project_overview",
+                    Name = "Project overview",
+                    Description = "What space is being designed and what is the main challenge?"
                 },
                 new ConversationField
                 {
-                    Key = "budget",
-                    Prompt = "Do you have a rough budget range you're aiming for?"
+                    Id = "timeline",
+                    Name = "Timeline",
+                    Description = "Do you have a rough timeline in mind?"
                 },
                 new ConversationField
                 {
-                    Key = "location",
-                    Prompt = "Where is the project located?"
+                    Id = "budget",
+                    Name = "Budget",
+                    Description = "Do you have a rough budget range you're aiming for?"
+                },
+                new ConversationField
+                {
+                    Id = "location",
+                    Name = "Location",
+                    Description = "Where is the project located?"
                 }
             ]
         });

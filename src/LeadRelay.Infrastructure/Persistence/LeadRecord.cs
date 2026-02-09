@@ -11,6 +11,7 @@ public sealed class LeadRecord
     public Guid ProjectId { get; set; }
     public string Channel { get; set; } = "api";
     public string Status { get; set; } = "open";
+    public bool IsBotPaused { get; set; }
     public Dictionary<string, string> Utm { get; set; } = new();
     public List<LeadConversationTurn> Conversation { get; set; } = new();
 }

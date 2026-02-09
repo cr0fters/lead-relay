@@ -80,14 +80,7 @@ public sealed class AdminController(ISiteRepository sites) : Controller
 
         if (!TryParseFields(model.FieldsJson, out var fields, out var fieldsError))
         {
-            error = $"Required fields JSON invalid: {fieldsError}";
-            site = null!;
-            return false;
-        }
-
-        if (!TryParseFields(model.OptionalFieldsJson, out var optionalFields, out var optionalError))
-        {
-            error = $"Optional fields JSON invalid: {optionalError}";
+            error = $"Fields JSON invalid: {fieldsError}";
             site = null!;
             return false;
         }
@@ -99,7 +92,6 @@ public sealed class AdminController(ISiteRepository sites) : Controller
             BusinessSummary = string.IsNullOrWhiteSpace(model.BusinessSummary) ? null : model.BusinessSummary.Trim(),
             AllowedDomains = allowedDomains,
             Fields = fields,
-            OptionalFields = optionalFields,
             IntroMessage = string.IsNullOrWhiteSpace(model.IntroMessage) ? null : model.IntroMessage.Trim(),
             OwnerEmail = model.OwnerEmail?.Trim() ?? "",
             WhatsAppNumber = model.WhatsAppNumber?.Trim() ?? ""
@@ -166,7 +158,6 @@ public sealed class AdminController(ISiteRepository sites) : Controller
         public string? BusinessSummary { get; set; }
         public string? AllowedDomains { get; set; }
         public string? FieldsJson { get; set; }
-        public string? OptionalFieldsJson { get; set; }
         public string? IntroMessage { get; set; }
         public string? OwnerEmail { get; set; }
         public string? WhatsAppNumber { get; set; }
@@ -178,7 +169,9 @@ public sealed class AdminController(ISiteRepository sites) : Controller
             {
                 FieldsJson = """
                              [
-                               { "key": "project_description", "prompt": "Tell me a little about your project." }
+                               { "id": "project_overview", "name": "Project overview", "description": "What space is being designed and what is the main challenge?" },
+                               { "id": "timeline", "name": "Timeline", "description": "When should this start?" },
+                               { "id": "budget", "name": "Budget", "description": "What budget range do you have in mind?" }
                              ]
                              """
             };
@@ -195,7 +188,6 @@ public sealed class AdminController(ISiteRepository sites) : Controller
                 BusinessSummary = site.BusinessSummary,
                 AllowedDomains = string.Join("\n", site.AllowedDomains),
                 FieldsJson = JsonSerializer.Serialize(site.Fields, JsonOptions),
-                OptionalFieldsJson = JsonSerializer.Serialize(site.OptionalFields, JsonOptions),
                 IntroMessage = site.IntroMessage,
                 OwnerEmail = site.OwnerEmail,
                 WhatsAppNumber = site.WhatsAppNumber,

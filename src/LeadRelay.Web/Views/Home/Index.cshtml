@@ -1,3 +1,4 @@
+@model LeadRelay.Web.Controllers.HomeController.HomeViewModel
 <!doctype html>
 <html lang="en">
 <head>
@@ -354,6 +355,9 @@
     </footer>
 </div>
 
-<script src="/widget/bootstrap.js?siteId=site_demo"></script>
+@if (!string.IsNullOrWhiteSpace(Model.WidgetSiteId))
+{
+    <script src="/widget/bootstrap.js?siteId=@Uri.EscapeDataString(Model.WidgetSiteId)"></script>
+}
 </body>
 </html>

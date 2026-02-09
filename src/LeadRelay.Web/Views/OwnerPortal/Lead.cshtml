@@ -51,6 +51,13 @@
             flex-wrap: wrap;
         }
 
+        .top-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
         .crumb {
             color: var(--muted);
             font-size: 0.94rem;
@@ -130,6 +137,53 @@
             grid-template-columns: 1fr 1fr;
             gap: 10px;
             margin-bottom: 10px;
+        }
+
+        .summary-card {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 12px;
+            align-items: start;
+            border: 1px solid #cfe0ff;
+            background: linear-gradient(180deg, #f4f8ff, #eef4ff);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        .summary-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: grid;
+            place-items: center;
+            font-size: 0.82rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            color: #0f62fe;
+            background: #fff;
+            border: 1px solid #c5d8ff;
+        }
+
+        .summary-text {
+            margin: 0;
+            white-space: pre-wrap;
+            line-height: 1.4;
+            color: #193252;
+            font-weight: 500;
+        }
+
+        .captured-list {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .captured-row {
+            border: 1px solid #e4ebf4;
+            border-radius: 10px;
+            padding: 10px;
+            background: #fafcfe;
         }
 
         .field {
@@ -337,10 +391,13 @@
 <div class="wrap">
     <div class="topbar">
         <div class="crumb"><a href="/owner">Leads</a> / @Model.Id</div>
-        <form method="post" action="/owner/logout" style="margin:0;">
-            @Html.AntiForgeryToken()
-            <button class="btn btn-secondary" type="submit">Sign out</button>
-        </form>
+        <div class="top-actions">
+            <a class="btn btn-secondary" href="/owner/settings">Settings</a>
+            <form method="post" action="/owner/logout" style="margin:0;">
+                @Html.AntiForgeryToken()
+                <button class="btn btn-secondary" type="submit">Sign out</button>
+            </form>
+        </div>
     </div>
 
     <div class="headline">
@@ -375,6 +432,10 @@
                         <div class="value">@Model.Channel</div>
                     </div>
                     <div class="field">
+                        <div class="label">Status</div>
+                        <div class="value">@Model.Status</div>
+                    </div>
+                    <div class="field">
                         <div class="label">Email</div>
                         <div class="value">@(string.IsNullOrWhiteSpace(Model.Email) ? "-" : Model.Email)</div>
                     </div>
@@ -383,6 +444,17 @@
                         <div class="value">@(string.IsNullOrWhiteSpace(Model.Phone) ? "-" : Model.Phone)</div>
                     </div>
                 </div>
+            </section>
+
+            <section class="section">
+                <h2 class="kicker">Conversation Control</h2>
+                <form method="post" action="/owner/leads/@Model.Id/pause">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="paused" value="@(Model.IsPaused ? "false" : "true")" />
+                    <div class="btn-row">
+                        <button class="btn btn-secondary" type="submit">@(Model.IsPaused ? "Resume Conversation" : "Pause Conversation")</button>
+                    </div>
+                </form>
             </section>
 
             <section class="section">
@@ -407,23 +479,44 @@
 
             <section class="section">
                 <h2 class="kicker">Captured Fields</h2>
-                @if (Model.Fields.Count == 0)
+                <form method="post" action="/owner/leads/@Model.Id/fields">
+                    @Html.AntiForgeryToken()
+                @if (Model.FieldDefinitions.Count == 0)
                 {
                     <div class="helper">No captured fields.</div>
                 }
                 else
                 {
-                    <ul class="meta-list">
-                        @foreach (var field in Model.Fields)
+                    <div class="captured-list">
+                        @foreach (var field in Model.FieldDefinitions)
                         {
-                            <li><strong>@field.Key</strong>: @field.Value</li>
+                            <div class="captured-row">
+                                <label for="fld_@field.Id">@field.Name</label>
+                                <input id="fld_@field.Id" name="fields[@field.Id]" type="text" value="@field.Value" />
+                                @if (!string.IsNullOrWhiteSpace(field.Description))
+                                {
+                                    <div class="helper">@field.Description</div>
+                                }
+                            </div>
                         }
-                    </ul>
+                    </div>
                 }
+                    <div class="btn-row">
+                        <button class="btn btn-secondary" type="submit">Save Fields</button>
+                    </div>
+                </form>
             </section>
         </aside>
 
         <main class="panel">
+            <section class="section">
+                <h2 class="kicker">Project Summary</h2>
+                <div class="summary-card">
+                    <div class="summary-icon">AI</div>
+                    <p class="summary-text">@(string.IsNullOrWhiteSpace(Model.ProjectSummary) ? "No summary yet." : Model.ProjectSummary)</p>
+                </div>
+            </section>
+
             <section class="section">
                 <h2 class="kicker">Conversation History</h2>
                 @if (Model.Conversation.Count == 0)

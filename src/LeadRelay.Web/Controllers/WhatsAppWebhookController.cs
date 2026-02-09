@@ -41,7 +41,7 @@ public sealed class WhatsAppWebhookController(
         if (string.IsNullOrWhiteSpace(waId)) return Ok(new { ok = true });
 
         // POC: no attribution, assume a single configured site.
-        var site = await sites.GetByIdAsync("site_demo", ct);
+        var site = await ResolveDefaultSiteAsync(ct);
         if (site is null) return Ok(new { ok = true });
 
         var reply = await conversations.HandleMessageAsync(site, waId, text, contactName, null, ct);
@@ -61,11 +61,9 @@ public sealed class WhatsAppWebhookController(
                     .ToList(),
                 LeadId: reply.LeadId,
                 LeadCreatedAtUtc: reply.LeadCreatedAtUtc,
-                NotifyOwner: reply.LeadJustCreated),
+                NotifyOwner: reply.LeadJustCreated,
+                ProjectSummary: reply.ProjectSummary),
             ct);
-
-        if (captured.Lead is not null)
-            await conversations.BindLeadAsync(site.Id, waId, captured.Lead.Id, captured.Lead.CreatedAtUtc, ct);
 
         return Ok(new { ok = true });
     }
@@ -138,5 +136,11 @@ public sealed class WhatsAppWebhookController(
         }
 
         return null;
+    }
+
+    private async Task<LeadRelay.Domain.Sites.Site?> ResolveDefaultSiteAsync(CancellationToken ct)
+    {
+        var allSites = await sites.GetAllAsync(ct);
+        return allSites.FirstOrDefault();
     }
 }
