@@ -151,6 +151,22 @@ public sealed class OwnerPortalReplyChannelTests
         Assert.That(repository.SavedLead!.IsBotPaused, Is.True);
     }
 
+    [Test]
+    public async Task set_paused_returns_ok_for_ajax_requests()
+    {
+        var siteId = InMemorySiteRepository.DefaultSiteId;
+        var lead = BuildLead(siteId);
+        var repository = new FakeLeadRepository(lead);
+        var controller = CreateController(repository, new InMemorySiteRepository(), siteId);
+        controller.HttpContext.Request.Headers["X-Requested-With"] = "XMLHttpRequest";
+
+        var result = await controller.SetPaused(lead.Id, true, CancellationToken.None);
+
+        Assert.That(result, Is.TypeOf<OkObjectResult>());
+        Assert.That(repository.SavedLead, Is.Not.Null);
+        Assert.That(repository.SavedLead!.IsBotPaused, Is.True);
+    }
+
     private static Lead BuildLead(string siteId)
     {
         return new Lead

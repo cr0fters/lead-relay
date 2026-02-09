@@ -221,15 +221,31 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
         var lead = await leads.GetByIdForSiteAsync(id, auth.SiteId, ct);
         if (lead is null) return NotFound();
 
-        var site = await sites.GetByIdAsync(auth.SiteId, ct);
         lead.IsBotPaused = paused;
         await leads.SaveAsync(lead, ct);
+        var message = paused
+            ? "AI auto-reply is off."
+            : "AI auto-reply is on.";
 
+        if (IsAjaxRequest())
+        {
+            return Ok(new
+            {
+                paused,
+                message
+            });
+        }
+
+        var site = await sites.GetByIdAsync(auth.SiteId, ct);
         var updatedModel = ToDetailModel(auth, lead, site);
-        updatedModel.Success = paused
-            ? "Conversation paused."
-            : "Conversation resumed.";
+        updatedModel.Success = message;
         return View("Lead", updatedModel);
+    }
+
+    private bool IsAjaxRequest()
+    {
+        var requestedWith = Request.Headers["X-Requested-With"].ToString();
+        return string.Equals(requestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
     }
 
     private OwnerAuthContext? GetAuthContext()

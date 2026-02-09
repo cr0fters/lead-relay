@@ -47,6 +47,7 @@ This file defines the default engineering standards for all contributors (human 
 - Use explicit error handling and meaningful logging at boundaries.
 - Do not introduce dead code, commented-out blocks, or speculative abstractions.
 - Preserve backward compatibility for public endpoints/contracts unless explicitly changing them.
+- Use sentence case for user-facing UI labels and headings (for example: `Project summary`, not `Project Summary`), except for proper nouns, brand names, and acronyms.
 
 ## Security and Configuration
 - Never hardcode secrets or tokens.

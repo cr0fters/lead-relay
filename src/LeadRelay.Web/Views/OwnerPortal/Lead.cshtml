@@ -1,25 +1,25 @@
 @model LeadRelay.Web.Controllers.OwnerPortalController.OwnerLeadDetailModel
 @{
     Layout = "~/Views/Shared/_OwnerLayout.cshtml";
-    ViewData["Title"] = "Lead Workspace";
+    ViewData["Title"] = "Lead workspace";
 }
 
-<div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8" x-data>
-    <header class="mb-4 rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
+<div class="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8" x-data>
+    <header class="mb-3 rounded-lg border border-slate-200 bg-white p-3 shadow-panel">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500"><a class="hover:text-sky-700" href="/owner">Leads</a> / @Model.Id</p>
-                <h1 class="font-display text-2xl font-semibold tracking-tight text-slate-900">Lead Workspace</h1>
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500"><a class="hover:text-slate-700" href="/owner">Leads</a> / @Model.Id</p>
+                <h1 class="font-display text-2xl font-semibold tracking-tight text-slate-900">Lead workspace</h1>
                 <p class="text-sm text-slate-600">Owner: @Model.OwnerEmail · Created: @Model.CreatedAtUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm") UTC</p>
             </div>
             <div class="flex flex-wrap gap-2">
-                <a href="/owner/settings" class="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400">
+                <a href="/owner/settings" class="inline-flex items-center gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100">
                     <i data-lucide="settings-2" class="h-4 w-4"></i>
                     <span>Settings</span>
                 </a>
                 <form method="post" action="/owner/logout" class="m-0">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400">
+                    <button type="submit" class="inline-flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100">
                         <i data-lucide="log-out" class="h-4 w-4"></i>
                         <span>Sign out</span>
                     </button>
@@ -38,10 +38,10 @@
         <div class="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">@Model.Success</div>
     }
 
-    <div class="grid gap-4 lg:grid-cols-[360px_1fr]">
-        <aside class="space-y-4">
-            <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
-                <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Contact Profile</h2>
+    <div class="grid gap-3 lg:grid-cols-[360px_1fr]">
+        <aside class="space-y-3">
+            <section class="rounded-lg border border-slate-200 bg-white p-3 shadow-panel">
+                <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Contact profile</h2>
                 <div class="grid gap-2 sm:grid-cols-2">
                     <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5"><p class="text-xs uppercase tracking-[0.1em] text-slate-500">Name</p><p class="text-sm font-semibold">@(string.IsNullOrWhiteSpace(Model.Name) ? "-" : Model.Name)</p></div>
                     <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5"><p class="text-xs uppercase tracking-[0.1em] text-slate-500">Channel</p><p class="text-sm font-semibold">@Model.Channel</p></div>
@@ -52,27 +52,27 @@
                 </div>
             </section>
 
-            <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
-                <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Conversation Control</h2>
-                <form method="post" action="/owner/leads/@Model.Id/pause" x-data="{ paused: @(Model.IsPaused ? "true" : "false") }">
+            <section class="rounded-lg border border-slate-200 bg-white p-3 shadow-panel">
+                <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Conversation control</h2>
+                <form method="post" action="/owner/leads/@Model.Id/pause" x-data="pauseToggle(@(Model.IsPaused ? "true" : "false"))">
                     @Html.AntiForgeryToken()
-                    <input type="hidden" name="paused" :value="paused ? 'true' : 'false'" />
                     <div class="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
                         <div>
-                            <p class="text-sm font-semibold text-slate-800">Pause Conversation</p>
-                            <p class="text-xs text-slate-500">Turn off auto replies for this lead</p>
+                            <p class="text-sm font-semibold text-slate-800">AI auto-reply</p>
+                            <p class="text-xs text-slate-500" x-text="autoReplyOn ? 'On' : 'Off'"></p>
                         </div>
                         <label class="relative inline-flex cursor-pointer items-center">
-                            <input type="checkbox" class="peer sr-only" x-model="paused" @@change="$el.form.submit()" />
-                            <span class="h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-slate-700"></span>
+                            <input type="checkbox" class="peer sr-only" :checked="autoReplyOn" @@change="toggleAndSave($event)" />
+                            <span class="h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-indigo-600"></span>
                             <span class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5"></span>
                         </label>
                     </div>
+                    <p class="mt-2 text-xs text-slate-500" x-show="statusMessage" x-text="statusMessage"></p>
                 </form>
             </section>
 
-            <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
-                <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Edit Contact</h2>
+            <section class="rounded-lg border border-slate-200 bg-white p-3 shadow-panel">
+                <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Edit contact</h2>
                 <form method="post" action="/owner/leads/@Model.Id/contact" class="space-y-3">
                     @Html.AntiForgeryToken()
                     <div>
@@ -87,12 +87,12 @@
                         <label class="mb-1 block text-sm font-medium text-slate-700" for="phone">Phone</label>
                         <input class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm ring-slate-200 outline-none focus:ring" id="phone" name="phone" type="tel" value="@Model.Phone" />
                     </div>
-                    <button class="w-full rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400" type="submit">Save Contact</button>
+                    <button class="w-full rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400" type="submit">Save contact</button>
                 </form>
             </section>
 
-            <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
-                <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Captured Fields</h2>
+            <section class="rounded-lg border border-slate-200 bg-white p-3 shadow-panel">
+                <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Captured fields</h2>
                 <form method="post" action="/owner/leads/@Model.Id/fields" class="space-y-3">
                     @Html.AntiForgeryToken()
                     @if (Model.FieldDefinitions.Count == 0)
@@ -113,22 +113,22 @@
                             </div>
                         }
                     }
-                    <button class="w-full rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400" type="submit">Save Fields</button>
+                    <button class="w-full rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400" type="submit">Save fields</button>
                 </form>
             </section>
         </aside>
 
-        <main class="space-y-4">
-            <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
+        <main class="space-y-3">
+            <section class="rounded-lg border border-indigo-200 bg-indigo-50/50 p-3 shadow-panel">
                 <div class="mb-2 flex items-center gap-2 text-slate-700">
-                    <i data-lucide="sparkles" class="h-4 w-4"></i>
-                    <h2 class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">AI Summary</h2>
+                    <i data-lucide="sparkles" class="h-4 w-4 text-indigo-600"></i>
+                    <h2 class="text-xs font-semibold uppercase tracking-[0.14em] text-indigo-700">AI summary</h2>
                 </div>
-                <p class="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-slate-700">@(string.IsNullOrWhiteSpace(Model.ProjectSummary) ? "No summary yet." : Model.ProjectSummary)</p>
+                <p class="rounded-md border border-indigo-200 bg-white p-3 text-sm leading-6 text-slate-700">@(string.IsNullOrWhiteSpace(Model.ProjectSummary) ? "No summary yet." : Model.ProjectSummary)</p>
             </section>
 
-            <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
-                <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Conversation History</h2>
+            <section class="rounded-lg border border-slate-200 bg-white p-3 shadow-panel">
+                <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Conversation history</h2>
                 @if (Model.Conversation.Count == 0)
                 {
                     <div class="text-sm text-slate-500">No messages yet.</div>
@@ -143,15 +143,15 @@
                             var roleLabel = isIncoming ? "Customer" : "LeadRelay";
                             <article class="max-w-[85%] @(isIncoming ? "mr-auto" : "ml-auto")">
                                 <p class="mb-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">@roleLabel · @turn.AtUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm") UTC</p>
-                                <div class="rounded-md border px-3 py-2 text-sm leading-6 @(isIncoming ? "border-slate-200 bg-white text-slate-800" : "border-slate-300 bg-slate-100 text-slate-800")">@turn.Text</div>
+                                <div class="rounded-md border px-3 py-2 text-sm leading-6 @(isIncoming ? "border-slate-200 bg-white text-slate-800" : "border-sky-200 bg-sky-50 text-slate-800")">@turn.Text</div>
                             </article>
                         }
                     </div>
                 }
             </section>
 
-            <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
-                <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Reply Composer</h2>
+            <section class="rounded-lg border border-slate-200 bg-white p-3 shadow-panel">
+                <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Reply composer</h2>
                 <form method="post" action="/owner/leads/@Model.Id/reply" class="space-y-3">
                     @Html.AntiForgeryToken()
                     <div>
@@ -186,9 +186,9 @@
                         <textarea class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm ring-slate-200 outline-none focus:ring" id="message" name="message" rows="5" placeholder="Write your message to the customer..." required></textarea>
                         <p class="mt-1 text-xs text-slate-500">Use channel based on available contact details.</p>
                     </div>
-                    <button class="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400" type="submit">
+                    <button class="inline-flex items-center gap-2 rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700" type="submit">
                         <i data-lucide="send" class="h-4 w-4"></i>
-                        <span>Send Reply</span>
+                        <span>Send reply</span>
                     </button>
                 </form>
             </section>
@@ -198,6 +198,55 @@
 
 @section PageScripts {
 <script>
+    function pauseToggle(initialPaused) {
+        return {
+            autoReplyOn: !initialPaused,
+            statusMessage: "",
+            async toggleAndSave(event) {
+                const form = event?.target?.form;
+                if (!(form instanceof HTMLFormElement)) {
+                    this.statusMessage = "Could not update auto-reply state.";
+                    return;
+                }
+
+                const previous = this.autoReplyOn;
+                this.autoReplyOn = event.target.checked;
+                this.statusMessage = "";
+                const paused = !this.autoReplyOn;
+                const formData = new FormData(form);
+                formData.set("paused", paused ? "true" : "false");
+                const body = new URLSearchParams(formData);
+                const response = await fetch(form.action, {
+                    method: "POST",
+                    headers: { "X-Requested-With": "XMLHttpRequest" },
+                    body,
+                    credentials: "same-origin"
+                });
+
+                if (!response.ok) {
+                    this.autoReplyOn = previous;
+                    event.target.checked = this.autoReplyOn;
+                    this.statusMessage = "Could not update auto-reply state.";
+                    return;
+                }
+
+                try {
+                    const data = await response.json();
+                    if (typeof data.paused === "boolean") {
+                        this.autoReplyOn = !data.paused;
+                        event.target.checked = this.autoReplyOn;
+                    }
+
+                    if (typeof data.message === "string" && data.message.length > 0) {
+                        this.statusMessage = data.message;
+                    }
+                } catch {
+                    this.statusMessage = this.autoReplyOn ? "AI auto-reply is on." : "AI auto-reply is off.";
+                }
+            }
+        };
+    }
+
     (function () {
         var timeline = document.getElementById("conversationTimeline");
         if (!timeline) return;

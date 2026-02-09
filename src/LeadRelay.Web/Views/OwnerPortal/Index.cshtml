@@ -1,27 +1,27 @@
 @model LeadRelay.Web.Controllers.OwnerPortalController.OwnerDashboardModel
 @{
     Layout = "~/Views/Shared/_OwnerLayout.cshtml";
-    ViewData["Title"] = "Owner Leads Inbox";
+    ViewData["Title"] = "Owner leads inbox";
     var contactableCount = Model.Leads.Count(x => string.Equals(x.Status, "Contactable", StringComparison.OrdinalIgnoreCase));
     var needsDetailsCount = Math.Max(0, Model.Leads.Count - contactableCount);
 }
 
-<div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8" x-data>
-    <header class="mb-4 rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
+<div class="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8" x-data>
+    <header class="mb-3 rounded-lg border border-slate-200 bg-white p-3 shadow-panel">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Owner Workspace</p>
-                <h1 class="font-display text-2xl font-semibold tracking-tight text-slate-900">Leads Inbox</h1>
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Owner workspace</p>
+                <h1 class="font-display text-2xl font-semibold tracking-tight text-slate-900">Leads inbox</h1>
                 <p class="text-sm text-slate-600">@Model.OwnerEmail</p>
             </div>
             <div class="flex flex-wrap gap-2">
-                <a href="/owner/settings" class="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400">
+                <a href="/owner/settings" class="inline-flex items-center gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100">
                     <i data-lucide="settings-2" class="h-4 w-4"></i>
                     <span>Settings</span>
                 </a>
                 <form method="post" action="/owner/logout" class="m-0">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400">
+                    <button type="submit" class="inline-flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100">
                         <i data-lucide="log-out" class="h-4 w-4"></i>
                         <span>Sign out</span>
                     </button>
@@ -30,26 +30,26 @@
         </div>
     </header>
 
-    <section class="mb-4 grid gap-3 sm:grid-cols-3">
-        <article class="rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
+    <section class="mb-3 grid gap-2 sm:grid-cols-3">
+        <article class="rounded-lg border border-sky-200 bg-sky-50 p-3 shadow-panel">
             <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Total in view</p>
             <p class="mt-1 font-display text-3xl font-semibold text-slate-900">@Model.TotalCount</p>
             <p class="mt-2 text-sm text-slate-600">Page @Model.Page of @Model.TotalPages</p>
         </article>
-        <article class="rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
-            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Contactable</p>
+        <article class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 shadow-panel">
+            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Contactable</p>
             <p class="mt-1 font-display text-3xl font-semibold text-slate-900">@contactableCount</p>
-            <p class="mt-2 text-sm text-slate-600">Ready for direct reply</p>
+            <p class="mt-2 text-sm text-emerald-700">Ready for direct reply</p>
         </article>
-        <article class="rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
-            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Needs details</p>
+        <article class="rounded-lg border border-amber-200 bg-amber-50 p-3 shadow-panel">
+            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">Needs details</p>
             <p class="mt-1 font-display text-3xl font-semibold text-slate-900">@needsDetailsCount</p>
-            <p class="mt-2 text-sm text-slate-600">Missing email or phone</p>
+            <p class="mt-2 text-sm text-amber-700">Missing email or phone</p>
         </article>
     </section>
 
     <section class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-panel">
-        <form class="border-b border-slate-200 bg-slate-50 p-4" method="get" action="/owner">
+        <form class="border-b border-slate-200 bg-slate-50 p-3" method="get" action="/owner">
             <div class="grid gap-2 md:grid-cols-[1fr_auto_auto]">
                 <input class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" type="text" name="q" value="@Model.Query" placeholder="Search name, email, or phone" />
                 <select class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" name="pageSize">
@@ -65,7 +65,7 @@
                         }
                     }
                 </select>
-                <button class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400" type="submit">Apply</button>
+                <button class="rounded-md border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-100" type="submit">Apply</button>
             </div>
         </form>
 
@@ -97,10 +97,10 @@
                             <td class="hidden px-4 py-3 text-sm text-slate-700 lg:table-cell">@(string.IsNullOrWhiteSpace(lead.Email) ? "-" : lead.Email)</td>
                             <td class="hidden px-4 py-3 text-sm text-slate-700 lg:table-cell">@(string.IsNullOrWhiteSpace(lead.Phone) ? "-" : lead.Phone)</td>
                             <td class="px-4 py-3 text-sm">
-                                <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] @(isContactable ? "bg-slate-100 text-slate-700" : "bg-slate-100 text-slate-600")">@lead.Status</span>
+                                <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] @(isContactable ? "border border-emerald-200 bg-emerald-50 text-emerald-700" : "border border-amber-200 bg-amber-50 text-amber-700")">@lead.Status</span>
                             </td>
                             <td class="px-4 py-3 text-right">
-                                <a class="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:border-slate-400" href="/owner/leads/@lead.Id">
+                                <a class="inline-flex items-center gap-1 rounded-md border border-sky-200 bg-sky-50 px-3 py-1.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-100" href="/owner/leads/@lead.Id">
                                     <i data-lucide="arrow-up-right" class="h-3.5 w-3.5"></i>
                                     <span>Open</span>
                                 </a>
@@ -112,23 +112,23 @@
             </div>
         }
 
-        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 p-3">
             <p class="text-sm text-slate-500">Showing @Model.StartItem-@Model.EndItem of @Model.TotalCount</p>
             <div class="flex items-center gap-2 text-sm">
                 @if (Model.HasPrevious)
                 {
-                    <a class="rounded-md border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 hover:border-slate-400" href="/owner?q=@Uri.EscapeDataString(Model.Query)&page=@(Model.Page - 1)&pageSize=@Model.PageSize">Previous</a>
+                    <a class="rounded-md border border-sky-200 bg-sky-50 px-3 py-1.5 font-medium text-sky-700 hover:bg-sky-100" href="/owner?q=@Uri.EscapeDataString(Model.Query)&page=@(Model.Page - 1)&pageSize=@Model.PageSize">Previous</a>
                 }
                 else
                 {
                     <span class="rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-400">Previous</span>
                 }
 
-                <span class="rounded-md border border-slate-300 bg-white px-3 py-1.5 font-semibold text-slate-700">Page @Model.Page of @Model.TotalPages</span>
+                <span class="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 font-semibold text-indigo-700">Page @Model.Page of @Model.TotalPages</span>
 
                 @if (Model.HasNext)
                 {
-                    <a class="rounded-md border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 hover:border-slate-400" href="/owner?q=@Uri.EscapeDataString(Model.Query)&page=@(Model.Page + 1)&pageSize=@Model.PageSize">Next</a>
+                    <a class="rounded-md border border-sky-200 bg-sky-50 px-3 py-1.5 font-medium text-sky-700 hover:bg-sky-100" href="/owner?q=@Uri.EscapeDataString(Model.Query)&page=@(Model.Page + 1)&pageSize=@Model.PageSize">Next</a>
                 }
                 else
                 {
