@@ -8,6 +8,7 @@
 - [x] Add login area for site owners to view and respond to leads
 - [x] Wire secrets via environment (no secrets in repo) and document required env vars
 - [ ] Apply database migrations as part of CI/CD pipeline
+- [ ] Come up with a plan for submitting a new lead vs contact
 
 ## Next
 - [ ] Harden WhatsApp webhook verification and signature validation
