@@ -7,14 +7,10 @@ public sealed class LeadRecord
     public Guid Id { get; set; }
     public string SiteId { get; set; } = "";
     public DateTimeOffset CreatedAtUtc { get; set; }
-    public string? Name { get; set; }
-    public string? Email { get; set; }
-    public string? Phone { get; set; }
-    public string? Intent { get; set; }
-    public string? Notes { get; set; }
-    public string? PageUrl { get; set; }
-    public string? Referrer { get; set; }
+    public Guid CustomerId { get; set; }
+    public Guid ProjectId { get; set; }
+    public string Channel { get; set; } = "api";
+    public string Status { get; set; } = "open";
     public Dictionary<string, string> Utm { get; set; } = new();
-    public Dictionary<string, string> Fields { get; set; } = new();
     public List<LeadConversationTurn> Conversation { get; set; } = new();
 }

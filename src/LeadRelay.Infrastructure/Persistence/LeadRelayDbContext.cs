@@ -13,6 +13,8 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
 
     public DbSet<SiteRecord> Sites => Set<SiteRecord>();
     public DbSet<LeadRecord> Leads => Set<LeadRecord>();
+    public DbSet<CustomerRecord> Customers => Set<CustomerRecord>();
+    public DbSet<ProjectRecord> Projects => Set<ProjectRecord>();
     public DbSet<ConversationStateRecord> ConversationStates => Set<ConversationStateRecord>();
     public DbSet<OwnerAccountRecord> OwnerAccounts => Set<OwnerAccountRecord>();
 
@@ -56,23 +58,15 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
             entity.ToTable("Leads");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasColumnName("Id");
-            entity.Property(x => x.SiteId).HasColumnName("SiteId").IsRequired();
+            entity.Property(x => x.SiteId).HasColumnName("SiteId").HasMaxLength(255).IsRequired();
             entity.Property(x => x.CreatedAtUtc).HasColumnName("CreatedAtUtc");
-            entity.Property(x => x.Name).HasColumnName("Name");
-            entity.Property(x => x.Email).HasColumnName("Email");
-            entity.Property(x => x.Phone).HasColumnName("Phone");
-            entity.Property(x => x.Intent).HasColumnName("Intent");
-            entity.Property(x => x.Notes).HasColumnName("Notes");
-            entity.Property(x => x.PageUrl).HasColumnName("PageUrl");
-            entity.Property(x => x.Referrer).HasColumnName("Referrer");
+            entity.Property(x => x.CustomerId).HasColumnName("CustomerId").IsRequired();
+            entity.Property(x => x.ProjectId).HasColumnName("ProjectId").IsRequired();
+            entity.Property(x => x.Channel).HasColumnName("Channel").HasMaxLength(32).IsRequired();
+            entity.Property(x => x.Status).HasColumnName("Status").HasMaxLength(32).IsRequired();
 
             entity.Property(x => x.Utm)
                 .HasColumnName("UtmJson")
-                .HasConversion(dictionaryConverter)
-                .Metadata.SetValueComparer(BuildJsonComparer<Dictionary<string, string>>());
-
-            entity.Property(x => x.Fields)
-                .HasColumnName("FieldsJson")
                 .HasConversion(dictionaryConverter)
                 .Metadata.SetValueComparer(BuildJsonComparer<Dictionary<string, string>>());
 
@@ -80,6 +74,89 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
                 .HasColumnName("ConversationJson")
                 .HasConversion(leadConversationConverter)
                 .Metadata.SetValueComparer(BuildJsonComparer<List<LeadConversationTurn>>());
+
+            entity.HasIndex(x => new { x.SiteId, x.CustomerId });
+            entity.HasIndex(x => new { x.SiteId, x.ProjectId });
+            entity.HasIndex(x => new { x.SiteId, x.Id }).IsUnique();
+
+            entity.HasOne<CustomerRecord>()
+                .WithMany()
+                .HasForeignKey(x => new { x.SiteId, x.CustomerId })
+                .HasPrincipalKey(x => new { x.SiteId, x.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<ProjectRecord>()
+                .WithMany()
+                .HasForeignKey(x => new { x.SiteId, x.ProjectId })
+                .HasPrincipalKey(x => new { x.SiteId, x.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<SiteRecord>()
+                .WithMany()
+                .HasForeignKey(x => x.SiteId)
+                .HasPrincipalKey(x => x.Id)
+                .OnDelete(DeleteBehavior.Restrict);
+
+        });
+
+        modelBuilder.Entity<CustomerRecord>(entity =>
+        {
+            entity.ToTable("Customers");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("Id");
+            entity.Property(x => x.SiteId).HasColumnName("SiteId").HasMaxLength(255).IsRequired();
+            entity.Property(x => x.Name).HasColumnName("Name");
+            entity.Property(x => x.Email).HasColumnName("Email").HasMaxLength(255);
+            entity.Property(x => x.Phone).HasColumnName("Phone").HasMaxLength(64);
+            entity.Property(x => x.ExternalContactId).HasColumnName("ExternalContactId").HasMaxLength(64);
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("CreatedAtUtc");
+            entity.Property(x => x.UpdatedAtUtc).HasColumnName("UpdatedAtUtc");
+
+            entity.HasIndex(x => new { x.SiteId, x.ExternalContactId });
+            entity.HasIndex(x => new { x.SiteId, x.Phone });
+            entity.HasIndex(x => new { x.SiteId, x.Email });
+            entity.HasIndex(x => new { x.SiteId, x.Id }).IsUnique();
+
+            entity.HasOne<SiteRecord>()
+                .WithMany()
+                .HasForeignKey(x => x.SiteId)
+                .HasPrincipalKey(x => x.Id)
+                .OnDelete(DeleteBehavior.Restrict);
+
+        });
+
+        modelBuilder.Entity<ProjectRecord>(entity =>
+        {
+            entity.ToTable("Projects");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("Id");
+            entity.Property(x => x.SiteId).HasColumnName("SiteId").HasMaxLength(255).IsRequired();
+            entity.Property(x => x.CustomerId).HasColumnName("CustomerId").IsRequired();
+            entity.Property(x => x.Name).HasColumnName("Name").IsRequired();
+            entity.Property(x => x.Summary).HasColumnName("Summary");
+            entity.Property(x => x.Status).HasColumnName("Status").HasMaxLength(32).IsRequired();
+            entity.Property(x => x.Fields)
+                .HasColumnName("FieldsJson")
+                .HasConversion(dictionaryConverter)
+                .Metadata.SetValueComparer(BuildJsonComparer<Dictionary<string, string>>());
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("CreatedAtUtc");
+            entity.Property(x => x.UpdatedAtUtc).HasColumnName("UpdatedAtUtc");
+
+            entity.HasIndex(x => new { x.SiteId, x.CustomerId });
+            entity.HasIndex(x => new { x.SiteId, x.Id }).IsUnique();
+
+            entity.HasOne<CustomerRecord>()
+                .WithMany()
+                .HasForeignKey(x => new { x.SiteId, x.CustomerId })
+                .HasPrincipalKey(x => new { x.SiteId, x.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<SiteRecord>()
+                .WithMany()
+                .HasForeignKey(x => x.SiteId)
+                .HasPrincipalKey(x => x.Id)
+                .OnDelete(DeleteBehavior.Restrict);
+
         });
 
         modelBuilder.Entity<ConversationStateRecord>(entity =>
@@ -87,7 +164,7 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
             entity.ToTable("ConversationStates");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasColumnName("Id");
-            entity.Property(x => x.SiteId).HasColumnName("SiteId").IsRequired();
+            entity.Property(x => x.SiteId).HasColumnName("SiteId").HasMaxLength(255).IsRequired();
             entity.Property(x => x.WaId).HasColumnName("WaId").IsRequired();
             entity.Property(x => x.StepIndex).HasColumnName("StepIndex");
             entity.Property(x => x.UpdatedAtUtc).HasColumnName("UpdatedAtUtc");
@@ -110,17 +187,36 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
                 .Metadata.SetValueComparer(BuildJsonComparer<List<ConversationTurnRecord>>());
 
             entity.HasIndex(x => new { x.SiteId, x.WaId }).IsUnique();
+            entity.HasIndex(x => new { x.SiteId, x.LeadId });
+
+            entity.HasOne<SiteRecord>()
+                .WithMany()
+                .HasForeignKey(x => x.SiteId)
+                .HasPrincipalKey(x => x.Id)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<LeadRecord>()
+                .WithMany()
+                .HasForeignKey(x => new { x.SiteId, x.LeadId })
+                .HasPrincipalKey(x => new { x.SiteId, x.Id })
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<OwnerAccountRecord>(entity =>
         {
             entity.ToTable("OwnerAccounts");
             entity.HasKey(x => x.SiteId);
-            entity.Property(x => x.SiteId).HasColumnName("SiteId");
+            entity.Property(x => x.SiteId).HasColumnName("SiteId").HasMaxLength(255);
             entity.Property(x => x.PasswordHash).HasColumnName("PasswordHash");
             entity.Property(x => x.ResetTokenHash).HasColumnName("ResetTokenHash");
             entity.Property(x => x.ResetTokenExpiresAtUtc).HasColumnName("ResetTokenExpiresAtUtc");
             entity.Property(x => x.UpdatedAtUtc).HasColumnName("UpdatedAtUtc");
+
+            entity.HasOne<SiteRecord>()
+                .WithMany()
+                .HasForeignKey(x => x.SiteId)
+                .HasPrincipalKey(x => x.Id)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 

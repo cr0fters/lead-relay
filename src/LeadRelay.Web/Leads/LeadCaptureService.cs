@@ -1,29 +1,34 @@
 using LeadRelay.Application.Abstractions;
 using LeadRelay.Domain.Leads;
+using LeadRelay.Domain.Projects;
 using LeadRelay.Domain.Sites;
+using LeadRelay.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 namespace LeadRelay.Web.Leads;
 
-public sealed class LeadCaptureService(ILeadRepository leads, IEmailSender emailSender)
+public sealed class LeadCaptureService(ILeadRepository leads, IEmailSender emailSender, LeadRelayDbContext db)
 {
     public async Task<LeadCaptureResult> CaptureAsync(
         Site site,
         LeadCaptureInput input,
         CancellationToken ct)
     {
+        var now = DateTimeOffset.UtcNow;
         var leadId = input.LeadId ?? Guid.NewGuid();
         var leadJustCreated = input.LeadId is null || input.NotifyOwner;
+
+        var existingLead = input.LeadId is null
+            ? null
+            : await leads.GetByIdForSiteAsync(input.LeadId.Value, site.Id, ct);
 
         var lead = new Lead
         {
             Id = leadId,
             SiteId = site.Id,
-            CreatedAtUtc = input.LeadCreatedAtUtc ?? DateTimeOffset.UtcNow,
-            Intent = input.Intent,
-            Notes = BuildNotes(input)
+            CreatedAtUtc = input.LeadCreatedAtUtc ?? now,
+            Channel = NormalizeChannel(input.Channel),
+            Status = LeadStatuses.Open,
         };
-
-        foreach (var kv in input.Fields)
-            lead.Fields[kv.Key] = kv.Value;
 
         lead.Name = input.ExplicitName?.Trim() ?? ExtractName(input.Fields) ?? input.ContactName ?? lead.Name;
         lead.Email = input.ExplicitEmail?.Trim() ?? ExtractEmail(input.Fields) ?? lead.Email;
@@ -31,28 +36,220 @@ public sealed class LeadCaptureService(ILeadRepository leads, IEmailSender email
         if (string.IsNullOrWhiteSpace(lead.Phone))
             lead.Phone = NormalizePhone(input.ExternalContactId ?? "");
 
+        var customerId = existingLead?.CustomerId;
+        if (!customerId.HasValue || customerId.Value == Guid.Empty)
+        {
+            var customer = await ResolveOrCreateCustomerAsync(
+                site.Id,
+                input.ExternalContactId,
+                lead.Name,
+                lead.Email,
+                lead.Phone,
+                now,
+                ct);
+            customerId = customer.Id;
+        }
+        var effectiveCustomerId = customerId ?? throw new InvalidOperationException("CustomerId resolution failed.");
+
+        var projectId = existingLead?.ProjectId;
+        if (!projectId.HasValue || projectId.Value == Guid.Empty)
+        {
+            var project = CreateProject(site.Id, effectiveCustomerId, input, now);
+            db.Projects.Add(project);
+            projectId = project.Id;
+        }
+        else
+        {
+            var existingProject = await db.Projects.FirstOrDefaultAsync(
+                x => x.SiteId == site.Id && x.Id == projectId.Value,
+                ct);
+            if (existingProject is not null)
+            {
+                MergeProjectFields(existingProject, input.Fields);
+                existingProject.Summary = ResolveProjectSummary(input, existingProject.Summary);
+                existingProject.UpdatedAtUtc = now;
+            }
+        }
+
+        lead.CustomerId = effectiveCustomerId;
+        lead.ProjectId = projectId ?? throw new InvalidOperationException("ProjectId resolution failed.");
+
         foreach (var turn in input.Conversation)
             lead.Conversation.Add(new LeadConversationTurn(turn.Role, turn.Text, turn.AtUtc));
 
+        await db.SaveChangesAsync(ct);
         await leads.SaveAsync(lead, ct);
 
         if (input.NotifyOwner)
         {
-            var fieldsBlock = string.Join("\n", lead.Fields.Select(kv => $"{kv.Key}: {kv.Value}"));
-            var body = $"New lead for {site.Name}\n\nChannel: {input.Channel}\nFields:\n{fieldsBlock}\n\nNotes: {lead.Notes}\n";
+            var fieldsBlock = string.Join("\n", input.Fields.Select(kv => $"{kv.Key}: {kv.Value}"));
+            var body = $"New lead for {site.Name}\n\nChannel: {lead.Channel}\nFields:\n{fieldsBlock}\n";
             await emailSender.SendAsync(site.OwnerEmail, $"New lead ({site.Name})", body, ct);
         }
 
         return new LeadCaptureResult(lead, leadJustCreated, true);
     }
 
-    private static string BuildNotes(LeadCaptureInput input)
+    private async Task<CustomerRecord> ResolveOrCreateCustomerAsync(
+        string siteId,
+        string? externalContactId,
+        string? name,
+        string? email,
+        string? phone,
+        DateTimeOffset now,
+        CancellationToken ct)
     {
-        var firstMessage = ExtractFirstUserMessage(input.Conversation) ?? input.FallbackMessage ?? "";
-        var channel = (input.Channel ?? "").Trim().ToLowerInvariant();
-        var externalId = (input.ExternalContactId ?? "").Trim();
-        return $"channel={channel}; externalId={externalId}; firstMessage={firstMessage}";
+        var normalizedExternalId = NormalizeString(externalContactId);
+        var normalizedEmail = NormalizeString(email);
+        var normalizedName = NormalizeString(name);
+        var normalizedPhone = NormalizePhone(phone ?? "");
+
+        CustomerRecord? customer = null;
+        if (!string.IsNullOrWhiteSpace(normalizedExternalId))
+        {
+            customer = await db.Customers.FirstOrDefaultAsync(
+                x => x.SiteId == siteId && x.ExternalContactId == normalizedExternalId,
+                ct);
+        }
+
+        if (customer is null && !string.IsNullOrWhiteSpace(normalizedPhone))
+        {
+            customer = await db.Customers.FirstOrDefaultAsync(
+                x => x.SiteId == siteId && x.Phone == normalizedPhone,
+                ct);
+        }
+
+        if (customer is null && !string.IsNullOrWhiteSpace(normalizedEmail))
+        {
+            customer = await db.Customers.FirstOrDefaultAsync(
+                x => x.SiteId == siteId && x.Email == normalizedEmail,
+                ct);
+        }
+
+        if (customer is null)
+        {
+            customer = new CustomerRecord
+            {
+                Id = Guid.NewGuid(),
+                SiteId = siteId,
+                Name = normalizedName,
+                Email = normalizedEmail,
+                Phone = normalizedPhone,
+                ExternalContactId = normalizedExternalId,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            };
+            db.Customers.Add(customer);
+            return customer;
+        }
+
+        var changed = false;
+        if (string.IsNullOrWhiteSpace(customer.Name) && !string.IsNullOrWhiteSpace(normalizedName))
+        {
+            customer.Name = normalizedName;
+            changed = true;
+        }
+        if (string.IsNullOrWhiteSpace(customer.Email) && !string.IsNullOrWhiteSpace(normalizedEmail))
+        {
+            customer.Email = normalizedEmail;
+            changed = true;
+        }
+        if (string.IsNullOrWhiteSpace(customer.Phone) && !string.IsNullOrWhiteSpace(normalizedPhone))
+        {
+            customer.Phone = normalizedPhone;
+            changed = true;
+        }
+        if (string.IsNullOrWhiteSpace(customer.ExternalContactId) && !string.IsNullOrWhiteSpace(normalizedExternalId))
+        {
+            customer.ExternalContactId = normalizedExternalId;
+            changed = true;
+        }
+        if (changed)
+            customer.UpdatedAtUtc = now;
+
+        return customer;
     }
+
+    private static ProjectRecord CreateProject(
+        string siteId,
+        Guid customerId,
+        LeadCaptureInput input,
+        DateTimeOffset now)
+    {
+        var summary = ResolveProjectSummary(input, null);
+        var projectName = BuildProjectName(input, summary, now);
+        var fields = input.Fields
+            .Where(x => !string.IsNullOrWhiteSpace(x.Key))
+            .ToDictionary(
+                x => x.Key.Trim(),
+                x => (x.Value ?? "").Trim(),
+                StringComparer.OrdinalIgnoreCase);
+
+        return new ProjectRecord
+        {
+            Id = Guid.NewGuid(),
+            SiteId = siteId,
+            CustomerId = customerId,
+            Name = projectName,
+            Summary = summary,
+            Status = ProjectStatuses.New,
+            Fields = fields,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        };
+    }
+
+    private static string BuildProjectName(LeadCaptureInput input, string? summary, DateTimeOffset now)
+    {
+        var projectDescription = GetFieldValue(input.Fields, "project_description", "project", "scope", "brief");
+        if (!string.IsNullOrWhiteSpace(projectDescription))
+            return projectDescription.Length > 64 ? projectDescription[..64] : projectDescription;
+
+        if (!string.IsNullOrWhiteSpace(summary))
+            return summary.Length > 64 ? summary[..64] : summary;
+
+        var message = NormalizeString(input.FallbackMessage);
+        if (!string.IsNullOrWhiteSpace(message))
+            return message.Length > 64 ? message[..64] : message;
+
+        return $"Inbound {input.Channel} {now:yyyy-MM-dd}";
+    }
+
+    private static string? ResolveProjectSummary(LeadCaptureInput input, string? existingSummary)
+    {
+        if (input.Fields.TryGetValue("project_summary", out var projectSummary) &&
+            !string.IsNullOrWhiteSpace(projectSummary))
+            return projectSummary.Trim();
+
+        var firstUserMessage = ExtractFirstUserMessage(input.Conversation);
+        if (!string.IsNullOrWhiteSpace(firstUserMessage))
+            return firstUserMessage.Trim();
+
+        if (!string.IsNullOrWhiteSpace(input.FallbackMessage))
+            return input.FallbackMessage.Trim();
+
+        return existingSummary;
+    }
+
+    private static void MergeProjectFields(ProjectRecord project, IReadOnlyDictionary<string, string> updates)
+    {
+        foreach (var pair in updates)
+        {
+            var key = (pair.Key ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(key))
+                continue;
+
+            project.Fields[key] = (pair.Value ?? "").Trim();
+        }
+    }
+
+    private static string? NormalizeString(string? input)
+    {
+        return string.IsNullOrWhiteSpace(input) ? null : input.Trim();
+    }
+
+    private static string NormalizeChannel(string? channel)
+        => string.IsNullOrWhiteSpace(channel) ? "api" : channel.Trim().ToLowerInvariant();
 
     private static string? ExtractFirstUserMessage(IReadOnlyList<LeadCaptureTurn> history)
     {

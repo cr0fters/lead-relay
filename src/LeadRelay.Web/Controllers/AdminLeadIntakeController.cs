@@ -30,7 +30,6 @@ public sealed class AdminLeadIntakeController(
                 Channel: NormalizeChannel(request.Channel),
                 ExternalContactId: request.ExternalContactId,
                 ContactName: request.ContactName,
-                Intent: request.Intent,
                 FallbackMessage: request.Message,
                 Fields: request.Fields ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
                 Conversation: BuildConversation(request),
@@ -81,7 +80,6 @@ public sealed class AdminLeadIntakeController(
         public string? Name { get; init; }
         public string? Email { get; init; }
         public string? Phone { get; init; }
-        public string? Intent { get; init; }
         public string? Message { get; init; }
         public Dictionary<string, string>? Fields { get; init; }
         public List<ConversationTurnRequest>? Conversation { get; init; }

@@ -9,19 +9,6 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
     public async Task SaveAsync(Lead lead, CancellationToken ct)
     {
         var record = await db.Leads.FirstOrDefaultAsync(x => x.Id == lead.Id, ct);
-        if (record is null && !string.IsNullOrWhiteSpace(lead.Phone))
-        {
-            record = await db.Leads.FirstOrDefaultAsync(
-                x => x.SiteId == lead.SiteId && x.Phone == lead.Phone,
-                ct);
-        }
-
-        if (record is null && !string.IsNullOrWhiteSpace(lead.Email))
-        {
-            record = await db.Leads.FirstOrDefaultAsync(
-                x => x.SiteId == lead.SiteId && x.Email == lead.Email,
-                ct);
-        }
         if (record is null)
         {
             record = new LeadRecord { Id = lead.Id };
@@ -30,16 +17,23 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
 
         record.SiteId = lead.SiteId;
         record.CreatedAtUtc = lead.CreatedAtUtc;
-        record.Name = lead.Name;
-        record.Email = lead.Email;
-        record.Phone = lead.Phone;
-        record.Intent = lead.Intent;
-        record.Notes = lead.Notes;
-        record.PageUrl = lead.PageUrl;
-        record.Referrer = lead.Referrer;
+        record.CustomerId = lead.CustomerId;
+        record.ProjectId = lead.ProjectId;
+        record.Channel = NormalizeChannel(lead.Channel);
+        record.Status = NormalizeStatus(lead.Status);
         record.Utm = lead.Utm;
-        record.Fields = lead.Fields;
         record.Conversation = lead.Conversation;
+
+        var customer = await db.Customers.FirstOrDefaultAsync(
+            x => x.SiteId == record.SiteId && x.Id == record.CustomerId,
+            ct);
+        if (customer is not null)
+        {
+            customer.Name = NormalizeText(lead.Name) ?? customer.Name;
+            customer.Email = NormalizeText(lead.Email) ?? customer.Email;
+            customer.Phone = NormalizeText(lead.Phone) ?? customer.Phone;
+            customer.UpdatedAtUtc = DateTimeOffset.UtcNow;
+        }
 
         await db.SaveChangesAsync(ct);
     }
@@ -47,8 +41,23 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
     public async Task<IReadOnlyList<LeadSummary>> GetRecentAsync(int limit, CancellationToken ct)
     {
         var take = Math.Clamp(limit, 1, 200);
-        return await db.Leads.AsNoTracking()
-            .OrderByDescending(x => x.CreatedAtUtc)
+        var query =
+            from lead in db.Leads.AsNoTracking()
+            join customer in db.Customers.AsNoTracking()
+                on lead.CustomerId equals customer.Id into customerGroup
+            from customer in customerGroup.DefaultIfEmpty()
+            orderby lead.CreatedAtUtc descending
+            select new
+            {
+                lead.Id,
+                lead.SiteId,
+                lead.CreatedAtUtc,
+                Name = customer != null ? customer.Name : null,
+                Phone = customer != null ? customer.Phone : null,
+                Email = customer != null ? customer.Email : null
+            };
+
+        return await query
             .Take(take)
             .Select(x => new LeadSummary(
                 x.Id,
@@ -66,9 +75,24 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
         if (string.IsNullOrWhiteSpace(normalizedSiteId)) return Array.Empty<LeadSummary>();
 
         var take = Math.Clamp(limit, 1, 200);
-        return await db.Leads.AsNoTracking()
-            .Where(x => x.SiteId == normalizedSiteId)
-            .OrderByDescending(x => x.CreatedAtUtc)
+        var query =
+            from lead in db.Leads.AsNoTracking()
+            join customer in db.Customers.AsNoTracking()
+                on lead.CustomerId equals customer.Id into customerGroup
+            from customer in customerGroup.DefaultIfEmpty()
+            where lead.SiteId == normalizedSiteId
+            orderby lead.CreatedAtUtc descending
+            select new
+            {
+                lead.Id,
+                lead.SiteId,
+                lead.CreatedAtUtc,
+                Name = customer != null ? customer.Name : null,
+                Phone = customer != null ? customer.Phone : null,
+                Email = customer != null ? customer.Email : null
+            };
+
+        return await query
             .Take(take)
             .Select(x => new LeadSummary(
                 x.Id,
@@ -90,7 +114,22 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
         var effectivePageSize = Math.Clamp(pageSize, 1, 100);
         var effectivePage = Math.Max(1, page);
 
-        var baseQuery = db.Leads.AsNoTracking().Where(x => x.SiteId == normalizedSiteId);
+        var baseQuery =
+            from lead in db.Leads.AsNoTracking()
+            join customer in db.Customers.AsNoTracking()
+                on lead.CustomerId equals customer.Id into customerGroup
+            from customer in customerGroup.DefaultIfEmpty()
+            where lead.SiteId == normalizedSiteId
+            select new
+            {
+                lead.Id,
+                lead.SiteId,
+                lead.CreatedAtUtc,
+                Name = customer != null ? customer.Name : null,
+                Email = customer != null ? customer.Email : null,
+                Phone = customer != null ? customer.Phone : null
+            };
+
         if (!string.IsNullOrWhiteSpace(normalizedQuery))
         {
             var pattern = $"%{normalizedQuery}%";
@@ -120,7 +159,11 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
     public async Task<Lead?> GetByIdAsync(Guid id, CancellationToken ct)
     {
         var record = await db.Leads.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
-        return record is null ? null : Map(record);
+        if (record is null) return null;
+
+        var customer = await LoadCustomerAsync(record, ct);
+        var project = await LoadProjectAsync(record, ct);
+        return Map(record, customer, project);
     }
 
     public async Task<Lead?> GetByIdForSiteAsync(Guid id, string siteId, CancellationToken ct)
@@ -130,30 +173,68 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
 
         var record = await db.Leads.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id && x.SiteId == normalizedSiteId, ct);
-        return record is null ? null : Map(record);
+        if (record is null) return null;
+
+        var customer = await LoadCustomerAsync(record, ct);
+        var project = await LoadProjectAsync(record, ct);
+        return Map(record, customer, project);
     }
 
-    private static Lead Map(LeadRecord record)
+    private static Lead Map(LeadRecord record, CustomerRecord? customer, ProjectRecord? project)
     {
         var lead = new Lead
         {
             Id = record.Id,
             SiteId = record.SiteId,
             CreatedAtUtc = record.CreatedAtUtc,
-            Name = record.Name,
-            Email = record.Email,
-            Phone = record.Phone,
-            Intent = record.Intent,
-            Notes = record.Notes,
-            PageUrl = record.PageUrl,
-            Referrer = record.Referrer,
+            CustomerId = record.CustomerId,
+            ProjectId = record.ProjectId,
+            Channel = NormalizeChannel(record.Channel),
+            Status = NormalizeStatus(record.Status),
+            Name = customer?.Name,
+            Email = customer?.Email,
+            Phone = customer?.Phone,
             Utm = new Dictionary<string, string>(record.Utm, StringComparer.OrdinalIgnoreCase),
-            Fields = new Dictionary<string, string>(record.Fields, StringComparer.OrdinalIgnoreCase)
+            Fields = project is null
+                ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                : new Dictionary<string, string>(project.Fields, StringComparer.OrdinalIgnoreCase)
         };
 
         foreach (var turn in record.Conversation)
             lead.Conversation.Add(turn);
 
         return lead;
+    }
+
+    private static string NormalizeStatus(string? status)
+    {
+        var normalized = (status ?? "").Trim().ToLowerInvariant();
+        return normalized is LeadStatuses.Open or LeadStatuses.Closed
+            ? normalized
+            : LeadStatuses.Open;
+    }
+
+    private static string NormalizeChannel(string? channel)
+    {
+        var normalized = (channel ?? "").Trim().ToLowerInvariant();
+        return string.IsNullOrWhiteSpace(normalized) ? "api" : normalized;
+    }
+
+    private static string? NormalizeText(string? value)
+    {
+        var normalized = (value ?? "").Trim();
+        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+    }
+
+    private async Task<CustomerRecord?> LoadCustomerAsync(LeadRecord record, CancellationToken ct)
+    {
+        return await db.Customers.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.SiteId == record.SiteId && x.Id == record.CustomerId, ct);
+    }
+
+    private async Task<ProjectRecord?> LoadProjectAsync(LeadRecord record, CancellationToken ct)
+    {
+        return await db.Projects.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.SiteId == record.SiteId && x.Id == record.ProjectId, ct);
     }
 }

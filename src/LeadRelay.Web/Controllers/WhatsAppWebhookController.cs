@@ -48,13 +48,12 @@ public sealed class WhatsAppWebhookController(
         foreach (var message in reply.Replies)
             await whatsAppClient.SendTextAsync(waId, message, ct);
 
-        await leadCapture.CaptureAsync(
+        var captured = await leadCapture.CaptureAsync(
             site,
             new LeadCaptureInput(
                 Channel: "whatsapp",
                 ExternalContactId: waId,
                 ContactName: contactName,
-                Intent: "website chat",
                 FallbackMessage: text,
                 Fields: reply.Collected,
                 Conversation: reply.History
@@ -64,6 +63,9 @@ public sealed class WhatsAppWebhookController(
                 LeadCreatedAtUtc: reply.LeadCreatedAtUtc,
                 NotifyOwner: reply.LeadJustCreated),
             ct);
+
+        if (captured.Lead is not null)
+            await conversations.BindLeadAsync(site.Id, waId, captured.Lead.Id, captured.Lead.CreatedAtUtc, ct);
 
         return Ok(new { ok = true });
     }

@@ -146,8 +146,7 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
             Name = lead.Name,
             Email = lead.Email,
             Phone = lead.Phone,
-            Notes = lead.Notes,
-            Intent = lead.Intent,
+            Channel = lead.Channel,
             CreatedAtUtc = lead.CreatedAtUtc,
             Fields = lead.Fields,
             Conversation = lead.Conversation,
@@ -159,16 +158,9 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
 
     private static string? InferChannel(Lead lead)
     {
-        if (string.IsNullOrWhiteSpace(lead.Notes)) return null;
-        var parts = lead.Notes.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        foreach (var part in parts)
-        {
-            if (!part.StartsWith("channel=", StringComparison.OrdinalIgnoreCase)) continue;
-            var value = part["channel=".Length..].Trim();
-            return string.IsNullOrWhiteSpace(value) ? null : value;
-        }
-
-        return null;
+        return string.IsNullOrWhiteSpace(lead.Channel)
+            ? null
+            : lead.Channel.Trim().ToLowerInvariant();
     }
 
     private static string? ResolveRecipient(string channel, Lead lead)
@@ -276,8 +268,7 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
         public string? Name { get; set; }
         public string? Email { get; set; }
         public string? Phone { get; set; }
-        public string? Notes { get; set; }
-        public string? Intent { get; set; }
+        public string Channel { get; set; } = "api";
         public DateTimeOffset CreatedAtUtc { get; set; }
         public IReadOnlyDictionary<string, string> Fields { get; set; } = new Dictionary<string, string>();
         public IReadOnlyList<LeadConversationTurn> Conversation { get; set; } = Array.Empty<LeadConversationTurn>();

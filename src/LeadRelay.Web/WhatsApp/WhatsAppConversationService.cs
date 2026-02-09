@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using LeadRelay.Application.Abstractions;
+using LeadRelay.Domain.Leads;
 using LeadRelay.Domain.Sites;
 using LeadRelay.Infrastructure.Persistence;
 using LeadRelay.Web.AI;
@@ -99,7 +100,7 @@ public sealed class WhatsAppConversationService(
             var leadJustCreated = false;
             if (conversationOptions.Value.SubmitLeadOnFirstMessage)
             {
-                (state, leadJustCreated) = EnsureLead(state, normalizedText);
+                (state, leadJustCreated) = await EnsureLeadAsync(state, normalizedText, ct);
             }
 
             var firstPrompt = GetPrompt(site, state.StepIndex);
@@ -155,7 +156,7 @@ public sealed class WhatsAppConversationService(
         var leadJustCreatedExisting = false;
         if (conversationOptions.Value.SubmitLeadOnFirstMessage)
         {
-            (state, leadJustCreatedExisting) = EnsureLead(state, normalizedText);
+            (state, leadJustCreatedExisting) = await EnsureLeadAsync(state, normalizedText, ct);
         }
 
         if (conversationOptions.Value.UseLlm)
@@ -695,13 +696,92 @@ public sealed class WhatsAppConversationService(
         return overrideText.Trim();
     }
 
-    private (ConversationState state, bool leadJustCreated) EnsureLead(ConversationState state, string normalizedText)
+    private async Task<(ConversationState state, bool leadJustCreated)> EnsureLeadAsync(
+        ConversationState state,
+        string normalizedText,
+        CancellationToken ct)
     {
         if (state.LeadId.HasValue || string.IsNullOrWhiteSpace(normalizedText))
             return (state, false);
 
-        var leadId = Guid.NewGuid();
-        return (state with { LeadId = leadId, LeadCreatedAtUtc = clock.UtcNow }, true);
+        var reusableLead = await TryGetReusableOpenLeadAsync(state.SiteId, state.WaId, ct);
+        if (reusableLead is not null)
+        {
+            return (state with
+            {
+                LeadId = reusableLead.Value.Id,
+                LeadCreatedAtUtc = reusableLead.Value.CreatedAtUtc
+            }, false);
+        }
+
+        // New lead is created by LeadCaptureService after this method returns.
+        // Keep state unbound until the lead row exists, then bind via BindLeadAsync.
+        return (state, true);
+    }
+
+    private async Task<(Guid Id, DateTimeOffset CreatedAtUtc)?> TryGetReusableOpenLeadAsync(
+        string siteId,
+        string waId,
+        CancellationToken ct)
+    {
+        var normalizedWaId = NormalizePhone(waId);
+        var customer = await db.Customers.AsNoTracking()
+            .Where(x => x.SiteId == siteId)
+            .FirstOrDefaultAsync(x =>
+                x.ExternalContactId == waId ||
+                (!string.IsNullOrWhiteSpace(normalizedWaId) && x.Phone == normalizedWaId), ct);
+        if (customer is null)
+            return null;
+
+        var windowHours = Math.Max(1, conversationOptions.Value.ReuseOpenLeadWindowHours);
+        var threshold = clock.UtcNow.AddHours(-windowHours);
+
+        var lead = await db.Leads.AsNoTracking()
+            .Where(x =>
+                x.SiteId == siteId &&
+                x.CustomerId == customer.Id &&
+                x.Status == LeadStatuses.Open &&
+                x.CreatedAtUtc >= threshold)
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .Select(x => new { x.Id, x.CreatedAtUtc })
+            .FirstOrDefaultAsync(ct);
+
+        return lead is null ? null : (lead.Id, lead.CreatedAtUtc);
+    }
+
+    public async Task BindLeadAsync(
+        string siteId,
+        string waId,
+        Guid leadId,
+        DateTimeOffset leadCreatedAtUtc,
+        CancellationToken ct)
+    {
+        var state = await LoadStateAsync(siteId, waId, ct)
+                    ?? new ConversationState(
+                        siteId,
+                        waId,
+                        0,
+                        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+                        clock.UtcNow,
+                        clock.UtcNow,
+                        clock.UtcNow,
+                        false,
+                        null,
+                        new List<ConversationTurn>(),
+                        null,
+                        null,
+                        null);
+
+        if (state.LeadId == leadId)
+            return;
+
+        state = state with
+        {
+            LeadId = leadId,
+            LeadCreatedAtUtc = leadCreatedAtUtc,
+            UpdatedAtUtc = clock.UtcNow
+        };
+        await SaveStateAsync(state, ct);
     }
 
     private static string BuildIntro(Site site)

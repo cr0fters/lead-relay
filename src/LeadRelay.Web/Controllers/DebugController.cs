@@ -26,13 +26,12 @@ public sealed class DebugController(
         if (site is null) return NotFound();
 
         var reply = await conversations.HandleMessageAsync(site, waId, message, contactName, systemPrompt, ct);
-        await leadCapture.CaptureAsync(
+        var captured = await leadCapture.CaptureAsync(
             site,
             new LeadCaptureInput(
                 Channel: "whatsapp",
                 ExternalContactId: waId,
                 ContactName: contactName,
-                Intent: "website chat (debug)",
                 FallbackMessage: message,
                 Fields: reply.Collected,
                 Conversation: reply.History
@@ -43,6 +42,9 @@ public sealed class DebugController(
                 NotifyOwner: reply.LeadJustCreated),
             ct);
 
+        if (captured.Lead is not null)
+            await conversations.BindLeadAsync(site.Id, waId, captured.Lead.Id, captured.Lead.CreatedAtUtc, ct);
+
         return Ok(new
         {
             reply = reply.ReplyText,
@@ -50,7 +52,7 @@ public sealed class DebugController(
             completed = reply.IsComplete,
             collected = reply.Collected,
             history = reply.History,
-            leadId = reply.LeadId
+            leadId = captured.Lead?.Id ?? reply.LeadId
         });
     }
 

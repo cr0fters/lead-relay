@@ -5,13 +5,13 @@ public sealed class Lead
     public required Guid Id { get; init; }
     public required string SiteId { get; init; }
     public required DateTimeOffset CreatedAtUtc { get; init; }
+    public Guid CustomerId { get; set; }
+    public Guid ProjectId { get; set; }
+    public string Channel { get; set; } = "api";
+    public string Status { get; set; } = LeadStatuses.Open;
     public string? Name { get; set; }
     public string? Email { get; set; }
     public string? Phone { get; set; }
-    public string? Intent { get; set; }
-    public string? Notes { get; set; }
-    public string? PageUrl { get; set; }
-    public string? Referrer { get; set; }
     public Dictionary<string, string> Utm { get; init; } = new();
     public Dictionary<string, string> Fields { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public List<LeadConversationTurn> Conversation { get; init; } = new();

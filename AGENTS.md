@@ -13,6 +13,17 @@ This file defines the default engineering standards for all contributors (human 
 - Prefer simple, maintainable solutions (KISS, YAGNI).
 - Avoid duplication (DRY).
 - Keep boundaries clear between Domain, Application, Infrastructure, and Web layers.
+- Keep the data model lean: prefer one canonical storage location per business fact.
+
+## Data Modeling (Lean by Default)
+- Do not duplicate the same business field across multiple tables unless there is a clear, documented reason.
+- If duplication is intentionally introduced (for caching/read-model performance), document:
+  - source of truth
+  - sync/update strategy
+  - acceptable staleness window
+- For relationship modeling, prefer references (foreign keys) over copying profile/contact fields.
+- When refactoring duplicated schema, include a safe data backfill/migration plan and regression tests.
+- Treat schema simplification as a product requirement, not optional cleanup.
 
 ## Testing Requirements
 - Every new feature or behavior change must include automated tests.

@@ -20,7 +20,9 @@ public sealed class OwnerPortalReplyChannelTests
             CreatedAtUtc = DateTimeOffset.UtcNow,
             Email = "lead@example.com",
             Phone = "447000000000",
-            Notes = "channel=whatsapp"
+            Channel = "whatsapp",
+            CustomerId = Guid.NewGuid(),
+            ProjectId = Guid.NewGuid()
         };
 
         var repository = new FakeLeadRepository(lead);
@@ -49,6 +51,9 @@ public sealed class OwnerPortalReplyChannelTests
             Id = Guid.NewGuid(),
             SiteId = "site_demo",
             CreatedAtUtc = DateTimeOffset.UtcNow,
+            Channel = "api",
+            CustomerId = Guid.NewGuid(),
+            ProjectId = Guid.NewGuid(),
             Email = null,
             Phone = null
         };

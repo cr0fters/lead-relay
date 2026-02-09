@@ -7,5 +7,6 @@ public sealed record ConversationOptions
     public int MaxHistoryTurns { get; init; } = 8;
     public bool SubmitLeadOnFirstMessage { get; init; } = true;
     public int SessionTimeoutHours { get; init; } = 48;
+    public int ReuseOpenLeadWindowHours { get; init; } = 72;
     public bool BotEnabled { get; init; } = true;
 }
