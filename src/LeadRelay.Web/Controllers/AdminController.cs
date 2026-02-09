@@ -45,20 +45,9 @@ public sealed class AdminController(ISiteRepository sites) : Controller
     [HttpPost("/admin/sites/new")]
     public async Task<IActionResult> CreateSite([FromForm] SiteFormModel model, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(model.Id))
-        {
-            model.Error = "Site id is required.";
-            return View("Site", model);
-        }
+        var siteId = CreateSiteId();
 
-        var existing = await sites.GetByIdAsync(model.Id.Trim(), ct);
-        if (existing is not null)
-        {
-            model.Error = "A site with this id already exists.";
-            return View("Site", model);
-        }
-
-        if (!TryBuildSite(model, model.Id.Trim(), out var site, out var error))
+        if (!TryBuildSite(model, siteId, out var site, out var error))
         {
             model.Error = error;
             return View("Site", model);
@@ -159,6 +148,9 @@ public sealed class AdminController(ISiteRepository sites) : Controller
 
         return parts;
     }
+
+    private static string CreateSiteId()
+        => Guid.NewGuid().ToString("D");
 
     public sealed class AdminDashboardModel
     {

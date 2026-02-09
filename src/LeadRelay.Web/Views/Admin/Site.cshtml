@@ -219,19 +219,6 @@
     }
 
     <form class="panel" method="post" action="@(string.IsNullOrWhiteSpace(Model.Id) ? "/admin/sites/new" : $"/admin/sites/{Model.Id}")">
-        @if (!string.IsNullOrWhiteSpace(Model.Id))
-        {
-            <div class="helper">Site id: <strong>@Model.Id</strong></div>
-        }
-        else
-        {
-            <div style="margin-top:16px;">
-                <label for="Id">Site Id</label>
-                <input id="Id" name="Id" value="@Model.Id" placeholder="site_demo" />
-                <div class="helper">Stable id used in widget embeds and integrations.</div>
-            </div>
-        }
-
         <div class="grid" style="margin-top:16px;">
             <div>
                 <label for="Name">Site name</label>

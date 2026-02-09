@@ -184,7 +184,7 @@
     <div class="top">
         <div>
             <h1 class="title">Leads Inbox</h1>
-            <div class="meta">Site: <strong>@Model.SiteId</strong> · @Model.OwnerEmail</div>
+            <div class="meta">@Model.OwnerEmail</div>
         </div>
         <form method="post" action="/owner/logout" style="margin:0;">
             @Html.AntiForgeryToken()

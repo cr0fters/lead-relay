@@ -20,13 +20,8 @@ public sealed class AdminSitesController(ISiteRepository sites) : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] SiteConfigRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.Id))
-            return BadRequest(new { error = "Site id is required." });
-
-        var existing = await sites.GetByIdAsync(request.Id, ct);
-        if (existing is not null) return Conflict(new { error = "Site already exists." });
-
-        var site = request.ToSite(request.Id);
+        var siteId = Guid.NewGuid().ToString("D");
+        var site = request.ToSite(siteId);
         if (!site.IsValid(out var error)) return BadRequest(new { error });
 
         await sites.UpsertAsync(site, ct);
@@ -39,9 +34,6 @@ public sealed class AdminSitesController(ISiteRepository sites) : ControllerBase
         var existing = await sites.GetByIdAsync(siteId, ct);
         if (existing is null) return NotFound();
 
-        if (!string.IsNullOrWhiteSpace(request.Id) && !string.Equals(request.Id, siteId, StringComparison.OrdinalIgnoreCase))
-            return BadRequest(new { error = "Route site id does not match payload." });
-
         var site = request.ToSite(siteId);
         if (!site.IsValid(out var error)) return BadRequest(new { error });
 
@@ -51,7 +43,6 @@ public sealed class AdminSitesController(ISiteRepository sites) : ControllerBase
 
     public sealed record SiteConfigRequest
     {
-        public string? Id { get; init; }
         public string? Name { get; init; }
         public string? BusinessSummary { get; init; }
         public List<string>? AllowedDomains { get; init; }
