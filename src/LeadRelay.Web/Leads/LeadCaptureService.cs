@@ -28,6 +28,7 @@ public sealed class LeadCaptureService(ILeadRepository leads, IEmailSender email
             CreatedAtUtc = input.LeadCreatedAtUtc ?? now,
             Channel = NormalizeChannel(input.Channel),
             Status = LeadStatuses.Open,
+            IsBotPaused = existingLead?.IsBotPaused ?? false
         };
         string? projectSummaryForLead = null;
 

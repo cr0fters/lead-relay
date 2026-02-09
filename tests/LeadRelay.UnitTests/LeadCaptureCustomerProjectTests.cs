@@ -135,6 +135,49 @@ public sealed class LeadCaptureCustomerProjectTests
         Assert.That(updatedProject.Summary, Is.EqualTo("Bathroom redesign"));
     }
 
+    [Test]
+    public async Task existing_paused_lead_stays_paused_when_capture_updates_same_lead()
+    {
+        await using var db = CreateDb();
+        var repository = new InMemoryLeadRepository();
+        var service = new LeadCaptureService(repository, new NoOpEmailSender(), db);
+        var site = BuildSite();
+
+        var first = await service.CaptureAsync(
+            site,
+            new LeadCaptureInput(
+                Channel: "whatsapp",
+                ExternalContactId: "447000000444",
+                ContactName: "Taylor",
+                FallbackMessage: "Need help",
+                Fields: new Dictionary<string, string>(),
+                Conversation: new[] { new LeadCaptureTurn("user", "Need help", DateTimeOffset.UtcNow) }),
+            CancellationToken.None);
+
+        Assert.That(first.Lead, Is.Not.Null);
+        var leadId = first.Lead!.Id;
+        var pausedLead = await repository.GetByIdAsync(leadId, CancellationToken.None);
+        Assert.That(pausedLead, Is.Not.Null);
+        pausedLead!.IsBotPaused = true;
+        await repository.SaveAsync(pausedLead, CancellationToken.None);
+
+        var second = await service.CaptureAsync(
+            site,
+            new LeadCaptureInput(
+                Channel: "whatsapp",
+                ExternalContactId: "447000000444",
+                ContactName: "Taylor",
+                FallbackMessage: "Timeline is ASAP",
+                Fields: new Dictionary<string, string> { ["timeline"] = "ASAP" },
+                Conversation: new[] { new LeadCaptureTurn("user", "Timeline is ASAP", DateTimeOffset.UtcNow) },
+                LeadId: leadId,
+                LeadCreatedAtUtc: first.Lead.CreatedAtUtc),
+            CancellationToken.None);
+
+        Assert.That(second.Lead, Is.Not.Null);
+        Assert.That(second.Lead!.IsBotPaused, Is.True);
+    }
+
     private static LeadRelayDbContext CreateDb()
     {
         var options = new DbContextOptionsBuilder<LeadRelayDbContext>()
