@@ -25,6 +25,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution items", "Solution 
 		AGENTS.md = AGENTS.md
 		railway.toml = railway.toml
 		.github\workflows\ci-cd.yml = .github\workflows\ci-cd.yml
+		build\LeadRelay.Web.Dockerfile = build\LeadRelay.Web.Dockerfile
 	EndProjectSection
 EndProject
 Global

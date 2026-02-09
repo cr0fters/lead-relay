@@ -12,7 +12,7 @@ RUN dotnet tool install --global dotnet-ef --version 8.*
 ENV PATH="${PATH}:/root/.dotnet/tools"
 RUN dotnet restore src/LeadRelay.Web/LeadRelay.Web.csproj
 RUN dotnet publish src/LeadRelay.Web/LeadRelay.Web.csproj -c Release -o /out
-RUN dotnet ef migrations script --idempotent --project src/LeadRelay.Infrastructure --startup-project src/LeadRelay.Web --configuration Release --output /out/migrations.sql --no-build
+RUN dotnet ef migrations script --idempotent --project src/LeadRelay.Infrastructure --startup-project src/LeadRelay.Infrastructure --configuration Release --output /out/migrations.sql --no-build
 
 FROM base AS final
 WORKDIR /app

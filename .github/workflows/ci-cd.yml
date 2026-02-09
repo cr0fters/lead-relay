@@ -52,7 +52,7 @@ jobs:
       - name: Generate idempotent migration script
         run: |
           mkdir -p artifacts
-          dotnet ef migrations script --idempotent --project src/LeadRelay.Infrastructure --startup-project src/LeadRelay.Web --configuration Release --output artifacts/migrations.sql --no-build
+          dotnet ef migrations script --idempotent --project src/LeadRelay.Infrastructure --startup-project src/LeadRelay.Infrastructure --configuration Release --output artifacts/migrations.sql --no-build
 
       - name: Upload migration script artifact
         uses: actions/upload-artifact@v4

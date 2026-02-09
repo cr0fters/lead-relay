@@ -87,7 +87,7 @@ dotnet ef database update --project src/LeadRelay.Infrastructure --startup-proje
 - Apply migrations:
   - `dotnet ef database update --project src/LeadRelay.Infrastructure --startup-project src/LeadRelay.Web`
 - Generate idempotent SQL script:
-  - `dotnet ef migrations script --idempotent --project src/LeadRelay.Infrastructure --startup-project src/LeadRelay.Web -o artifacts/migrations.sql`
+  - `dotnet ef migrations script --idempotent --project src/LeadRelay.Infrastructure --startup-project src/LeadRelay.Infrastructure -o artifacts/migrations.sql`
 - Railway pre-deploy migration command:
   - `sh /app/apply-migrations.sh`
 
