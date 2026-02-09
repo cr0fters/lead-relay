@@ -1,591 +1,202 @@
 @model LeadRelay.Web.Controllers.OwnerPortalController.OwnerLeadDetailModel
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Lead CRM View</title>
-    <style>
-        @@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap");
+@{
+    Layout = "~/Views/Shared/_OwnerLayout.cshtml";
+    ViewData["Title"] = "Lead Workspace";
+}
 
-        :root {
-            --bg: #f3f5f9;
-            --ink: #152132;
-            --muted: #5f6f86;
-            --panel: #ffffff;
-            --line: #d9e1ec;
-            --accent: #0f62fe;
-            --accent-2: #13b886;
-            --danger: #c53838;
-            --danger-bg: #fff1f1;
-            --ok: #126b3f;
-            --ok-bg: #eefcf4;
-        }
-
-        * { box-sizing: border-box; }
-
-        body {
-            margin: 0;
-            color: var(--ink);
-            background:
-                radial-gradient(720px 380px at 0 -10%, rgba(15, 98, 254, 0.08), transparent 60%),
-                radial-gradient(900px 420px at 100% -20%, rgba(19, 184, 134, 0.08), transparent 60%),
-                var(--bg);
-            font-family: "Manrope", system-ui, -apple-system, Segoe UI, sans-serif;
-        }
-
-        a { color: var(--accent); text-decoration: none; }
-
-        .wrap {
-            max-width: 1240px;
-            margin: 0 auto;
-            padding: 28px 18px 42px;
-        }
-
-        .topbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-        }
-
-        .top-actions {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .crumb {
-            color: var(--muted);
-            font-size: 0.94rem;
-        }
-
-        .headline {
-            display: grid;
-            gap: 4px;
-            margin-bottom: 16px;
-        }
-
-        .headline h1 {
-            margin: 0;
-            font-family: "Space Grotesk", sans-serif;
-            font-size: clamp(1.45rem, 2.8vw, 2rem);
-            letter-spacing: -0.02em;
-        }
-
-        .subline {
-            color: var(--muted);
-            font-size: 0.95rem;
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .flash {
-            border-radius: 10px;
-            padding: 10px 12px;
-            margin-bottom: 14px;
-            border: 1px solid transparent;
-            font-size: 0.95rem;
-        }
-
-        .flash-error {
-            color: var(--danger);
-            background: var(--danger-bg);
-            border-color: #efb6b6;
-        }
-
-        .flash-ok {
-            color: var(--ok);
-            background: var(--ok-bg);
-            border-color: #bde8cf;
-        }
-
-        .layout {
-            display: grid;
-            grid-template-columns: 350px minmax(0, 1fr);
-            gap: 14px;
-        }
-
-        .panel {
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-radius: 14px;
-        }
-
-        .section {
-            padding: 14px;
-            border-bottom: 1px solid #edf1f7;
-        }
-
-        .section:last-child { border-bottom: 0; }
-
-        .kicker {
-            margin: 0 0 10px;
-            font-size: 0.76rem;
-            letter-spacing: 0.08em;
-            color: var(--muted);
-            text-transform: uppercase;
-            font-weight: 700;
-        }
-
-        .field-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .summary-card {
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 12px;
-            align-items: start;
-            border: 1px solid #cfe0ff;
-            background: linear-gradient(180deg, #f4f8ff, #eef4ff);
-            border-radius: 12px;
-            padding: 12px;
-            margin-bottom: 10px;
-        }
-
-        .summary-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            display: grid;
-            place-items: center;
-            font-size: 0.82rem;
-            font-weight: 800;
-            letter-spacing: 0.04em;
-            color: #0f62fe;
-            background: #fff;
-            border: 1px solid #c5d8ff;
-        }
-
-        .summary-text {
-            margin: 0;
-            white-space: pre-wrap;
-            line-height: 1.4;
-            color: #193252;
-            font-weight: 500;
-        }
-
-        .captured-list {
-            display: grid;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .captured-row {
-            border: 1px solid #e4ebf4;
-            border-radius: 10px;
-            padding: 10px;
-            background: #fafcfe;
-        }
-
-        .field {
-            border: 1px solid #e4ebf4;
-            border-radius: 10px;
-            padding: 10px;
-            background: #fafcfe;
-        }
-
-        .field .label {
-            color: var(--muted);
-            font-size: 0.76rem;
-            margin-bottom: 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            font-weight: 700;
-        }
-
-        .field .value {
-            font-weight: 600;
-            font-size: 0.95rem;
-            overflow-wrap: anywhere;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-
-        input[type="text"],
-        input[type="email"],
-        input[type="tel"],
-        select,
-        textarea {
-            width: 100%;
-            border: 1px solid #c8d5e7;
-            border-radius: 10px;
-            font: inherit;
-            padding: 10px 11px;
-            background: #fff;
-            color: var(--ink);
-        }
-
-        textarea {
-            min-height: 112px;
-            resize: vertical;
-        }
-
-        .btn {
-            border: 0;
-            border-radius: 10px;
-            padding: 10px 12px;
-            font: inherit;
-            font-weight: 700;
-            cursor: pointer;
-        }
-
-        .btn-primary {
-            background: var(--accent);
-            color: #fff;
-        }
-
-        .btn-secondary {
-            background: #eef3fb;
-            color: #24364e;
-            border: 1px solid #cfdbee;
-        }
-
-        .btn-row {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 8px;
-        }
-
-        .meta-list {
-            margin: 0;
-            padding: 0;
-            list-style: none;
-            display: grid;
-            gap: 8px;
-        }
-
-        .meta-list li {
-            padding: 9px 10px;
-            border: 1px solid #e5ebf5;
-            border-radius: 10px;
-            background: #fbfcff;
-            font-size: 0.93rem;
-        }
-
-        .timeline {
-            display: grid;
-            gap: 8px;
-            max-height: 460px;
-            overflow: auto;
-            padding-right: 4px;
-            background:
-                linear-gradient(180deg, rgba(8, 127, 91, 0.06), rgba(8, 127, 91, 0.02)),
-                #f6faf8;
-            border: 1px solid #d6e7de;
-            border-radius: 12px;
-            padding: 12px;
-        }
-
-        .chat-msg {
-            display: grid;
-            gap: 4px;
-            max-width: 86%;
-        }
-
-        .chat-msg.incoming {
-            justify-self: start;
-        }
-
-        .chat-msg.outgoing {
-            justify-self: end;
-        }
-
-        .chat-meta {
-            display: flex;
-            gap: 8px;
-            font-size: 0.8rem;
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-        }
-
-        .chat-bubble {
-            white-space: pre-wrap;
-            line-height: 1.4;
-            font-size: 0.94rem;
-            padding: 10px 12px;
-            border-radius: 12px;
-            border: 1px solid #d8e2df;
-            background: #fff;
-            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
-        }
-
-        .chat-msg.incoming .chat-bubble {
-            border-bottom-left-radius: 6px;
-            background: #ffffff;
-            position: relative;
-        }
-
-        .chat-msg.incoming .chat-bubble::before {
-            content: "";
-            position: absolute;
-            left: -6px;
-            top: 10px;
-            width: 10px;
-            height: 10px;
-            background: #ffffff;
-            border-left: 1px solid #d8e2df;
-            border-bottom: 1px solid #d8e2df;
-            transform: rotate(45deg);
-        }
-
-        .chat-msg.outgoing .chat-bubble {
-            border-bottom-right-radius: 6px;
-            border-color: #b8dfc5;
-            background: #dcf8c6;
-            position: relative;
-        }
-
-        .chat-msg.outgoing .chat-bubble::after {
-            content: "";
-            position: absolute;
-            right: -6px;
-            top: 10px;
-            width: 10px;
-            height: 10px;
-            background: #dcf8c6;
-            border-right: 1px solid #b8dfc5;
-            border-top: 1px solid #b8dfc5;
-            transform: rotate(45deg);
-        }
-
-        .composer {
-            border-top: 1px solid #edf1f7;
-            background: #fff;
-            padding-top: 14px;
-        }
-
-        .helper {
-            color: var(--muted);
-            font-size: 0.84rem;
-            margin-top: 6px;
-        }
-
-        @@media (max-width: 980px) {
-            .layout {
-                grid-template-columns: 1fr;
-            }
-
-            .timeline {
-                max-height: none;
-            }
-        }
-    </style>
-</head>
-<body>
-<div class="wrap">
-    <div class="topbar">
-        <div class="crumb"><a href="/owner">Leads</a> / @Model.Id</div>
-        <div class="top-actions">
-            <a class="btn btn-secondary" href="/owner/settings">Settings</a>
-            <form method="post" action="/owner/logout" style="margin:0;">
-                @Html.AntiForgeryToken()
-                <button class="btn btn-secondary" type="submit">Sign out</button>
-            </form>
+<div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8" x-data>
+    <header class="mb-4 rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500"><a class="hover:text-sky-700" href="/owner">Leads</a> / @Model.Id</p>
+                <h1 class="font-display text-2xl font-semibold tracking-tight text-slate-900">Lead Workspace</h1>
+                <p class="text-sm text-slate-600">Owner: @Model.OwnerEmail · Created: @Model.CreatedAtUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm") UTC</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <a href="/owner/settings" class="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400">
+                    <i data-lucide="settings-2" class="h-4 w-4"></i>
+                    <span>Settings</span>
+                </a>
+                <form method="post" action="/owner/logout" class="m-0">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400">
+                        <i data-lucide="log-out" class="h-4 w-4"></i>
+                        <span>Sign out</span>
+                    </button>
+                </form>
+            </div>
         </div>
-    </div>
-
-    <div class="headline">
-        <h1>Lead Workspace</h1>
-        <div class="subline">
-            <span>Owner: <strong>@Model.OwnerEmail</strong></span>
-            <span>Created: <strong>@Model.CreatedAtUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm") UTC</strong></span>
-        </div>
-    </div>
+    </header>
 
     @if (!string.IsNullOrWhiteSpace(Model.Error))
     {
-        <div class="flash flash-error">@Model.Error</div>
+        <div class="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">@Model.Error</div>
     }
 
     @if (!string.IsNullOrWhiteSpace(Model.Success))
     {
-        <div class="flash flash-ok">@Model.Success</div>
+        <div class="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">@Model.Success</div>
     }
 
-    <div class="layout">
-        <aside class="panel">
-            <section class="section">
-                <h2 class="kicker">Contact Profile</h2>
-                <div class="field-grid">
-                    <div class="field">
-                        <div class="label">Name</div>
-                        <div class="value">@(string.IsNullOrWhiteSpace(Model.Name) ? "-" : Model.Name)</div>
-                    </div>
-                    <div class="field">
-                        <div class="label">Channel</div>
-                        <div class="value">@Model.Channel</div>
-                    </div>
-                    <div class="field">
-                        <div class="label">Status</div>
-                        <div class="value">@Model.Status</div>
-                    </div>
-                    <div class="field">
-                        <div class="label">Email</div>
-                        <div class="value">@(string.IsNullOrWhiteSpace(Model.Email) ? "-" : Model.Email)</div>
-                    </div>
-                    <div class="field">
-                        <div class="label">Phone</div>
-                        <div class="value">@(string.IsNullOrWhiteSpace(Model.Phone) ? "-" : Model.Phone)</div>
-                    </div>
+    <div class="grid gap-4 lg:grid-cols-[360px_1fr]">
+        <aside class="space-y-4">
+            <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
+                <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Contact Profile</h2>
+                <div class="grid gap-2 sm:grid-cols-2">
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5"><p class="text-xs uppercase tracking-[0.1em] text-slate-500">Name</p><p class="text-sm font-semibold">@(string.IsNullOrWhiteSpace(Model.Name) ? "-" : Model.Name)</p></div>
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5"><p class="text-xs uppercase tracking-[0.1em] text-slate-500">Channel</p><p class="text-sm font-semibold">@Model.Channel</p></div>
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5"><p class="text-xs uppercase tracking-[0.1em] text-slate-500">Status</p><p class="text-sm font-semibold">@Model.Status</p></div>
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5"><p class="text-xs uppercase tracking-[0.1em] text-slate-500">Bot</p><p class="text-sm font-semibold">@(Model.IsPaused ? "Paused" : "Active")</p></div>
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5 sm:col-span-2"><p class="text-xs uppercase tracking-[0.1em] text-slate-500">Email</p><p class="text-sm font-semibold break-all">@(string.IsNullOrWhiteSpace(Model.Email) ? "-" : Model.Email)</p></div>
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5 sm:col-span-2"><p class="text-xs uppercase tracking-[0.1em] text-slate-500">Phone</p><p class="text-sm font-semibold break-all">@(string.IsNullOrWhiteSpace(Model.Phone) ? "-" : Model.Phone)</p></div>
                 </div>
             </section>
 
-            <section class="section">
-                <h2 class="kicker">Conversation Control</h2>
-                <form method="post" action="/owner/leads/@Model.Id/pause">
+            <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
+                <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Conversation Control</h2>
+                <form method="post" action="/owner/leads/@Model.Id/pause" x-data="{ paused: @(Model.IsPaused ? "true" : "false") }">
                     @Html.AntiForgeryToken()
-                    <input type="hidden" name="paused" value="@(Model.IsPaused ? "false" : "true")" />
-                    <div class="btn-row">
-                        <button class="btn btn-secondary" type="submit">@(Model.IsPaused ? "Resume Conversation" : "Pause Conversation")</button>
+                    <input type="hidden" name="paused" :value="paused ? 'true' : 'false'" />
+                    <div class="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-800">Pause Conversation</p>
+                            <p class="text-xs text-slate-500">Turn off auto replies for this lead</p>
+                        </div>
+                        <label class="relative inline-flex cursor-pointer items-center">
+                            <input type="checkbox" class="peer sr-only" x-model="paused" @@change="$el.form.submit()" />
+                            <span class="h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-slate-700"></span>
+                            <span class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5"></span>
+                        </label>
                     </div>
                 </form>
             </section>
 
-            <section class="section">
-                <h2 class="kicker">Edit Contact</h2>
-                <form method="post" action="/owner/leads/@Model.Id/contact">
+            <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
+                <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Edit Contact</h2>
+                <form method="post" action="/owner/leads/@Model.Id/contact" class="space-y-3">
                     @Html.AntiForgeryToken()
-
-                    <label for="name">Name</label>
-                    <input id="name" name="name" type="text" value="@Model.Name" />
-
-                    <label for="email">Email</label>
-                    <input id="email" name="email" type="email" value="@Model.Email" />
-
-                    <label for="phone">Phone</label>
-                    <input id="phone" name="phone" type="tel" value="@Model.Phone" />
-
-                    <div class="btn-row">
-                        <button class="btn btn-secondary" type="submit">Save Contact</button>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-slate-700" for="name">Name</label>
+                        <input class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm ring-slate-200 outline-none focus:ring" id="name" name="name" type="text" value="@Model.Name" />
                     </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-slate-700" for="email">Email</label>
+                        <input class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm ring-slate-200 outline-none focus:ring" id="email" name="email" type="email" value="@Model.Email" />
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-slate-700" for="phone">Phone</label>
+                        <input class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm ring-slate-200 outline-none focus:ring" id="phone" name="phone" type="tel" value="@Model.Phone" />
+                    </div>
+                    <button class="w-full rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400" type="submit">Save Contact</button>
                 </form>
             </section>
 
-            <section class="section">
-                <h2 class="kicker">Captured Fields</h2>
-                <form method="post" action="/owner/leads/@Model.Id/fields">
+            <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
+                <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Captured Fields</h2>
+                <form method="post" action="/owner/leads/@Model.Id/fields" class="space-y-3">
                     @Html.AntiForgeryToken()
-                @if (Model.FieldDefinitions.Count == 0)
-                {
-                    <div class="helper">No captured fields.</div>
-                }
-                else
-                {
-                    <div class="captured-list">
-                        @foreach (var field in Model.FieldDefinitions)
+                    @if (Model.FieldDefinitions.Count == 0)
+                    {
+                        <div class="text-sm text-slate-500">No captured fields.</div>
+                    }
+                    else
+                    {
+                        foreach (var field in Model.FieldDefinitions)
                         {
-                            <div class="captured-row">
-                                <label for="fld_@field.Id">@field.Name</label>
-                                <input id="fld_@field.Id" name="fields[@field.Id]" type="text" value="@field.Value" />
+                            <div class="rounded-md border border-slate-200 bg-slate-50 p-3">
+                                <label class="mb-1 block text-sm font-semibold text-slate-700" for="fld_@field.Id">@field.Name</label>
+                                <input class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm ring-slate-200 outline-none focus:ring" id="fld_@field.Id" name="fields[@field.Id]" type="text" value="@field.Value" />
                                 @if (!string.IsNullOrWhiteSpace(field.Description))
                                 {
-                                    <div class="helper">@field.Description</div>
+                                    <p class="mt-1 text-xs text-slate-500">@field.Description</p>
                                 }
                             </div>
                         }
-                    </div>
-                }
-                    <div class="btn-row">
-                        <button class="btn btn-secondary" type="submit">Save Fields</button>
-                    </div>
+                    }
+                    <button class="w-full rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400" type="submit">Save Fields</button>
                 </form>
             </section>
         </aside>
 
-        <main class="panel">
-            <section class="section">
-                <h2 class="kicker">Project Summary</h2>
-                <div class="summary-card">
-                    <div class="summary-icon">AI</div>
-                    <p class="summary-text">@(string.IsNullOrWhiteSpace(Model.ProjectSummary) ? "No summary yet." : Model.ProjectSummary)</p>
+        <main class="space-y-4">
+            <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
+                <div class="mb-2 flex items-center gap-2 text-slate-700">
+                    <i data-lucide="sparkles" class="h-4 w-4"></i>
+                    <h2 class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">AI Summary</h2>
                 </div>
+                <p class="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-slate-700">@(string.IsNullOrWhiteSpace(Model.ProjectSummary) ? "No summary yet." : Model.ProjectSummary)</p>
             </section>
 
-            <section class="section">
-                <h2 class="kicker">Conversation History</h2>
+            <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
+                <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Conversation History</h2>
                 @if (Model.Conversation.Count == 0)
                 {
-                    <div class="helper">No messages yet.</div>
+                    <div class="text-sm text-slate-500">No messages yet.</div>
                 }
                 else
                 {
-                    <div id="conversationTimeline" class="timeline">
+                    <div id="conversationTimeline" class="max-h-[34rem] space-y-2 overflow-auto rounded-md border border-slate-200 bg-slate-50 p-3">
                         @foreach (var turn in Model.Conversation)
                         {
                             var isIncoming = string.Equals(turn.Role, "user", StringComparison.OrdinalIgnoreCase) ||
                                              string.Equals(turn.Role, "customer", StringComparison.OrdinalIgnoreCase);
                             var roleLabel = isIncoming ? "Customer" : "LeadRelay";
-                            <article class="chat-msg @(isIncoming ? "incoming" : "outgoing")">
-                                <div class="chat-meta">
-                                    <span>@roleLabel</span>
-                                    <span>@turn.AtUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm") UTC</span>
-                                </div>
-                                <div class="chat-bubble">@turn.Text</div>
+                            <article class="max-w-[85%] @(isIncoming ? "mr-auto" : "ml-auto")">
+                                <p class="mb-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">@roleLabel · @turn.AtUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm") UTC</p>
+                                <div class="rounded-md border px-3 py-2 text-sm leading-6 @(isIncoming ? "border-slate-200 bg-white text-slate-800" : "border-slate-300 bg-slate-100 text-slate-800")">@turn.Text</div>
                             </article>
                         }
                     </div>
                 }
             </section>
 
-            <section class="section composer">
-                <h2 class="kicker">Reply Composer</h2>
-                <form method="post" action="/owner/leads/@Model.Id/reply">
+            <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
+                <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Reply Composer</h2>
+                <form method="post" action="/owner/leads/@Model.Id/reply" class="space-y-3">
                     @Html.AntiForgeryToken()
-
-                    <label for="replyChannel">Send Via</label>
-                    <select id="replyChannel" name="replyChannel">
-                        @if (Model.CanReplyViaWhatsApp)
-                        {
-                            if (string.Equals(Model.ReplyChannel, "whatsapp", StringComparison.OrdinalIgnoreCase))
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-slate-700" for="replyChannel">Send via</label>
+                        <select class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm ring-slate-200 outline-none focus:ring" id="replyChannel" name="replyChannel">
+                            @if (Model.CanReplyViaWhatsApp)
                             {
-                                <option value="whatsapp" selected>WhatsApp</option>
+                                if (string.Equals(Model.ReplyChannel, "whatsapp", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <option value="whatsapp" selected>WhatsApp</option>
+                                }
+                                else
+                                {
+                                    <option value="whatsapp">WhatsApp</option>
+                                }
                             }
-                            else
+                            @if (Model.CanReplyViaEmail)
                             {
-                                <option value="whatsapp">WhatsApp</option>
+                                if (string.Equals(Model.ReplyChannel, "email", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <option value="email" selected>Email</option>
+                                }
+                                else
+                                {
+                                    <option value="email">Email</option>
+                                }
                             }
-                        }
-                        @if (Model.CanReplyViaEmail)
-                        {
-                            if (string.Equals(Model.ReplyChannel, "email", StringComparison.OrdinalIgnoreCase))
-                            {
-                                <option value="email" selected>Email</option>
-                            }
-                            else
-                            {
-                                <option value="email">Email</option>
-                            }
-                        }
-                    </select>
-
-                    <label for="message">Message</label>
-                    <textarea id="message" name="message" placeholder="Write your message to the customer..." required></textarea>
-                    <div class="helper">Use channel based on available contact details.</div>
-
-                    <div class="btn-row">
-                        <button class="btn btn-primary" type="submit">Send Reply</button>
+                        </select>
                     </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-slate-700" for="message">Message</label>
+                        <textarea class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm ring-slate-200 outline-none focus:ring" id="message" name="message" rows="5" placeholder="Write your message to the customer..." required></textarea>
+                        <p class="mt-1 text-xs text-slate-500">Use channel based on available contact details.</p>
+                    </div>
+                    <button class="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400" type="submit">
+                        <i data-lucide="send" class="h-4 w-4"></i>
+                        <span>Send Reply</span>
+                    </button>
                 </form>
             </section>
         </main>
     </div>
 </div>
+
+@section PageScripts {
 <script>
     (function () {
         var timeline = document.getElementById("conversationTimeline");
@@ -593,5 +204,4 @@
         timeline.scrollTop = timeline.scrollHeight;
     })();
 </script>
-</body>
-</html>
+}

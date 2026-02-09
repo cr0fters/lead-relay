@@ -1,275 +1,113 @@
+@using System.Text.Json
 @model LeadRelay.Web.Controllers.OwnerPortalController.OwnerSiteSettingsModel
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Owner Settings</title>
-    <style>
-        @@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap");
+@{
+    Layout = "~/Views/Shared/_OwnerLayout.cshtml";
+    ViewData["Title"] = "Owner Settings";
+    var initialRowsJson = JsonSerializer.Serialize(Model.Fields.Select(x => new
+    {
+        id = x.Id ?? "",
+        name = x.Name ?? "",
+        description = x.Description ?? ""
+    }));
+}
 
-        :root {
-            --bg: #f3f5f9;
-            --ink: #152132;
-            --muted: #5f6f86;
-            --panel: #ffffff;
-            --line: #d9e1ec;
-            --accent: #0f62fe;
-            --danger: #c53838;
-            --danger-bg: #fff1f1;
-            --ok: #126b3f;
-            --ok-bg: #eefcf4;
-        }
-
-        * { box-sizing: border-box; }
-
-        body {
-            margin: 0;
-            color: var(--ink);
-            background:
-                radial-gradient(720px 380px at 0 -10%, rgba(15, 98, 254, 0.08), transparent 60%),
-                radial-gradient(900px 420px at 100% -20%, rgba(19, 184, 134, 0.08), transparent 60%),
-                var(--bg);
-            font-family: "Manrope", system-ui, -apple-system, Segoe UI, sans-serif;
-        }
-
-        .wrap {
-            max-width: 980px;
-            margin: 0 auto;
-            padding: 28px 18px 40px;
-        }
-
-        .topbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-        }
-
-        .crumb {
-            color: var(--muted);
-            font-size: 0.94rem;
-        }
-
-        .actions {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .panel {
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-radius: 14px;
-            padding: 14px;
-        }
-
-        h1 {
-            margin: 0 0 12px;
-            font-family: "Space Grotesk", sans-serif;
-            font-size: clamp(1.35rem, 2.4vw, 1.9rem);
-            letter-spacing: -0.02em;
-        }
-
-        .meta {
-            margin-bottom: 14px;
-            color: var(--muted);
-            font-size: 0.92rem;
-        }
-
-        .flash {
-            border-radius: 10px;
-            padding: 10px 12px;
-            margin-bottom: 12px;
-            border: 1px solid transparent;
-            font-size: 0.95rem;
-        }
-
-        .flash-error {
-            color: var(--danger);
-            background: var(--danger-bg);
-            border-color: #efb6b6;
-        }
-
-        .flash-ok {
-            color: var(--ok);
-            background: var(--ok-bg);
-            border-color: #bde8cf;
-        }
-
-        .field-header,
-        .field-row {
-            display: grid;
-            grid-template-columns: 1fr 1.2fr 2fr auto;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .field-header {
-            margin-bottom: 6px;
-            font-size: 0.78rem;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-            color: var(--muted);
-            font-weight: 700;
-        }
-
-        .field-row {
-            border: 1px solid #dce6f3;
-            background: #f9fbff;
-            border-radius: 10px;
-            padding: 10px;
-            margin-bottom: 10px;
-        }
-
-        input[type="text"] {
-            width: 100%;
-            border: 1px solid #c8d5e7;
-            border-radius: 10px;
-            font: inherit;
-            padding: 9px 10px;
-            background: #fff;
-            color: var(--ink);
-        }
-
-        .btn {
-            border-radius: 10px;
-            border: 1px solid #cfdbee;
-            padding: 10px 12px;
-            font: inherit;
-            font-weight: 700;
-            cursor: pointer;
-            background: #eef3fb;
-            color: #24364e;
-            text-decoration: none;
-        }
-
-        .btn-primary {
-            border-color: #0f62fe;
-            background: var(--accent);
-            color: #fff;
-        }
-
-        .btn-row {
-            margin-top: 10px;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-    </style>
-</head>
-<body>
-<div class="wrap">
-    <div class="topbar">
-        <div class="crumb"><a href="/owner">Leads</a> / Settings</div>
-        <div class="actions">
-            <a class="btn" href="/owner">Back to leads</a>
-            <form method="post" action="/owner/logout" style="margin:0;">
-                @Html.AntiForgeryToken()
-                <button class="btn" type="submit">Sign out</button>
-            </form>
+<div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8" x-data='fieldEditor(@Html.Raw(initialRowsJson))' x-init="$nextTick(() => window.refreshLucideIcons && window.refreshLucideIcons())">
+    <header class="mb-4 rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500"><a class="hover:text-sky-700" href="/owner">Leads</a> / Settings</p>
+                <h1 class="font-display text-2xl font-semibold tracking-tight text-slate-900">Project Field Definitions</h1>
+                <p class="text-sm text-slate-600">@Model.SiteName · @Model.OwnerEmail</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <a href="/owner" class="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400">
+                    <i data-lucide="arrow-left" class="h-4 w-4"></i>
+                    <span>Back to leads</span>
+                </a>
+                <form method="post" action="/owner/logout" class="m-0">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400">
+                        <i data-lucide="log-out" class="h-4 w-4"></i>
+                        <span>Sign out</span>
+                    </button>
+                </form>
+            </div>
         </div>
-    </div>
+    </header>
 
-    <section class="panel">
-        <h1>Project Field Definitions</h1>
-        <div class="meta">@Model.SiteName · @Model.OwnerEmail</div>
-
+    <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-panel">
         @if (!string.IsNullOrWhiteSpace(Model.Error))
         {
-            <div class="flash flash-error">@Model.Error</div>
+            <div class="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">@Model.Error</div>
         }
 
         @if (!string.IsNullOrWhiteSpace(Model.Success))
         {
-            <div class="flash flash-ok">@Model.Success</div>
+            <div class="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">@Model.Success</div>
         }
 
-        <form method="post" action="/owner/settings/fields" id="settings-form">
+        <form method="post" action="/owner/settings/fields" class="space-y-3">
             @Html.AntiForgeryToken()
 
-            <div class="field-header">
+            <div class="hidden grid-cols-[1.1fr_1.2fr_2fr_auto] gap-2 px-1 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 md:grid">
                 <span>Field ID</span>
                 <span>Name</span>
                 <span>Description</span>
                 <span></span>
             </div>
 
-            <div id="field-rows">
-                @if (Model.Fields.Count == 0)
-                {
-                    <div class="field-row">
-                        <input type="text" data-key="id" placeholder="project_overview" />
-                        <input type="text" data-key="name" placeholder="Project overview" />
-                        <input type="text" data-key="description" placeholder="Optional guidance prompt" />
-                        <button class="btn" type="button" data-remove>Remove</button>
-                    </div>
-                }
-                else
-                {
-                    foreach (var field in Model.Fields)
-                    {
-                        <div class="field-row">
-                            <input type="text" data-key="id" value="@field.Id" />
-                            <input type="text" data-key="name" value="@field.Name" />
-                            <input type="text" data-key="description" value="@field.Description" />
-                            <button class="btn" type="button" data-remove>Remove</button>
+            <template x-for="(row, index) in rows" :key="index">
+                <div class="rounded-md border border-slate-200 bg-slate-50 p-3">
+                    <div class="grid gap-2 md:grid-cols-[1.1fr_1.2fr_2fr_auto]">
+                        <div>
+                            <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.1em] text-slate-500 md:hidden">Field ID</label>
+                            <input class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm ring-slate-200 outline-none focus:ring" x-model="row.id" :name="`fields[${index}].Id`" placeholder="project_overview" />
                         </div>
-                    }
-                }
-            </div>
+                        <div>
+                            <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.1em] text-slate-500 md:hidden">Name</label>
+                            <input class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm ring-slate-200 outline-none focus:ring" x-model="row.name" :name="`fields[${index}].Name`" placeholder="Project overview" />
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.1em] text-slate-500 md:hidden">Description</label>
+                            <input class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm ring-slate-200 outline-none focus:ring" x-model="row.description" :name="`fields[${index}].Description`" placeholder="Optional guidance prompt" />
+                        </div>
+                        <button class="inline-flex items-center justify-center gap-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400" type="button" @@click="removeRow(index)">
+                            <i data-lucide="trash-2" class="h-4 w-4"></i>
+                            <span>Remove</span>
+                        </button>
+                    </div>
+                </div>
+            </template>
 
-            <div class="btn-row">
-                <button class="btn" type="button" id="add-field">Add field</button>
-                <button class="btn btn-primary" type="submit">Save field definitions</button>
+            <div class="flex flex-wrap gap-2">
+                <button class="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400" type="button" @@click="addRow()">
+                    <i data-lucide="plus" class="h-4 w-4"></i>
+                    <span>Add field</span>
+                </button>
+                <button class="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400" type="submit">
+                    <i data-lucide="save" class="h-4 w-4"></i>
+                    <span>Save field definitions</span>
+                </button>
             </div>
         </form>
     </section>
 </div>
 
-<template id="field-template">
-    <div class="field-row">
-        <input type="text" data-key="id" placeholder="project_overview" />
-        <input type="text" data-key="name" placeholder="Project overview" />
-        <input type="text" data-key="description" placeholder="Optional guidance prompt" />
-        <button class="btn" type="button" data-remove>Remove</button>
-    </div>
-</template>
-
+@section HeadScripts {
 <script>
-    const rows = document.getElementById("field-rows");
-    const template = document.getElementById("field-template");
-    const form = document.getElementById("settings-form");
-    const addButton = document.getElementById("add-field");
-
-    function wireRemove(button) {
-        button.addEventListener("click", () => {
-            button.closest(".field-row")?.remove();
-        });
+    function fieldEditor(initialRows) {
+        return {
+            rows: initialRows && initialRows.length ? initialRows : [{ id: "", name: "", description: "" }],
+            addRow() {
+                this.rows.push({ id: "", name: "", description: "" });
+                this.$nextTick(() => window.refreshLucideIcons && window.refreshLucideIcons());
+            },
+            removeRow(index) {
+                this.rows.splice(index, 1);
+                if (this.rows.length === 0) this.addRow();
+                this.$nextTick(() => window.refreshLucideIcons && window.refreshLucideIcons());
+            }
+        };
     }
-
-    rows.querySelectorAll("[data-remove]").forEach(wireRemove);
-
-    addButton.addEventListener("click", () => {
-        const node = template.content.cloneNode(true);
-        const button = node.querySelector("[data-remove]");
-        if (button) wireRemove(button);
-        rows.appendChild(node);
-    });
-
-    form.addEventListener("submit", () => {
-        rows.querySelectorAll(".field-row").forEach((row, index) => {
-            const id = row.querySelector('[data-key="id"]');
-            const name = row.querySelector('[data-key="name"]');
-            const description = row.querySelector('[data-key="description"]');
-            id.name = `fields[${index}].Id`;
-            name.name = `fields[${index}].Name`;
-            description.name = `fields[${index}].Description`;
-        });
-    });
 </script>
-</body>
-</html>
+}
