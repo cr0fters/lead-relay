@@ -46,7 +46,10 @@ OpenAI__ApiKey=...
 ```
 
 ## CI/CD (GitHub tests + Railway deploy)
-This repo includes `.github/workflows/ci-cd.yml` to run tests on every PR and push.
+This repo includes `.github/workflows/ci-cd.yml` to:
+- run tests on every PR and push
+- validate EF Core migrations against an ephemeral MySQL service
+- generate an idempotent SQL migration script artifact (`artifacts/migrations.sql`)
 
 Deployment is managed by Railway GitHub autodeploy (not GitHub CLI deploy).
 
@@ -60,7 +63,21 @@ Deployment is managed by Railway GitHub autodeploy (not GitHub CLI deploy).
 - `OwnerPortal__SigningSecret`
 - optional integrations (`WhatsApp__...`, `OpenAI__ApiKey`)
 
-Also run DB migrations as part of your release process:
+Apply the idempotent migration SQL as part of your Railway release process.  
+This repo is configured to run `sh /app/apply-migrations.sh` as Railway `preDeployCommand`, which applies `/app/migrations.sql` before app startup.
+
+`build/LeadRelay.Web.Dockerfile` now:
+- installs MySQL client in the runtime image
+- generates `/app/migrations.sql` during image build via `dotnet ef migrations script --idempotent`
+- includes `build/apply-migrations.sh` in the runtime image
+
+`build/apply-migrations.sh` supports either:
+- `MYSQL_URL`
+- or `MYSQLHOST` + `MYSQLPORT` + `MYSQLUSER` + `MYSQLPASSWORD` + `MYSQLDATABASE`
+
+GitHub Actions also generates an idempotent migration script artifact for CI validation/review.
+
+For local/dev migration application:
 ```bash
 dotnet ef database update --project src/LeadRelay.Infrastructure --startup-project src/LeadRelay.Web
 ```
@@ -69,6 +86,10 @@ dotnet ef database update --project src/LeadRelay.Infrastructure --startup-proje
 - Connection string: `src/LeadRelay.Web/appsettings.json` (`ConnectionStrings:LeadRelay`)
 - Apply migrations:
   - `dotnet ef database update --project src/LeadRelay.Infrastructure --startup-project src/LeadRelay.Web`
+- Generate idempotent SQL script:
+  - `dotnet ef migrations script --idempotent --project src/LeadRelay.Infrastructure --startup-project src/LeadRelay.Web -o artifacts/migrations.sql`
+- Railway pre-deploy migration command:
+  - `sh /app/apply-migrations.sh`
 
 ## Endpoints
 - `GET /widget/bootstrap.js?siteId=...` — bootstrap script (domain allow-list enforced)

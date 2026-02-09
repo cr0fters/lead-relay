@@ -8,8 +8,23 @@ on:
 
 jobs:
   test:
-    name: Test
+    name: Test + Migration Validation
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: LeadRelay
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      ConnectionStrings__LeadRelay: Server=127.0.0.1;Port=3307;User ID=root;Password=root;Database=LeadRelay
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,6 +36,26 @@ jobs:
 
       - name: Restore
         run: dotnet restore LeadRelay.sln
+
+      - name: Install dotnet-ef
+        run: dotnet tool install --global dotnet-ef --version 8.*
+
+      - name: Add dotnet tools to PATH
+        run: echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Apply migrations to ephemeral DB
+        run: dotnet ef database update --project src/LeadRelay.Infrastructure --startup-project src/LeadRelay.Web --no-build
+
+      - name: Generate idempotent migration script
+        run: |
+          mkdir -p artifacts
+          dotnet ef migrations script --idempotent --project src/LeadRelay.Infrastructure --startup-project src/LeadRelay.Web --output artifacts/migrations.sql --no-build
+
+      - name: Upload migration script artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: efcore-idempotent-migrations
+          path: artifacts/migrations.sql
 
       - name: Test
         run: dotnet test LeadRelay.sln --configuration Release --no-restore

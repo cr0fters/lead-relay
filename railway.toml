@@ -4,5 +4,6 @@ dockerfilePath = "build/LeadRelay.Web.Dockerfile"
 
 [deploy]
 healthcheckPath = "/health"
+preDeployCommand = "sh /app/apply-migrations.sh"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
