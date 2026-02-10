@@ -15,8 +15,8 @@
             --muted: #c9c6bf;
             --accent: #ffb454;
             --accent-2: #7ee3c8;
-            --card: rgba(255, 255, 255, 0.06);
-            --stroke: rgba(255, 255, 255, 0.12);
+            --card: rgba(255, 255, 255, 0.08);
+            --stroke: rgba(255, 255, 255, 0.14);
         }
 
         * { box-sizing: border-box; }
@@ -25,9 +25,9 @@
             color: var(--ink);
             font-family: "DM Sans", system-ui, -apple-system, Segoe UI, sans-serif;
             background:
-                radial-gradient(1200px 600px at 10% -10%, rgba(255, 180, 84, 0.25), transparent 60%),
-                radial-gradient(900px 500px at 100% 0%, rgba(126, 227, 200, 0.2), transparent 60%),
-                linear-gradient(180deg, #0d1020, #12162a 60%, #0f1221);
+                radial-gradient(1200px 640px at 10% -10%, rgba(255, 180, 84, 0.14), transparent 70%),
+                radial-gradient(1000px 560px at 100% 0%, rgba(126, 227, 200, 0.1), transparent 72%),
+                linear-gradient(180deg, #101426, #12172a 65%, #101426);
             min-height: 100vh;
         }
 
@@ -137,7 +137,6 @@
             border: 1px solid var(--stroke);
             padding: 24px;
             border-radius: 24px;
-            backdrop-filter: blur(6px);
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
         }
 
@@ -207,7 +206,7 @@
             padding: 28px;
             border-radius: 24px;
             border: 1px solid rgba(255, 255, 255, 0.18);
-            background: linear-gradient(135deg, rgba(255, 180, 84, 0.2), rgba(126, 227, 200, 0.2));
+            background: linear-gradient(135deg, rgba(255, 180, 84, 0.14), rgba(126, 227, 200, 0.14));
             display: flex;
             flex-wrap: wrap;
             align-items: center;
