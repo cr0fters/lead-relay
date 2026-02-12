@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">LeadRelay icon</title>
+  <desc id="desc">Square icon with chat bubble and relay arrow</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b6d5c" />
+      <stop offset="100%" stop-color="#14967f" />
+    </linearGradient>
+  </defs>
+  <rect x="24" y="24" width="464" height="464" rx="110" fill="url(#bg)" />
+  <path d="M154 148h204c35 0 64 29 64 64v79c0 35-29 64-64 64H241l-62 43c-12 8-29-1-29-15v-28c-34-2-60-30-60-64v-79c0-35 29-64 64-64z" fill="#ffffff" />
+  <path d="M214 221c0-7 5-12 12-12h117c7 0 12 5 12 12s-5 12-12 12H226c-7 0-12-5-12-12zm0 53c0-7 5-12 12-12h86c7 0 12 5 12 12s-5 12-12 12h-86c-7 0-12-5-12-12z" fill="#0b6d5c" />
+  <path d="M121 339l84-57v113z" fill="#ffcf6a" />
+</svg>
