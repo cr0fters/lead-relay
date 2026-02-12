@@ -127,7 +127,7 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
             return View("Lead", model);
         }
 
-        var dispatch = await messages.SendTextAsync(channel, recipient, text, ct);
+        var dispatch = await messages.SendTextAsync(channel, recipient, text, auth.SiteId, ct);
         if (!dispatch.Sent)
         {
             model.Error = dispatch.Error ?? "Failed to send message.";

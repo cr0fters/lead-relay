@@ -234,6 +234,11 @@
                 <div class="helper">Digits only, include country code.</div>
             </div>
             <div>
+                <label for="WhatsAppPhoneNumberId">WhatsApp phone number ID</label>
+                <input id="WhatsAppPhoneNumberId" name="WhatsAppPhoneNumberId" value="@Model.WhatsAppPhoneNumberId" placeholder="123456789012345" />
+                <div class="helper">Required for tenant-aware inbound and outbound routing.</div>
+            </div>
+            <div>
                 <label for="AllowedDomains">Allowed domains</label>
                 <textarea id="AllowedDomains" name="AllowedDomains" placeholder="example.com&#10;app.example.com">@Model.AllowedDomains</textarea>
                 <div class="helper">One per line or comma-separated. Empty = allow any.</div>

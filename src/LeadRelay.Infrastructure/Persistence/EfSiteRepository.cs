@@ -15,6 +15,19 @@ public sealed class EfSiteRepository(LeadRelayDbContext db) : ISiteRepository
         return Map(record);
     }
 
+    public async Task<Site?> GetByWhatsAppPhoneNumberIdAsync(string phoneNumberId, CancellationToken ct)
+    {
+        var normalized = (phoneNumberId ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+            return null;
+
+        var record = await db.Sites.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.WhatsAppPhoneNumberId == normalized, ct);
+        if (record is null) return null;
+
+        return Map(record);
+    }
+
     public async Task<IReadOnlyList<Site>> GetAllAsync(CancellationToken ct)
     {
         var records = await db.Sites.AsNoTracking()
@@ -45,6 +58,7 @@ public sealed class EfSiteRepository(LeadRelayDbContext db) : ISiteRepository
         record.IntroMessage = site.IntroMessage;
         record.OwnerEmail = site.OwnerEmail;
         record.WhatsAppNumber = site.WhatsAppNumber;
+        record.WhatsAppPhoneNumberId = site.WhatsAppPhoneNumberId;
 
         await db.SaveChangesAsync(ct);
     }
@@ -60,7 +74,8 @@ public sealed class EfSiteRepository(LeadRelayDbContext db) : ISiteRepository
             Fields = record.Fields,
             IntroMessage = record.IntroMessage,
             OwnerEmail = record.OwnerEmail,
-            WhatsAppNumber = record.WhatsAppNumber
+            WhatsAppNumber = record.WhatsAppNumber,
+            WhatsAppPhoneNumberId = record.WhatsAppPhoneNumberId
         };
     }
 }

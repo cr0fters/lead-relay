@@ -12,6 +12,7 @@ public sealed class Site
     public string? IntroMessage { get; init; }
     public required string OwnerEmail { get; init; }
     public required string WhatsAppNumber { get; init; }
+    public string? WhatsAppPhoneNumberId { get; init; }
 }
 
 public sealed class ConversationField

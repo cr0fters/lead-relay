@@ -12,4 +12,5 @@ public sealed class SiteRecord
     public string? IntroMessage { get; set; }
     public string OwnerEmail { get; set; } = "";
     public string WhatsAppNumber { get; set; } = "";
+    public string? WhatsAppPhoneNumberId { get; set; }
 }

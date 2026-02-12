@@ -34,6 +34,7 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
             entity.Property(x => x.IntroMessage).HasColumnName("IntroMessage");
             entity.Property(x => x.OwnerEmail).HasColumnName("OwnerEmail").IsRequired();
             entity.Property(x => x.WhatsAppNumber).HasColumnName("WhatsAppNumber").IsRequired();
+            entity.Property(x => x.WhatsAppPhoneNumberId).HasColumnName("WhatsAppPhoneNumberId").HasMaxLength(64);
 
             entity.Property(x => x.AllowedDomains)
                 .HasColumnName("AllowedDomainsJson")

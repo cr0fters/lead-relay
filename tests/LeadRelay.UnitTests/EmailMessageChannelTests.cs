@@ -12,7 +12,7 @@ public sealed class EmailMessageChannelTests
         var sender = new RecordingEmailSender();
         var channel = new EmailMessageChannel(sender);
 
-        var result = await channel.SendTextAsync("lead@example.com", "Hello there", CancellationToken.None);
+        var result = await channel.SendTextAsync("lead@example.com", "Hello there", "site_a", CancellationToken.None);
 
         Assert.That(result.Sent, Is.True);
         Assert.That(sender.Sent.Count, Is.EqualTo(1));
@@ -25,7 +25,7 @@ public sealed class EmailMessageChannelTests
     {
         var channel = new EmailMessageChannel(new RecordingEmailSender());
 
-        var result = await channel.SendTextAsync("", "Hello", CancellationToken.None);
+        var result = await channel.SendTextAsync("", "Hello", "site_a", CancellationToken.None);
 
         Assert.That(result.Sent, Is.False);
         Assert.That(result.Error, Is.EqualTo("Email recipient is required."));

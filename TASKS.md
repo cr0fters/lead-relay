@@ -1,35 +1,56 @@
 # LeadRelay MVP Tasks
 
-## Now
-- [x] Set up persistent storage for Sites, Leads, and Conversations (schema + migrations)
-- [x] Replace in-memory repositories with DB-backed implementations
-- [x] Add minimal admin interface (UI or API) to create/update site config
-- [x] Protect admin endpoints with auth/token
-- [x] Add login area for site owners to view and respond to leads
-- [x] Wire secrets via environment (no secrets in repo) and document required env vars
-- [x] Apply database migrations as part of CI/CD pipeline
-- [x] Come up with a plan for submitting a new lead vs contact
+## Current MVP Readiness (critical view)
+- Product flow: 70%
+- Technical hardening: 45%
+- Safe dogfood deploy readiness: 60%
 
-## Next
-- [ ] Harden WhatsApp webhook verification and signature validation
-- [ ] Add outbound send retries/backoff with structured error logging
-- [ ] Implement real lead delivery (email service or CRM webhook)
-- [ ] Implement real transactional email sender for owner auth flows (password reset / login comms)
-- [ ] Add lead payload formatting (site id, timestamp, summary)
-- [ ] Rate limit by site and WhatsApp ID
-- [ ] Disable/protect debug endpoints outside development
-- [ ] Version + cache-bust widget runtime assets
+Interpretation:
+- Core loop works: widget -> inbound message -> lead capture -> owner inbox/reply.
+- Main blockers are production hardening and reliability, not basic feature completeness.
 
-## Go-Live Essentials
-- [ ] Enforce secrets from environment only; remove placeholder secrets from committed appsettings
-- [ ] Add production owner account bootstrap/invite flow (first password setup) and document operator process
-- [ ] Add database migration run strategy to deployment (startup job or release step)
-- [ ] Add monitoring + alerting hooks for critical failures (webhook processing, outbound WhatsApp, auth email sends)
-- [ ] Add production-grade error responses/log redaction review (no secret/token leakage)
-- [ ] Define backup and restore procedure for MySQL data
+## Must-do before dogfood go-live
+- [ ] Lock down debug endpoints outside development (`/debug/*` should be disabled or admin-protected).
+- [ ] Add WhatsApp webhook signature validation (`X-Hub-Signature-256`) using app secret.
+- [ ] Add webhook idempotency for duplicate event delivery (store processed message IDs).
+- [ ] Implement a real transactional email sender (password reset + owner lead notifications).
+- [ ] Add retry/backoff for outbound WhatsApp sends with structured failure logging.
+- [ ] Finalize owner account bootstrap flow (invite/initial password setup, operator runbook).
+- [ ] Add basic rate limiting for webhook and lead intake endpoints (by site + sender/contact).
+- [ ] Add minimal production monitoring/alerts for:
+  - webhook receive failures
+  - outbound message failures
+  - password reset email failures
+- [ ] Run one end-to-end production-like dry run and document rollback steps.
 
-## Later
-- [ ] Add structured logging for key events (inbound/outbound, lead submission)
-- [ ] Health checks for dependencies (DB, WhatsApp) with degraded status
-- [ ] Deployment docs (env vars, ports, setup steps, example config)
-- [ ] Container run instructions for production
+## Should-do soon after dogfood launch
+- [ ] Improve WhatsApp attribution model beyond "first site wins" for multi-site readiness.
+- [ ] Version and cache-bust widget runtime assets on every release.
+- [ ] Add health checks for DB and upstream dependencies with degraded status.
+- [ ] Add a backup/restore runbook and test restore once.
+- [ ] Review logs/errors for token/secret leakage and redact where needed.
+
+## Completed foundation
+- [x] Persistent storage + migrations in place.
+- [x] DB-backed repositories wired in.
+- [x] Admin site config API/UI implemented.
+- [x] Admin token protection middleware implemented.
+- [x] Owner login area and lead workspace implemented.
+- [x] Secrets required in non-development and documented.
+- [x] CI pipeline runs tests and validates migrations.
+- [x] Leaned lead/customer/project modeling refactor completed.
+
+## Testing gaps to close
+- [ ] Add integration tests in `tests/LeadRelay.IntegrationTests` (currently no discovered tests).
+- [ ] Add regression tests for webhook signature + idempotency behavior.
+- [ ] Add failure-path tests for outbound message retry logic.
+
+## Dogfood go-live exit criteria
+- [ ] You can complete this path without manual DB edits:
+  1. user opens widget on your domain
+  2. lead is captured with correct site attribution
+  3. you receive owner notification
+  4. you sign in to owner portal
+  5. you reply successfully over chosen channel
+  6. failures are visible via logs/alerts
+- [ ] One backup and restore drill completed successfully.

@@ -42,6 +42,8 @@ OwnerPortal__SigningSecret=...
 WhatsApp__VerifyToken=...
 WhatsApp__AccessToken=...
 WhatsApp__MessagesEndpoint=...
+WhatsApp__Senders__<PHONE_NUMBER_ID>__AccessToken=...
+WhatsApp__Senders__<PHONE_NUMBER_ID>__MessagesEndpoint=https://graph.facebook.com/v20.0/<PHONE_NUMBER_ID>/messages
 OpenAI__ApiKey=...
 ```
 
@@ -127,10 +129,21 @@ Set these in `src/LeadRelay.Web/appsettings.json`:
   "WhatsApp": {
     "VerifyToken": "set_via_user_secrets_or_env",
     "AccessToken": "set_via_user_secrets_or_env",
-    "MessagesEndpoint": "https://graph.facebook.com/v20.0/<PHONE_NUMBER_ID>/messages"
+    "MessagesEndpoint": "https://graph.facebook.com/v20.0/{phone_number_id}/messages",
+    "Senders": {
+      "<PHONE_NUMBER_ID>": {
+        "AccessToken": "optional_per_sender_token",
+        "MessagesEndpoint": "https://graph.facebook.com/v20.0/<PHONE_NUMBER_ID>/messages"
+      }
+    }
   }
 }
 ```
+
+For multi-tenant routing:
+- set each site's `WhatsAppPhoneNumberId` in admin/API config
+- webhook inbound routing matches `entry[].changes[].value.metadata.phone_number_id` to that site
+- outbound sends use per-sender credentials when `WhatsApp:Senders:<PHONE_NUMBER_ID>` is configured
 
 ## Admin auth token
 All `/admin` endpoints are protected by a shared token configured under `AdminAuth`.

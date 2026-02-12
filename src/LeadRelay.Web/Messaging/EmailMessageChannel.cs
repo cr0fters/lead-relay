@@ -6,7 +6,7 @@ public sealed class EmailMessageChannel(IEmailSender emailSender) : IMessageChan
 {
     public string Name => "email";
 
-    public async Task<MessageDispatchResult> SendTextAsync(string recipient, string text, CancellationToken ct)
+    public async Task<MessageDispatchResult> SendTextAsync(string recipient, string text, string? siteId, CancellationToken ct)
     {
         var to = (recipient ?? "").Trim();
         if (string.IsNullOrWhiteSpace(to))

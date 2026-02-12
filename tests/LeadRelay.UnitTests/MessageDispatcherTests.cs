@@ -11,7 +11,7 @@ public sealed class MessageDispatcherTests
     {
         var dispatcher = new MessageDispatcher(new IMessageChannel[] { new FakeChannel("whatsapp", true) });
 
-        var result = await dispatcher.SendTextAsync("whatsapp", "447000000000", "hello", CancellationToken.None);
+        var result = await dispatcher.SendTextAsync("whatsapp", "447000000000", "hello", "site_a", CancellationToken.None);
 
         Assert.That(result.Sent, Is.True);
     }
@@ -21,7 +21,7 @@ public sealed class MessageDispatcherTests
     {
         var dispatcher = new MessageDispatcher(Array.Empty<IMessageChannel>());
 
-        var result = await dispatcher.SendTextAsync("sms", "123", "hello", CancellationToken.None);
+        var result = await dispatcher.SendTextAsync("sms", "123", "hello", "site_a", CancellationToken.None);
 
         Assert.That(result.Sent, Is.False);
         Assert.That(result.Error, Does.Contain("Unsupported channel"));
@@ -31,7 +31,7 @@ public sealed class MessageDispatcherTests
     {
         public string Name { get; } = name;
 
-        public Task<MessageDispatchResult> SendTextAsync(string recipient, string text, CancellationToken ct)
+        public Task<MessageDispatchResult> SendTextAsync(string recipient, string text, string? siteId, CancellationToken ct)
             => Task.FromResult(new MessageDispatchResult(sent));
     }
 }

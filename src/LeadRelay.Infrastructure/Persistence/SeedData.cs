@@ -19,6 +19,7 @@ public static class SeedData
             BusinessSummary = "Interior design company specialising in modern, family-friendly spaces.",
             OwnerEmail = "owner@example.com",
             WhatsAppNumber = "447000000000",
+            WhatsAppPhoneNumberId = "demo-phone-number-id",
             AllowedDomains = ["localhost"],
             IntroMessage =
                 "Hey, thanks for reaching out to Spaces by Kelly! I'm here to get the ball rolling and gather a few details. Kelly will jump in shortly.",

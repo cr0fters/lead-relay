@@ -16,6 +16,7 @@ public sealed class InMemorySiteRepository : ISiteRepository
             BusinessSummary = "Interior design company specialising in modern, family-friendly spaces.",
             OwnerEmail = "owner@example.com",
             WhatsAppNumber = "447000000000",
+            WhatsAppPhoneNumberId = "demo-phone-number-id",
             AllowedDomains = ["localhost"],
             IntroMessage = "Hey, thanks for reaching out to Spaces by Kelly! I'm here to get the ball rolling and gather a few details. Kelly will jump in shortly.",
             Fields =
@@ -50,6 +51,13 @@ public sealed class InMemorySiteRepository : ISiteRepository
     ];
 
     public Task<Site?> GetByIdAsync(string siteId, CancellationToken ct) => Task.FromResult(Sites.FirstOrDefault(x => x.Id == siteId));
+
+    public Task<Site?> GetByWhatsAppPhoneNumberIdAsync(string phoneNumberId, CancellationToken ct)
+    {
+        var normalized = (phoneNumberId ?? "").Trim();
+        return Task.FromResult(Sites.FirstOrDefault(x =>
+            string.Equals(x.WhatsAppPhoneNumberId, normalized, StringComparison.Ordinal)));
+    }
 
     public Task<IReadOnlyList<Site>> GetAllAsync(CancellationToken ct)
     {

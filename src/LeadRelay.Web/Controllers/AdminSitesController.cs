@@ -50,6 +50,7 @@ public sealed class AdminSitesController(ISiteRepository sites) : ControllerBase
         public string? IntroMessage { get; init; }
         public string? OwnerEmail { get; init; }
         public string? WhatsAppNumber { get; init; }
+        public string? WhatsAppPhoneNumberId { get; init; }
 
         public Site ToSite(string id)
         {
@@ -67,7 +68,8 @@ public sealed class AdminSitesController(ISiteRepository sites) : ControllerBase
                     .ToList(),
                 IntroMessage = string.IsNullOrWhiteSpace(IntroMessage) ? null : IntroMessage.Trim(),
                 OwnerEmail = OwnerEmail?.Trim() ?? "",
-                WhatsAppNumber = WhatsAppNumber?.Trim() ?? ""
+                WhatsAppNumber = WhatsAppNumber?.Trim() ?? "",
+                WhatsAppPhoneNumberId = string.IsNullOrWhiteSpace(WhatsAppPhoneNumberId) ? null : WhatsAppPhoneNumberId.Trim()
             };
         }
     }
@@ -97,7 +99,8 @@ public sealed class AdminSitesController(ISiteRepository sites) : ControllerBase
         IReadOnlyList<ConversationField> Fields,
         string? IntroMessage,
         string OwnerEmail,
-        string WhatsAppNumber)
+        string WhatsAppNumber,
+        string? WhatsAppPhoneNumberId)
     {
         public static SiteConfigResponse FromSite(Site site)
         {
@@ -109,7 +112,8 @@ public sealed class AdminSitesController(ISiteRepository sites) : ControllerBase
                 site.Fields,
                 site.IntroMessage,
                 site.OwnerEmail,
-                site.WhatsAppNumber);
+                site.WhatsAppNumber,
+                site.WhatsAppPhoneNumberId);
         }
     }
 }

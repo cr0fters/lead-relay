@@ -44,6 +44,7 @@ public sealed class OwnerPortalReplyChannelTests
         Assert.That(result, Is.TypeOf<ViewResult>());
         Assert.That(dispatcher.Channel, Is.EqualTo("email"));
         Assert.That(dispatcher.Recipient, Is.EqualTo("lead@example.com"));
+        Assert.That(dispatcher.SiteId, Is.EqualTo(siteId));
     }
 
     [Test]
@@ -229,11 +230,13 @@ public sealed class OwnerPortalReplyChannelTests
     {
         public string? Channel { get; private set; }
         public string? Recipient { get; private set; }
+        public string? SiteId { get; private set; }
 
-        public Task<MessageDispatchResult> SendTextAsync(string channel, string recipient, string text, CancellationToken ct)
+        public Task<MessageDispatchResult> SendTextAsync(string channel, string recipient, string text, string? siteId, CancellationToken ct)
         {
             Channel = channel;
             Recipient = recipient;
+            SiteId = siteId;
             return Task.FromResult(new MessageDispatchResult(true));
         }
     }

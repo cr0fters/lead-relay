@@ -7,9 +7,9 @@ public sealed class WhatsAppMessageChannel(WhatsAppClient client) : IMessageChan
 {
     public string Name => "whatsapp";
 
-    public async Task<MessageDispatchResult> SendTextAsync(string recipient, string text, CancellationToken ct)
+    public async Task<MessageDispatchResult> SendTextAsync(string recipient, string text, string? siteId, CancellationToken ct)
     {
-        var sent = await client.SendTextAsync(recipient, text, ct);
+        var sent = await client.SendTextAsync(recipient, text, siteId, ct);
         return sent
             ? new MessageDispatchResult(true)
             : new MessageDispatchResult(false, "WhatsApp send failed.");

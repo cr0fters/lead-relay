@@ -94,7 +94,8 @@ public sealed class AdminController(ISiteRepository sites) : Controller
             Fields = fields,
             IntroMessage = string.IsNullOrWhiteSpace(model.IntroMessage) ? null : model.IntroMessage.Trim(),
             OwnerEmail = model.OwnerEmail?.Trim() ?? "",
-            WhatsAppNumber = model.WhatsAppNumber?.Trim() ?? ""
+            WhatsAppNumber = model.WhatsAppNumber?.Trim() ?? "",
+            WhatsAppPhoneNumberId = string.IsNullOrWhiteSpace(model.WhatsAppPhoneNumberId) ? null : model.WhatsAppPhoneNumberId.Trim()
         };
 
         if (!site.IsValid(out error)) return false;
@@ -161,6 +162,7 @@ public sealed class AdminController(ISiteRepository sites) : Controller
         public string? IntroMessage { get; set; }
         public string? OwnerEmail { get; set; }
         public string? WhatsAppNumber { get; set; }
+        public string? WhatsAppPhoneNumberId { get; set; }
         public string? Error { get; set; }
 
         public static SiteFormModel New()
@@ -191,6 +193,7 @@ public sealed class AdminController(ISiteRepository sites) : Controller
                 IntroMessage = site.IntroMessage,
                 OwnerEmail = site.OwnerEmail,
                 WhatsAppNumber = site.WhatsAppNumber,
+                WhatsAppPhoneNumberId = site.WhatsAppPhoneNumberId,
                 OwnerLoginPath = "/owner/login"
             };
         }
