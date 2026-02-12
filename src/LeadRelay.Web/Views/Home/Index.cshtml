@@ -3,364 +3,564 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>LeadRelay — WhatsApp Leads, Effortlessly</title>
+    <title>LeadRelay | Turn website visitors into qualified WhatsApp leads</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <style>
-        @@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Fraunces:wght@600;700&family=Caveat:wght@600&display=swap");
-
         :root {
-            --bg: #0f1221;
-            --bg-soft: #151a2f;
-            --ink: #f7f6f2;
-            --muted: #c9c6bf;
-            --accent: #ffb454;
-            --accent-2: #7ee3c8;
-            --card: rgba(255, 255, 255, 0.08);
-            --stroke: rgba(255, 255, 255, 0.14);
+            --bg-1: #081125;
+            --bg-2: #111a34;
+            --bg-3: #1c2749;
+            --ink: #eef2ff;
+            --muted: #b9c3de;
+            --line: rgba(255,255,255,0.16);
+            --panel: rgba(255,255,255,0.07);
+            --brand: #3ce2a3;
+            --brand-strong: #13bf83;
+            --accent: #ffbe4f;
+            --danger: #ff7f7f;
+            --shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
         }
 
         * { box-sizing: border-box; }
-        body {
+
+        html, body {
             margin: 0;
-            color: var(--ink);
-            font-family: "DM Sans", system-ui, -apple-system, Segoe UI, sans-serif;
-            background:
-                radial-gradient(1200px 640px at 10% -10%, rgba(255, 180, 84, 0.14), transparent 70%),
-                radial-gradient(1000px 560px at 100% 0%, rgba(126, 227, 200, 0.1), transparent 72%),
-                linear-gradient(180deg, #101426, #12172a 65%, #101426);
-            min-height: 100vh;
+            padding: 0;
+            min-height: 100%;
         }
 
-        a { color: inherit; text-decoration: none; }
-        .wrap { max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; }
+        body {
+            font-family: "Outfit", "Segoe UI", sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(1000px 500px at -10% -20%, rgba(60, 226, 163, 0.2), transparent 65%),
+                radial-gradient(900px 450px at 110% -10%, rgba(255, 190, 79, 0.2), transparent 70%),
+                linear-gradient(165deg, var(--bg-1), var(--bg-2) 40%, var(--bg-3));
+            overflow-x: hidden;
+        }
 
-        header {
+        .back-grid {
+            position: fixed;
+            inset: 0;
+            z-index: -2;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+            background-size: 36px 36px;
+            mask-image: radial-gradient(circle at 50% 30%, black 35%, transparent 90%);
+        }
+
+        .orb {
+            position: fixed;
+            width: 520px;
+            height: 520px;
+            border-radius: 999px;
+            filter: blur(80px);
+            z-index: -1;
+            opacity: 0.45;
+            pointer-events: none;
+            animation: float 14s ease-in-out infinite;
+        }
+
+        .orb-a {
+            top: -180px;
+            left: -120px;
+            background: #2ee59f;
+        }
+
+        .orb-b {
+            right: -160px;
+            top: 30%;
+            background: #ffbe4f;
+            animation-delay: -5s;
+        }
+
+        @@keyframes float {
+            0%, 100% { transform: translateY(0px) translateX(0px); }
+            50% { transform: translateY(24px) translateX(-18px); }
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .wrap {
+            width: min(1120px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 18px 0 64px;
+        }
+
+        .topbar {
+            position: sticky;
+            top: 12px;
+            z-index: 10;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 16px;
+            gap: 14px;
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            padding: 10px 14px;
+            background: rgba(9, 14, 31, 0.72);
+            backdrop-filter: blur(12px);
+            box-shadow: var(--shadow);
         }
 
         .brand {
             display: inline-flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             font-weight: 700;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.2px;
         }
 
-        .brand-badge {
-            width: 44px;
-            height: 44px;
-            border-radius: 14px;
-            background: linear-gradient(135deg, #ffb454, #ff6f6f);
+        .logo {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
             display: grid;
             place-items: center;
-            font-family: "Fraunces", serif;
-            font-size: 20px;
-            color: #1b1b1b;
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+            color: #042115;
+            font-family: "Space Grotesk", sans-serif;
+            font-weight: 700;
+            background: linear-gradient(135deg, #2ee59f, #8cf8d0);
         }
 
         .nav {
             display: flex;
-            gap: 18px;
-            font-size: 14px;
+            flex-wrap: wrap;
+            gap: 14px;
             color: var(--muted);
+            font-size: 0.94rem;
+        }
+
+        .nav a:hover {
+            color: #ffffff;
         }
 
         .hero {
-            margin-top: 64px;
+            margin-top: 44px;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 40px;
-            align-items: center;
+            grid-template-columns: 1.2fr 0.9fr;
+            gap: 22px;
+            align-items: stretch;
         }
 
-        .eyebrow {
+        .hero-main,
+        .hero-side,
+        .section-panel {
+            border: 1px solid var(--line);
+            border-radius: 26px;
+            background: var(--panel);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(8px);
+        }
+
+        .hero-main {
+            padding: 32px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-main::before {
+            content: "";
+            position: absolute;
+            right: -80px;
+            top: -80px;
+            width: 240px;
+            height: 240px;
+            border-radius: 999px;
+            background: radial-gradient(circle at center, rgba(60,226,163,0.38), transparent 70%);
+        }
+
+        .tag {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--accent-2);
-            background: rgba(126, 227, 200, 0.12);
-            padding: 6px 12px;
+            padding: 7px 12px;
             border-radius: 999px;
-            border: 1px solid rgba(126, 227, 200, 0.25);
+            border: 1px solid rgba(60, 226, 163, 0.45);
+            background: rgba(60, 226, 163, 0.12);
+            color: #9ffad8;
+            font-size: 0.8rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            font-weight: 600;
         }
 
-        h1 {
-            font-family: "Fraunces", serif;
-            font-size: clamp(2.6rem, 5vw, 4rem);
-            line-height: 1.02;
-            margin: 16px 0;
+        .hero h1 {
+            font-family: "Space Grotesk", "Outfit", sans-serif;
+            font-weight: 700;
+            font-size: clamp(2rem, 4.5vw, 3.4rem);
+            line-height: 1.03;
+            margin: 16px 0 14px;
+            max-width: 14ch;
         }
 
-        p.lede {
+        .hero p {
+            margin: 0;
             color: var(--muted);
             font-size: 1.05rem;
-            max-width: 520px;
+            max-width: 56ch;
         }
 
         .cta-row {
+            margin-top: 22px;
             display: flex;
-            gap: 14px;
-            margin-top: 26px;
             flex-wrap: wrap;
+            gap: 11px;
         }
 
         .btn {
-            padding: 12px 18px;
-            border-radius: 999px;
-            font-weight: 600;
             border: 1px solid transparent;
+            border-radius: 999px;
+            padding: 11px 16px;
+            font-weight: 600;
             display: inline-flex;
             align-items: center;
             gap: 8px;
+            transition: transform 0.12s ease, filter 0.12s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.06);
         }
 
         .btn-primary {
-            background: var(--accent);
-            color: #1a1a1a;
+            color: #032417;
+            background: linear-gradient(135deg, var(--brand), #8cf8d0);
         }
 
-        .btn-ghost {
-            border-color: var(--stroke);
+        .btn-secondary {
             color: var(--ink);
-            background: rgba(255, 255, 255, 0.02);
+            border-color: var(--line);
+            background: rgba(255,255,255,0.04);
         }
 
-        .hero-card {
-            background: var(--card);
-            border: 1px solid var(--stroke);
-            padding: 24px;
-            border-radius: 24px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+        .hero-side {
+            padding: 22px;
+            display: grid;
+            gap: 14px;
+            align-content: start;
         }
 
-        .pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            padding: 6px 12px;
-            border-radius: 999px;
-            font-size: 13px;
+        .metric-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .metric {
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 12px;
+            background: rgba(255,255,255,0.04);
+        }
+
+        .metric strong {
+            display: block;
+            font-size: 1.2rem;
+            line-height: 1;
+            margin-bottom: 3px;
+        }
+
+        .metric span {
             color: var(--muted);
+            font-size: 0.83rem;
         }
 
-        .steps {
+        .chat-card {
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 14px;
+            background: rgba(3, 8, 19, 0.45);
             display: grid;
-            gap: 16px;
-            margin-top: 18px;
+            gap: 10px;
         }
 
-        .step {
-            display: flex;
-            gap: 12px;
-            align-items: flex-start;
+        .bubble {
+            max-width: 86%;
+            padding: 9px 11px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            line-height: 1.36;
         }
 
-        .step-number {
-            width: 28px;
-            height: 28px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+        .bubble.me {
+            margin-left: auto;
+            color: #062919;
+            background: #9ffad8;
+        }
+
+        .bubble.bot {
+            color: #e4ebff;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.12);
+        }
+
+        .section {
+            margin-top: 22px;
             display: grid;
-            place-items: center;
-            font-weight: 700;
-            color: var(--accent);
+            gap: 22px;
         }
 
-        .grid {
-            margin-top: 64px;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 18px;
+        .section-panel {
+            padding: 24px;
         }
 
-        .feature {
-            background: var(--card);
-            border: 1px solid var(--stroke);
-            border-radius: 18px;
-            padding: 18px;
-        }
-
-        .feature h3 {
+        .section-title {
             margin: 0 0 6px;
-            font-size: 1.05rem;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 1.55rem;
         }
 
-        .feature p {
+        .section-sub {
             margin: 0;
             color: var(--muted);
-            font-size: 0.95rem;
         }
 
-        .cta-banner {
-            margin-top: 72px;
-            padding: 28px;
-            border-radius: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            background: linear-gradient(135deg, rgba(255, 180, 84, 0.14), rgba(126, 227, 200, 0.14));
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-        }
-
-        .widget-callout {
-            margin-top: 48px;
-            position: relative;
-            padding: 22px 24px;
-            border-radius: 20px;
-            border: 1px dashed rgba(255, 255, 255, 0.22);
-            background: rgba(255, 255, 255, 0.04);
+        .cards {
+            margin-top: 14px;
             display: grid;
-            gap: 8px;
-        }
-
-
-        footer {
-            margin-top: 60px;
-            color: var(--muted);
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 12px;
         }
 
-        @@media (max-width: 720px) {
-            header { flex-direction: column; align-items: flex-start; }
-            .nav { flex-wrap: wrap; }
-            
+        .card {
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 14px;
+            background: rgba(255,255,255,0.04);
+        }
+
+        .card h3 {
+            margin: 8px 0 6px;
+            font-size: 1rem;
+        }
+
+        .card p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .icon-pill {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: grid;
+            place-items: center;
+            border: 1px solid rgba(60, 226, 163, 0.42);
+            background: rgba(60, 226, 163, 0.14);
+            color: #8df7d1;
+        }
+
+        .split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 14px;
+        }
+
+        .list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            display: grid;
+            gap: 9px;
+        }
+
+        .list li {
+            display: flex;
+            gap: 8px;
+            color: var(--muted);
+            font-size: 0.93rem;
+        }
+
+        .list i {
+            color: var(--brand);
+            margin-top: 1px;
+            flex: 0 0 auto;
+        }
+
+        .cta-band {
+            margin-top: 18px;
+            border: 1px solid rgba(255,190,79,0.45);
+            background: linear-gradient(135deg, rgba(255,190,79,0.22), rgba(255,190,79,0.08));
+            border-radius: 18px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        footer {
+            margin-top: 28px;
+            border-top: 1px solid var(--line);
+            padding-top: 14px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px 14px;
+            justify-content: space-between;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        footer a:hover { color: #fff; }
+
+        @@media (max-width: 960px) {
+            .hero { grid-template-columns: 1fr; }
+            .cards { grid-template-columns: 1fr 1fr; }
+            .split { grid-template-columns: 1fr; }
+        }
+
+        @@media (max-width: 620px) {
+            .wrap { width: calc(100% - 24px); }
+            .topbar { position: static; }
+            .hero-main,
+            .hero-side,
+            .section-panel { border-radius: 20px; }
+            .hero-main { padding: 22px; }
+            .cards { grid-template-columns: 1fr; }
+            .metric-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
+<div class="back-grid"></div>
+<div class="orb orb-a"></div>
+<div class="orb orb-b"></div>
+
 <div class="wrap">
-    <header>
+    <header class="topbar">
         <div class="brand">
-            <div class="brand-badge">LR</div>
+            <span class="logo">LR</span>
             <span>LeadRelay</span>
         </div>
         <nav class="nav">
-            <a href="#how">How it works</a>
-            <a href="#features">Features</a>
-            <a href="/owner/login">Login</a>
+            <a href="#how-it-works">How it works</a>
+            <a href="#for-owners">For business owners</a>
+            <a href="/owner/login">Owner login</a>
         </nav>
     </header>
 
     <section class="hero">
-        <div>
-            <span class="eyebrow">WhatsApp leads, minus the fuss</span>
-            <h1>Turn “Hi” into qualified leads — without a complicated CRM.</h1>
-            <p class="lede">
-                LeadRelay drops a friendly WhatsApp button onto your site, starts a warm, guided chat,
-                and emails you the details you actually need. Made for indie businesses that move fast.
-            </p>
+        <article class="hero-main">
+            <span class="tag"><i data-lucide="sparkles" style="width:14px;height:14px;"></i> Lead capture on autopilot</span>
+            <h1>Turn website chats into qualified WhatsApp leads.</h1>
+            <p>LeadRelay helps small business owners capture better enquiries, ask the right questions, and follow up while intent is still high. No heavy CRM setup. No missed conversations.</p>
             <div class="cta-row">
-                <a class="btn btn-primary" href="#how">Try the widget</a>
-                <a class="btn btn-ghost" href="#features">See what’s inside</a>
+                <a class="btn btn-primary" href="#how-it-works"><i data-lucide="rocket" style="width:16px;height:16px;"></i> See how it works</a>
+                <a class="btn btn-secondary" href="/owner/login"><i data-lucide="log-in" style="width:16px;height:16px;"></i> Open owner portal</a>
             </div>
-        </div>
+        </article>
 
-        <div class="hero-card">
-            <div class="pill">Live demo conversation</div>
-            <div class="steps">
-                <div class="step">
-                    <div class="step-number">1</div>
-                    <div>
-                        <strong>Customer:</strong> “Hi! I need help with a kitchen remodel.”
-                    </div>
+        <aside class="hero-side">
+            <div class="metric-grid">
+                <div class="metric">
+                    <strong>1 script</strong>
+                    <span>Drop into your site</span>
                 </div>
-                <div class="step">
-                    <div class="step-number">2</div>
-                    <div>
-                        <strong>LeadRelay:</strong> “Amazing — what’s your name and email?”
-                    </div>
+                <div class="metric">
+                    <strong>24/7</strong>
+                    <span>Always-on capture</span>
                 </div>
-                <div class="step">
-                    <div class="step-number">3</div>
-                    <div>
-                        <strong>You:</strong> Receive a tidy lead email with the key details.
-                    </div>
+                <div class="metric">
+                    <strong>Per-site</strong>
+                    <span>Custom question flow</span>
+                </div>
+                <div class="metric">
+                    <strong>WhatsApp</strong>
+                    <span>Native follow-up</span>
                 </div>
             </div>
-        </div>
+
+            <div class="chat-card">
+                <div class="bubble me">Hi, I run an interior design business and need more leads.</div>
+                <div class="bubble bot">Great. What type of projects do you usually take on, and where do you operate?</div>
+                <div class="bubble me">Mostly kitchen and living spaces in Bristol.</div>
+                <div class="bubble bot">Perfect. What's the best way and time to contact you?</div>
+            </div>
+        </aside>
     </section>
 
-    <div class="widget-callout">
-        <strong>Meta demo: the widget is live on this page</strong>
-        <span style="color:var(--muted);">Click the WhatsApp button in the corner to try it here.</span>
-    </div>
+    <section class="section" id="how-it-works">
+        <article class="section-panel">
+            <h2 class="section-title">How it works</h2>
+            <p class="section-sub">A straightforward flow focused on lead quality and speed to first response.</p>
+            <div class="cards">
+                <div class="card">
+                    <div class="icon-pill"><i data-lucide="code" style="width:16px;height:16px;"></i></div>
+                    <h3>Add the widget</h3>
+                    <p>Embed one script and your WhatsApp chat entry point appears instantly.</p>
+                </div>
+                <div class="card">
+                    <div class="icon-pill"><i data-lucide="messages-square" style="width:16px;height:16px;"></i></div>
+                    <h3>Ask smart questions</h3>
+                    <p>Capture business context and contact preferences, not random back-and-forth.</p>
+                </div>
+                <div class="card">
+                    <div class="icon-pill"><i data-lucide="send" style="width:16px;height:16px;"></i></div>
+                    <h3>Follow up fast</h3>
+                    <p>Open a lead and reply directly from the owner workspace in seconds.</p>
+                </div>
+            </div>
+        </article>
 
-    <section id="how" class="grid">
-        <div class="feature">
-            <h3>1. Paste the script</h3>
-            <p>Drop a single script tag onto your site. Done.</p>
-        </div>
-        <div class="feature">
-            <h3>2. Friendly chat flow</h3>
-            <p>Ask only what you need — name, email, project info, anything.</p>
-        </div>
-        <div class="feature">
-            <h3>3. Get the lead</h3>
-            <p>Receive a clean, readable lead summary in your inbox.</p>
-        </div>
-        <div class="feature">
-            <h3>4. Follow up fast</h3>
-            <p>Reply in WhatsApp or hop on a call while interest is hot.</p>
-        </div>
+        <article class="section-panel" id="for-owners">
+            <h2 class="section-title">Built for owner-led service businesses</h2>
+            <p class="section-sub">Ideal for interior designers, consultants, agencies, and local service teams that need a practical lead workflow.</p>
+            <div class="split">
+                <div>
+                    <ul class="list">
+                        <li><i data-lucide="check-circle-2" style="width:16px;height:16px;"></i><span>Qualify by business type, services, and service area</span></li>
+                        <li><i data-lucide="check-circle-2" style="width:16px;height:16px;"></i><span>Capture best contact method and preferred contact time</span></li>
+                        <li><i data-lucide="check-circle-2" style="width:16px;height:16px;"></i><span>Keep lead data scoped to each tenant/site</span></li>
+                    </ul>
+                </div>
+                <div>
+                    <ul class="list">
+                        <li><i data-lucide="shield-check" style="width:16px;height:16px;"></i><span>Domain allow-list to control where widget loads</span></li>
+                        <li><i data-lucide="gauge" style="width:16px;height:16px;"></i><span>Clean owner inbox with quick reply workflow</span></li>
+                        <li><i data-lucide="settings-2" style="width:16px;height:16px;"></i><span>Customizable fields per site without code changes</span></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="cta-band">
+                <div>
+                    <strong>Ready to test the live widget?</strong><br />
+                    <span style="color:#fde4b7;">Use the WhatsApp button on this page to run the full flow now.</span>
+                </div>
+                <a class="btn btn-primary" href="#how-it-works"><i data-lucide="play" style="width:16px;height:16px;"></i> Start test flow</a>
+            </div>
+        </article>
     </section>
-
-    <section id="features" class="grid">
-        <div class="feature">
-            <h3>Per‑site questions</h3>
-            <p>Interior design? Marketing? Coaching? Tailor the questions per site.</p>
-        </div>
-        <div class="feature">
-            <h3>Domain allow‑list</h3>
-            <p>Keep your widget tied to approved domains.</p>
-        </div>
-        <div class="feature">
-            <h3>AI‑ready</h3>
-            <p>Plug in an AI responder when you’re ready to go beyond scripted flows.</p>
-        </div>
-        <div class="feature">
-            <h3>Local debug mode</h3>
-            <p>Test the chat flow without WhatsApp or Meta setup.</p>
-        </div>
-    </section>
-
-    <div class="cta-banner">
-        <div>
-            <h2 style="margin:0 0 8px;font-family:'Fraunces',serif;">Start a friendlier lead capture flow</h2>
-            <div style="color:var(--muted);">Want the widget on your own site? We can set you up in minutes.</div>
-        </div>
-        <a class="btn btn-primary" href="#how">See how it works</a>
-    </div>
 
     <footer>
-        <span>LeadRelay — built for indie teams.</span>
+        <span>LeadRelay for small business teams.</span>
         <span>
             <a href="/privacy-policy">Privacy policy</a> ·
             <a href="/terms-and-conditions">Terms and conditions</a> ·
             <a href="/user-data-deletion">User data deletion</a>
         </span>
-        <span>Questions? hello@leadrelay.dev</span>
+        <span>Contact: hello@leadrelay.dev</span>
     </footer>
 </div>
 
-@if (!string.IsNullOrWhiteSpace(Model.WidgetSiteId))
-{
-    <script src="/widget/bootstrap.js?siteId=42bf2d82-3f8c-421f-a520-f32f029d8099"></script>
-}
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
+</script>
+
+<script src="/widget/bootstrap.js?siteId=42bf2d82-3f8c-421f-a520-f32f029d8099"></script>
 </body>
 </html>

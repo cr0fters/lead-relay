@@ -1,4 +1,3 @@
-using LeadRelay.Application.Abstractions;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LeadRelay.Web.Controllers;
