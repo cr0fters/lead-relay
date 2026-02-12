@@ -2,10 +2,14 @@ using System.Text.Json;
 using LeadRelay.Application.Abstractions;
 using LeadRelay.Web.Security;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 
 namespace LeadRelay.Web.Controllers;
 
-public sealed class WidgetController(ISiteRepository sites, ILogger<WidgetController> logger) : Controller
+public sealed class WidgetController(
+    ISiteRepository sites,
+    IConfiguration configuration,
+    ILogger<WidgetController> logger) : Controller
 {
     [HttpGet("/widget/bootstrap.js")]
     public async Task<IActionResult> Bootstrap([FromQuery] string siteId, CancellationToken ct)
@@ -31,7 +35,7 @@ public sealed class WidgetController(ISiteRepository sites, ILogger<WidgetContro
                 "application/javascript; charset=utf-8");
         }
 
-        var origin = $"{Request.Scheme}://{Request.Host}";
+        var origin = ResolveOrigin();
         Response.Headers.CacheControl = "public, max-age=300, stale-while-revalidate=600";
         return Content($$"""
                             (function(){
@@ -58,5 +62,12 @@ public sealed class WidgetController(ISiteRepository sites, ILogger<WidgetContro
                          """, "application/javascript; charset=utf-8");
     }
 
-    
+    private string ResolveOrigin()
+    {
+        var configured = (configuration["PublicBaseUrl"] ?? "").Trim();
+        if (Uri.TryCreate(configured, UriKind.Absolute, out var absolute))
+            return $"{absolute.Scheme}://{absolute.Authority}";
+
+        return $"{Request.Scheme}://{Request.Host}";
+    }
 }
