@@ -9,6 +9,7 @@ using LeadRelay.Web.Security;
 using LeadRelay.Web.WhatsApp;
 using LeadRelay.Web.Extensions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.HttpOverrides;
 using System.Text.RegularExpressions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -44,6 +45,11 @@ builder.Services.AddHttpClient<OpenAIClient>();
 
 
 var app = builder.Build();
+
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost
+});
 
 if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/error");
