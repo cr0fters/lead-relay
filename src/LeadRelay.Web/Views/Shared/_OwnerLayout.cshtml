@@ -26,8 +26,66 @@
         };
     </script>
     @RenderSection("HeadScripts", required: false)
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
 </head>
-<body class="min-h-screen bg-white text-slate-800">
+@{
+    var ownerAuth = Context.Items.TryGetValue(LeadRelay.Web.Security.OwnerAuthMiddleware.ContextKey, out var authValue)
+        ? authValue as LeadRelay.Web.Security.OwnerAuthContext
+        : null;
+}
+<body class="min-h-screen bg-slate-100 text-slate-800">
+@if (ownerAuth is not null)
+{
+    <header class="w-full border-b border-slate-800 bg-slate-900 text-slate-100">
+        <div class="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 xl:px-8">
+            <div class="flex items-center gap-3">
+                <div class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-sky-500 via-indigo-500 to-violet-500 text-white shadow-sm">
+                    <i data-lucide="radar" class="h-5 w-5"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">LeadRelay</p>
+                    <p class="text-sm font-semibold text-white">Owner workspace</p>
+                </div>
+                <a href="/owner" class="ml-1 inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm font-semibold text-slate-100 transition hover:bg-slate-700">
+                    <i data-lucide="inbox" class="h-4 w-4"></i>
+                    <span>Leads</span>
+                </a>
+            </div>
+
+            <div class="relative" x-data="{ open: false }">
+                <button type="button"
+                        class="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm font-semibold text-slate-100 transition hover:bg-slate-700"
+                        @@click="open = !open"
+                        :aria-expanded="open.toString()">
+                    <i data-lucide="user-round" class="h-4 w-4"></i>
+                    <span>@ownerAuth.OwnerEmail</span>
+                    <i data-lucide="chevron-down" class="h-4 w-4"></i>
+                </button>
+
+                <div x-show="open"
+                     x-cloak
+                     @@click.outside="open = false"
+                     class="absolute right-0 z-50 mt-2 w-52 rounded-lg border border-slate-200 bg-white p-1.5 text-slate-800 shadow-lg">
+                    <a href="/owner/settings"
+                       class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                       @@click="open = false">
+                        <i data-lucide="settings-2" class="h-4 w-4"></i>
+                        <span>Settings</span>
+                    </a>
+                    <form method="post" action="/owner/logout" class="m-0">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-rose-700 transition hover:bg-rose-50">
+                            <i data-lucide="log-out" class="h-4 w-4"></i>
+                            <span>Sign out</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </header>
+}
 @RenderBody()
 @RenderSection("PageScripts", required: false)
 <script>

@@ -135,9 +135,13 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
             return View("Lead", model);
         }
 
-        model.Success = "Reply sent.";
-        model.ReplyChannel = channel;
-        return View("Lead", model);
+        lead.Conversation.Add(new LeadConversationTurn("owner", text, DateTimeOffset.UtcNow));
+        await leads.SaveAsync(lead, ct);
+
+        var updatedModel = ToDetailModel(auth, lead, site);
+        updatedModel.Success = "Reply sent.";
+        updatedModel.ReplyChannel = channel;
+        return View("Lead", updatedModel);
     }
 
     [HttpPost("/owner/leads/{id:guid}/contact")]

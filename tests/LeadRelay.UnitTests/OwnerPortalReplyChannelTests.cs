@@ -48,6 +48,33 @@ public sealed class OwnerPortalReplyChannelTests
     }
 
     [Test]
+    public async Task reply_persists_outbound_message_in_conversation()
+    {
+        var siteId = InMemorySiteRepository.DefaultSiteId;
+        var lead = new Lead
+        {
+            Id = Guid.NewGuid(),
+            SiteId = siteId,
+            CreatedAtUtc = DateTimeOffset.UtcNow,
+            Email = "lead@example.com",
+            Channel = "email",
+            CustomerId = Guid.NewGuid(),
+            ProjectId = Guid.NewGuid()
+        };
+
+        var repository = new FakeLeadRepository(lead);
+        var controller = CreateController(repository, new InMemorySiteRepository(), siteId);
+
+        var result = await controller.Reply(lead.Id, "Thanks for the update", "email", CancellationToken.None);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        Assert.That(repository.SavedLead, Is.Not.Null);
+        Assert.That(repository.SavedLead!.Conversation.Count, Is.EqualTo(1));
+        Assert.That(repository.SavedLead.Conversation[0].Role, Is.EqualTo("owner"));
+        Assert.That(repository.SavedLead.Conversation[0].Text, Is.EqualTo("Thanks for the update"));
+    }
+
+    [Test]
     public async Task update_contact_saves_email_and_phone()
     {
         var siteId = InMemorySiteRepository.DefaultSiteId;
