@@ -39,6 +39,7 @@
 @if (ownerAuth is not null)
 {
     <header class="w-full border-b border-slate-800 bg-slate-900 text-slate-100">
+        <div class="h-1 w-full bg-gradient-to-r from-sky-500 via-indigo-500 to-violet-500"></div>
         <div class="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 xl:px-8">
             <div class="flex items-center gap-3">
                 <div class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-sky-500 via-indigo-500 to-violet-500 text-white shadow-sm">
@@ -85,6 +86,8 @@
             </div>
         </div>
     </header>
+
+    <div id="ownerAjaxProgress" class="pointer-events-none fixed left-0 right-0 top-0 z-[100] h-0.5 origin-left scale-x-0 bg-gradient-to-r from-sky-500 via-indigo-500 to-violet-500 opacity-0 transition-all duration-200"></div>
 }
 @RenderBody()
 @RenderSection("PageScripts", required: false)
@@ -99,5 +102,90 @@
         window.refreshLucideIcons();
     });
 </script>
+@if (ownerAuth is not null)
+{
+<script>
+    (function () {
+        const progress = document.getElementById("ownerAjaxProgress");
+        if (!progress) return;
+
+        let pending = 0;
+
+        function showProgress() {
+            pending++;
+            progress.classList.remove("opacity-0", "scale-x-0");
+            progress.classList.add("opacity-100", "scale-x-100");
+        }
+
+        function hideProgress() {
+            pending = Math.max(0, pending - 1);
+            if (pending !== 0) return;
+            progress.classList.remove("opacity-100", "scale-x-100");
+            progress.classList.add("opacity-0", "scale-x-0");
+        }
+
+        function getCurrentPath() {
+            return window.location.pathname + window.location.search + window.location.hash;
+        }
+
+        async function renderFromResponse(url, options, historyMode) {
+            showProgress();
+            try {
+                const response = await fetch(url, options);
+                const html = await response.text();
+                const responseUrl = response.url
+                    ? new URL(response.url, window.location.origin)
+                    : new URL(url, window.location.origin);
+                const responsePath = responseUrl.pathname + responseUrl.search + responseUrl.hash;
+
+                if (historyMode === "push" && responsePath !== getCurrentPath()) {
+                    history.pushState({}, "", responsePath);
+                } else if (historyMode === "replace" && responsePath !== getCurrentPath()) {
+                    history.replaceState({}, "", responsePath);
+                }
+
+                document.open();
+                document.write(html);
+                document.close();
+            } finally {
+                hideProgress();
+            }
+        }
+
+        document.addEventListener("submit", function (event) {
+            const form = event.target;
+            if (!(form instanceof HTMLFormElement)) return;
+            if (form.dataset.ajax === "off") return;
+            if (form.target && form.target !== "_self") return;
+
+            event.preventDefault();
+
+            const method = (form.method || "GET").toUpperCase();
+            const formAction = form.getAttribute("action") || window.location.href;
+            const url = new URL(formAction, window.location.origin);
+            const headers = { "X-Requested-With": "XMLHttpRequest" };
+            const options = { method, headers, credentials: "same-origin" };
+            let historyMode = null;
+
+            if (method === "GET") {
+                const formData = new FormData(form);
+                for (const [key, value] of formData.entries()) {
+                    url.searchParams.set(key, String(value));
+                }
+                historyMode = "push";
+            } else {
+                options.body = new FormData(form);
+                historyMode = "replace";
+            }
+
+            renderFromResponse(url.toString(), options, historyMode);
+        }, true);
+
+        window.addEventListener("popstate", function () {
+            renderFromResponse(window.location.href, { method: "GET", credentials: "same-origin", headers: { "X-Requested-With": "XMLHttpRequest" } }, "replace");
+        });
+    })();
+</script>
+}
 </body>
 </html>
