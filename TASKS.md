@@ -10,11 +10,7 @@ Interpretation:
 - Main blockers are production hardening and reliability, not basic feature completeness.
 
 ## Must-do before dogfood go-live
-- [ ] Lock down debug endpoints outside development (`/debug/*` should be disabled or admin-protected).
-- [ ] Add WhatsApp webhook signature validation (`X-Hub-Signature-256`) using app secret.
-- [ ] Add webhook idempotency for duplicate event delivery (store processed message IDs).
 - [ ] Implement a real transactional email sender (password reset + owner lead notifications).
-- [ ] Add retry/backoff for outbound WhatsApp sends with structured failure logging.
 - [ ] Finalize owner account bootstrap flow (invite/initial password setup, operator runbook).
 - [ ] Add basic rate limiting for webhook and lead intake endpoints (by site + sender/contact).
 - [ ] Add minimal production monitoring/alerts for:
@@ -41,9 +37,9 @@ Interpretation:
 - [x] Leaned lead/customer/project modeling refactor completed.
 
 ## Testing gaps to close
-- [ ] Add integration tests in `tests/LeadRelay.IntegrationTests` (currently no discovered tests).
-- [ ] Add regression tests for webhook signature + idempotency behavior.
-- [ ] Add failure-path tests for outbound message retry logic.
+- [x] Add integration tests in `tests/LeadRelay.IntegrationTests` (currently no discovered tests).
+- [x] Add regression tests for webhook signature + idempotency behavior.
+- [x] Add failure-path tests for outbound message retry logic.
 
 ## Dogfood go-live exit criteria
 - [ ] You can complete this path without manual DB edits:

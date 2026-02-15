@@ -16,6 +16,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.ValidateRequiredSecrets();
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddMemoryCache();
 
 builder.Services.AddSingleton<IClock, SystemClock>();
 var connectionString = builder.Configuration.GetConnectionString("LeadRelay");
@@ -33,6 +34,7 @@ builder.Services.AddScoped<LeadCaptureService>();
 builder.Services.Configure<ConversationOptions>(builder.Configuration.GetSection("Conversation"));
 builder.Services.Configure<OpenAIOptions>(builder.Configuration.GetSection("OpenAI"));
 builder.Services.Configure<WhatsAppOptions>(builder.Configuration.GetSection("WhatsApp"));
+builder.Services.Configure<MessagingOptions>(builder.Configuration.GetSection("Messaging"));
 builder.Services.Configure<AdminAuthOptions>(builder.Configuration.GetSection("AdminAuth"));
 builder.Services.Configure<OwnerPortalOptions>(builder.Configuration.GetSection("OwnerPortal"));
 builder.Services.AddScoped<OwnerSessionService>();
@@ -40,6 +42,7 @@ builder.Services.AddScoped<IOwnerPasswordAuthService, OwnerPasswordAuthService>(
 builder.Services.AddScoped<IMessageChannel, WhatsAppMessageChannel>();
 builder.Services.AddScoped<IMessageChannel, EmailMessageChannel>();
 builder.Services.AddScoped<IMessageDispatcher, MessageDispatcher>();
+builder.Services.AddScoped<IWhatsAppWebhookGuard, WhatsAppWebhookGuard>();
 builder.Services.AddHttpClient<WhatsAppClient>();
 builder.Services.AddHttpClient<OpenAIClient>();
 

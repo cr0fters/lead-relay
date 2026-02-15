@@ -4,6 +4,7 @@ using LeadRelay.Web.WhatsApp;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
+using System.Text;
 
 namespace LeadRelay.Web.Controllers;
 
@@ -13,6 +14,7 @@ public sealed class WhatsAppWebhookController(
     LeadCaptureService leadCapture,
     WhatsAppClient whatsAppClient,
     WhatsAppConversationService conversations,
+    IWhatsAppWebhookGuard webhookGuard,
     IOptions<WhatsAppOptions> options,
     ILogger<WhatsAppWebhookController> logger) : ControllerBase
 {
@@ -33,10 +35,19 @@ public sealed class WhatsAppWebhookController(
     }
 
     [HttpPost("/v1/webhooks/whatsapp")]
-    public async Task<IActionResult> Receive([FromBody] JsonElement payload, CancellationToken ct)
+    public async Task<IActionResult> Receive(CancellationToken ct)
     {
+        var payloadBytes = await ReadBodyBytesAsync(ct);
+        var signatureHeader = Request.Headers["X-Hub-Signature-256"].FirstOrDefault();
+        if (!webhookGuard.IsSignatureValid(payloadBytes, signatureHeader))
+            return Unauthorized();
+
+        using var payloadDocument = JsonDocument.Parse(payloadBytes);
+        var payload = payloadDocument.RootElement.Clone();
+
         var text = ExtractText(payload);
         var waId = ExtractWaId(payload);
+        var messageId = ExtractMessageId(payload);
         var contactName = ExtractContactName(payload);
         var phoneNumberId = ExtractPhoneNumberId(payload);
         var displayPhoneNumber = ExtractDisplayPhoneNumber(payload);
@@ -44,12 +55,14 @@ public sealed class WhatsAppWebhookController(
 
         var site = await ResolveSiteAsync(phoneNumberId, displayPhoneNumber, ct);
         if (site is null) return Ok(new { ok = true });
+        if (!string.IsNullOrWhiteSpace(messageId) && webhookGuard.IsDuplicate(site.Id, messageId))
+            return Ok(new { ok = true, duplicate = true });
 
         var reply = await conversations.HandleMessageAsync(site, waId, text, contactName, null, ct);
         foreach (var message in reply.Replies)
             await whatsAppClient.SendTextAsync(waId, message, site.Id, ct);
 
-        var captured = await leadCapture.CaptureAsync(
+        await leadCapture.CaptureAsync(
             site,
             new LeadCaptureInput(
                 Channel: "whatsapp",
@@ -66,7 +79,19 @@ public sealed class WhatsAppWebhookController(
                 ProjectSummary: reply.ProjectSummary),
             ct);
 
+        if (!string.IsNullOrWhiteSpace(messageId))
+            webhookGuard.MarkProcessed(site.Id, messageId);
+
         return Ok(new { ok = true });
+    }
+
+    private async Task<byte[]> ReadBodyBytesAsync(CancellationToken ct)
+    {
+        Request.EnableBuffering();
+        using var reader = new StreamReader(Request.Body, Encoding.UTF8, leaveOpen: true);
+        var body = await reader.ReadToEndAsync(ct);
+        Request.Body.Position = 0;
+        return Encoding.UTF8.GetBytes(body);
     }
 
     private string? ExtractText(JsonElement payload)
@@ -127,6 +152,34 @@ public sealed class WhatsAppWebhookController(
         catch(Exception exception)
         {
             logger.LogError(exception, "Failed to extract waId from WhatsApp message");
+        }
+
+        return null;
+    }
+
+    private string? ExtractMessageId(JsonElement payload)
+    {
+        try
+        {
+            if (TryGetFirstMessage(payload, out var firstMessage) &&
+                firstMessage.TryGetProperty("id", out var id) &&
+                id.ValueKind == JsonValueKind.String)
+            {
+                return id.GetString();
+            }
+
+            if (payload.TryGetProperty("messages", out var messages) &&
+                messages.ValueKind == JsonValueKind.Array &&
+                messages.GetArrayLength() > 0 &&
+                messages[0].TryGetProperty("id", out var nestedId) &&
+                nestedId.ValueKind == JsonValueKind.String)
+            {
+                return nestedId.GetString();
+            }
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Failed to extract message id from WhatsApp payload");
         }
 
         return null;
