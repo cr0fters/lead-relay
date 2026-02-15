@@ -92,7 +92,7 @@ public sealed class OwnerLoginControllerTests
         public Task<OwnerAuthContext?> ValidateCredentialsAsync(string? email, string? password, CancellationToken ct)
             => Task.FromResult(ValidateResult);
 
-        public Task RequestPasswordResetAsync(string? email, Func<string, string> resetUrlFactory, CancellationToken ct)
+        public Task RequestPasswordResetAsync(string? email, Func<string, string> resetUrlFactory, string? userAgent, CancellationToken ct)
             => Task.CompletedTask;
 
         public Task<bool> ResetPasswordAsync(string? email, string? token, string? newPassword, CancellationToken ct)

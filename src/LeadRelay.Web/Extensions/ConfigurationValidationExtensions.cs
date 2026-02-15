@@ -15,6 +15,8 @@ public static class ConfigurationValidationExtensions
         Require(builder.Configuration, "ConnectionStrings:LeadRelay", missing);
         Require(builder.Configuration, "AdminAuth:Token", missing);
         Require(builder.Configuration, "OwnerPortal:SigningSecret", missing);
+        Require(builder.Configuration, "Postmark:ServerToken", missing);
+        Require(builder.Configuration, "Postmark:FromEmail", missing);
 
         if (missing.Count == 0) return;
 

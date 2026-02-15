@@ -3,10 +3,16 @@ using System.Text.Json.Serialization;
 using LeadRelay.Application.Abstractions;
 using LeadRelay.Domain.Sites;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using System.Net.Mail;
+using System.Text;
 
 namespace LeadRelay.Web.Controllers;
 
-public sealed class AdminController(ISiteRepository sites) : Controller
+public sealed class AdminController(
+    ISiteRepository sites,
+    IHttpClientFactory httpClientFactory,
+    ILogger<AdminController> logger) : Controller
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -16,14 +22,7 @@ public sealed class AdminController(ISiteRepository sites) : Controller
     [HttpGet("/admin")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var items = await sites.GetAllAsync(ct);
-        var model = new AdminDashboardModel
-        {
-            Sites = items
-                .Select(x => new SiteSummary(x.Id, x.Name, x.OwnerEmail))
-                .ToList()
-        };
-
+        var model = await BuildDashboardModelAsync(ct);
         return View(model);
     }
 
@@ -72,6 +71,135 @@ public sealed class AdminController(ISiteRepository sites) : Controller
 
         await sites.UpsertAsync(site, ct);
         return Redirect($"/admin/sites/{site.Id}");
+    }
+
+    [HttpPost("/admin/tools/email-test")]
+    public async Task<IActionResult> SendGlobalEmailTest([FromForm] EmailTestInputModel input, CancellationToken ct)
+    {
+        var model = await BuildDashboardModelAsync(ct);
+        model.EmailTest = new AdminEmailTestModel
+        {
+            ApiBaseUrl = NormalizeBaseUrl(input.ApiBaseUrl),
+            ServerToken = input.ServerToken?.Trim() ?? "",
+            FromEmail = input.FromEmail?.Trim() ?? "",
+            FromName = input.FromName?.Trim(),
+            ToEmail = input.ToEmail?.Trim() ?? "",
+            Subject = string.IsNullOrWhiteSpace(input.Subject) ? "LeadRelay transactional email test" : input.Subject.Trim(),
+            BodyText = string.IsNullOrWhiteSpace(input.BodyText)
+                ? $"LeadRelay Postmark test sent at {DateTimeOffset.UtcNow:yyyy-MM-dd HH:mm:ss} UTC."
+                : input.BodyText.Trim()
+        };
+
+        if (string.IsNullOrWhiteSpace(model.EmailTest.ServerToken))
+        {
+            model.EmailTest.Error = "Server token is required.";
+            return View("Index", model);
+        }
+
+        if (!MailAddress.TryCreate(model.EmailTest.FromEmail, out _))
+        {
+            model.EmailTest.Error = "Enter a valid from email address.";
+            return View("Index", model);
+        }
+
+        if (!MailAddress.TryCreate(model.EmailTest.ToEmail, out _))
+        {
+            model.EmailTest.Error = "Enter a valid recipient email address.";
+            return View("Index", model);
+        }
+
+        try
+        {
+            var client = httpClientFactory.CreateClient();
+            client.BaseAddress = new Uri(model.EmailTest.ApiBaseUrl!, UriKind.Absolute);
+
+            var from = string.IsNullOrWhiteSpace(model.EmailTest.FromName)
+                ? model.EmailTest.FromEmail
+                : $"{model.EmailTest.FromName} <{model.EmailTest.FromEmail}>";
+
+            var payload = new Dictionary<string, string>
+            {
+                ["From"] = from,
+                ["To"] = model.EmailTest.ToEmail,
+                ["Subject"] = model.EmailTest.Subject,
+                ["TextBody"] = model.EmailTest.BodyText
+            };
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, "email")
+            {
+                Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Postmark-Server-Token", model.EmailTest.ServerToken);
+
+            var response = await client.SendAsync(request, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                var responseBody = await response.Content.ReadAsStringAsync(ct);
+                var details = ExtractPostmarkErrorDetails(responseBody);
+                logger.LogWarning(
+                    "Global admin Postmark test failed with status {StatusCode}. Response: {ResponseBody}",
+                    (int)response.StatusCode,
+                    responseBody);
+
+                model.EmailTest.Error = string.IsNullOrWhiteSpace(details)
+                    ? $"Postmark error {(int)response.StatusCode}. Check token, sender signature, and server settings."
+                    : $"Postmark error {(int)response.StatusCode}: {details}";
+                return View("Index", model);
+            }
+
+            model.EmailTest.Success = $"Test email sent to {model.EmailTest.ToEmail}.";
+            return View("Index", model);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed global admin Postmark test email send to {Recipient}", model.EmailTest.ToEmail);
+            model.EmailTest.Error = "Failed to send test email. Check Postmark settings and sender verification.";
+            return View("Index", model);
+        }
+    }
+
+    private async Task<AdminDashboardModel> BuildDashboardModelAsync(CancellationToken ct)
+    {
+        var items = await sites.GetAllAsync(ct);
+        return new AdminDashboardModel
+        {
+            Sites = items
+                .Select(x => new SiteSummary(x.Id, x.Name, x.OwnerEmail))
+                .ToList()
+        };
+    }
+
+    private static string NormalizeBaseUrl(string? value)
+    {
+        var normalized = string.IsNullOrWhiteSpace(value) ? "https://api.postmarkapp.com/" : value.Trim();
+        if (!normalized.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+            !normalized.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = $"https://{normalized}";
+        }
+
+        return normalized.EndsWith('/') ? normalized : $"{normalized}/";
+    }
+
+    private static string? ExtractPostmarkErrorDetails(string? responseBody)
+    {
+        if (string.IsNullOrWhiteSpace(responseBody)) return null;
+
+        try
+        {
+            using var document = JsonDocument.Parse(responseBody);
+            if (document.RootElement.TryGetProperty("Message", out var message))
+            {
+                var text = message.GetString();
+                return string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+            }
+        }
+        catch (JsonException)
+        {
+        }
+
+        var trimmed = responseBody.Trim();
+        return trimmed.Length <= 220 ? trimmed : trimmed[..220];
     }
 
     private static bool TryBuildSite(SiteFormModel model, string id, out Site site, out string error)
@@ -148,9 +276,34 @@ public sealed class AdminController(ISiteRepository sites) : Controller
     public sealed class AdminDashboardModel
     {
         public List<SiteSummary> Sites { get; init; } = new();
+        public AdminEmailTestModel EmailTest { get; set; } = new();
     }
 
     public sealed record SiteSummary(string Id, string Name, string OwnerEmail);
+
+    public sealed class AdminEmailTestModel
+    {
+        public string ApiBaseUrl { get; set; } = "https://api.postmarkapp.com/";
+        public string ServerToken { get; set; } = "";
+        public string FromEmail { get; set; } = "";
+        public string? FromName { get; set; }
+        public string ToEmail { get; set; } = "";
+        public string Subject { get; set; } = "LeadRelay transactional email test";
+        public string BodyText { get; set; } = "";
+        public string? Success { get; set; }
+        public string? Error { get; set; }
+    }
+
+    public sealed class EmailTestInputModel
+    {
+        public string? ApiBaseUrl { get; set; }
+        public string? ServerToken { get; set; }
+        public string? FromEmail { get; set; }
+        public string? FromName { get; set; }
+        public string? ToEmail { get; set; }
+        public string? Subject { get; set; }
+        public string? BodyText { get; set; }
+    }
 
     public sealed class SiteFormModel
     {

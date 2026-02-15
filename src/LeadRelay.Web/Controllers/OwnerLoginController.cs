@@ -60,9 +60,12 @@ public sealed class OwnerLoginController(
     {
         var email = (model.Email ?? "").Trim();
         var normalizedEmail = Uri.EscapeDataString(email);
+        var userAgent = Request.Headers.UserAgent.ToString();
 
         await passwordAuth.RequestPasswordResetAsync(email, token =>
-            $"{Request.Scheme}://{Request.Host}/owner/password/reset?email={normalizedEmail}&token={Uri.EscapeDataString(token)}", ct);
+            $"{Request.Scheme}://{Request.Host}/owner/password/reset?email={normalizedEmail}&token={Uri.EscapeDataString(token)}",
+            userAgent,
+            ct);
 
         model.Info = "If that email exists, we sent reset instructions.";
         return View("ForgotPassword", model);

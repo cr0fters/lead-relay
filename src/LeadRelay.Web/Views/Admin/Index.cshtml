@@ -40,6 +40,60 @@
         </article>
     </section>
 
+    <section class="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-panel sm:p-5">
+        <div class="mb-3">
+            <h2 class="text-sm font-semibold text-slate-900">Global email test</h2>
+            <p class="text-xs text-slate-500">Validate Postmark credentials for LeadRelay transactional emails without editing app configuration.</p>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.EmailTest.Error))
+        {
+            <div class="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">@Model.EmailTest.Error</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.EmailTest.Success))
+        {
+            <div class="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">@Model.EmailTest.Success</div>
+        }
+
+        <form method="post" action="/admin/tools/email-test" class="grid gap-3 lg:grid-cols-2">
+            @Html.AntiForgeryToken()
+            <div>
+                <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="ApiBaseUrl">API base URL</label>
+                <input class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" id="ApiBaseUrl" name="ApiBaseUrl" value="@Model.EmailTest.ApiBaseUrl" placeholder="https://api.postmarkapp.com/" />
+            </div>
+            <div>
+                <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="ServerToken">Server token</label>
+                <input class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" id="ServerToken" name="ServerToken" value="@Model.EmailTest.ServerToken" autocomplete="off" />
+            </div>
+            <div>
+                <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="FromEmail">From email</label>
+                <input class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" id="FromEmail" name="FromEmail" value="@Model.EmailTest.FromEmail" placeholder="noreply@yourdomain.com" />
+            </div>
+            <div>
+                <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="FromName">From name</label>
+                <input class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" id="FromName" name="FromName" value="@Model.EmailTest.FromName" placeholder="LeadRelay" />
+            </div>
+            <div>
+                <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="ToEmail">To email</label>
+                <input class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" id="ToEmail" name="ToEmail" value="@Model.EmailTest.ToEmail" placeholder="you@example.com" />
+            </div>
+            <div>
+                <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="Subject">Subject</label>
+                <input class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" id="Subject" name="Subject" value="@Model.EmailTest.Subject" />
+            </div>
+            <div class="lg:col-span-2">
+                <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="BodyText">Body</label>
+                <textarea class="min-h-[110px] w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" id="BodyText" name="BodyText">@Model.EmailTest.BodyText</textarea>
+            </div>
+            <div class="lg:col-span-2">
+                <button class="inline-flex items-center gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100" type="submit">
+                    <i data-lucide="send" class="h-4 w-4"></i>
+                    <span>Send test email</span>
+                </button>
+            </div>
+        </form>
+    </section>
+
     <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-panel">
         <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
             <h2 class="text-sm font-semibold text-slate-900">Sites</h2>

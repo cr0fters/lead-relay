@@ -10,6 +10,7 @@ using LeadRelay.Web.WhatsApp;
 using LeadRelay.Web.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.Options;
 using System.Text.RegularExpressions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,7 +28,28 @@ builder.Services.AddDbContext<LeadRelayDbContext>(options =>
         mySql => mySql.MigrationsAssembly(typeof(LeadRelayDbContext).Assembly.FullName)));
 builder.Services.AddScoped<ISiteRepository, EfSiteRepository>();
 builder.Services.AddScoped<ILeadRepository, EfLeadRepository>();
-builder.Services.AddSingleton<IEmailSender, ConsoleEmailSender>();
+builder.Services.Configure<PostmarkOptions>(builder.Configuration.GetSection("Postmark"));
+builder.Services.AddTransient<ConsoleEmailSender>();
+builder.Services.AddHttpClient<PostmarkEmailSender>((sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptions<PostmarkOptions>>().Value;
+    var baseUrl = string.IsNullOrWhiteSpace(options.ApiBaseUrl)
+        ? "https://api.postmarkapp.com"
+        : options.ApiBaseUrl.Trim();
+    client.BaseAddress = new Uri(baseUrl.EndsWith('/') ? baseUrl : $"{baseUrl}/");
+});
+builder.Services.AddTransient<IEmailSender>(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<PostmarkOptions>>().Value;
+    var hasPostmarkConfig =
+        options.Enabled &&
+        !string.IsNullOrWhiteSpace(options.ServerToken) &&
+        !string.IsNullOrWhiteSpace(options.FromEmail);
+
+    return hasPostmarkConfig
+        ? sp.GetRequiredService<PostmarkEmailSender>()
+        : sp.GetRequiredService<ConsoleEmailSender>();
+});
 builder.Services.AddScoped<WhatsAppConversationService>();
 builder.Services.AddScoped<LeadCaptureService>();
 
