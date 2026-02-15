@@ -14,7 +14,7 @@ Required outside Development:
 - `ConnectionStrings:LeadRelay`
 - `AdminAuth:Token`
 - `OwnerPortal:SigningSecret`
-- `PublicBaseUrl` (recommended behind load balancers, for example `https://lead-relay-production.up.railway.app`)
+- `PublicBaseUrl` (recommended behind load balancers, for example `https://leadrelay.dev`)
 
 The app fails fast on startup in non-Development if these are missing.
 

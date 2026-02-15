@@ -1,93 +1,50 @@
 @model LeadRelay.Web.Controllers.OwnerLoginController.OwnerLoginModel
 @{
-    ViewData["Title"] = "Login"; 
+    Layout = "~/Views/Shared/_OwnerLayout.cshtml";
+    ViewData["Title"] = "Owner login";
 }
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>@ViewData["Title"]</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: #f4f7fb;
-            color: #172233;
-        }
-        .wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
-        .card {
-            width: 100%;
-            max-width: 440px;
-            background: #fff;
-            border: 1px solid #d3dfef;
-            border-radius: 10px;
-            padding: 22px;
-            box-shadow: 0 8px 24px rgba(20, 38, 65, 0.08);
-        }
-        h1 { margin: 0 0 10px; font-size: 1.35rem; }
-        p { margin: 0 0 14px; color: #4b5d73; }
-        label { display: block; font-weight: 600; margin-bottom: 6px; }
-        input[type="email"],
-        input[type="password"] {
-            width: 100%;
-            border: 1px solid #b4c3da;
-            border-radius: 8px;
-            padding: 10px 12px;
-            font: inherit;
-            box-sizing: border-box;
-            margin-bottom: 12px;
-        }
-        button {
-            width: 100%;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 12px;
-            background: #0f62fe;
-            color: #fff;
-            font: inherit;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .error {
-            margin-bottom: 12px;
-            border: 1px solid #efb4b4;
-            background: #fff3f3;
-            color: #a02222;
-            border-radius: 8px;
-            padding: 10px 12px;
-        }
-    </style>
-</head>
-<body>
-<div class="wrap">
-    <main class="card">
-        <h1>Owner portal</h1>
-        <p>Sign in to view and reply to your leads.</p>
 
-        @if (!string.IsNullOrWhiteSpace(Model.Error))
-        {
-            <div class="error">@Model.Error</div>
-        }
-        @if (!string.IsNullOrWhiteSpace(Model.Info))
-        {
-            <div style="margin-bottom:12px;border:1px solid #b7e4c7;background:#f3fff7;color:#1f6c3a;border-radius:8px;padding:10px 12px;">@Model.Info</div>
-        }
+<div class="min-h-screen bg-slate-100 px-4 py-10 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-5xl">
+        <div class="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+            <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-panel sm:p-8">
+                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Owner workspace</p>
+                <h1 class="mt-2 font-display text-3xl font-semibold tracking-tight text-slate-900">Sign in to manage leads</h1>
+                <p class="mt-3 max-w-xl text-sm text-slate-600">Review lead conversations, update contact details, and send replies in one place.</p>
 
-        <form method="post" action="/owner/login">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+                @if (!string.IsNullOrWhiteSpace(Model.Error))
+                {
+                    <div class="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">@Model.Error</div>
+                }
 
-            <label for="email">Owner email</label>
-            <input id="email" name="Email" type="email" required autocomplete="email" value="@Model.Email" />
+                @if (!string.IsNullOrWhiteSpace(Model.Info))
+                {
+                    <div class="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">@Model.Info</div>
+                }
 
-            <label for="password">Password</label>
-            <input id="password" name="Password" type="password" required autocomplete="current-password" />
+                <form method="post" action="/owner/login" class="mt-5 space-y-4">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
 
-            <button type="submit">Sign in</button>
-        </form>
-        <p style="margin-top:12px;"><a href="/owner/password/forgot">Forgot password?</a></p>
-    </main>
+                    <div>
+                        <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="email">Owner email</label>
+                        <input class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" id="email" name="Email" type="email" required autocomplete="email" value="@Model.Email" />
+                    </div>
+
+                    <div>
+                        <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="password">Password</label>
+                        <input class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" id="password" name="Password" type="password" required autocomplete="current-password" />
+                    </div>
+
+                    <button class="inline-flex w-full items-center justify-center rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700" type="submit">Sign in</button>
+                </form>
+            </section>
+
+            <aside class="rounded-2xl border border-slate-200 bg-white p-6 shadow-panel sm:p-8">
+                <h2 class="font-display text-xl font-semibold tracking-tight text-slate-900">Need help signing in?</h2>
+                <p class="mt-3 text-sm text-slate-600">Use your owner email and password. If you no longer have access, reset your password using the link below.</p>
+                <a href="/owner/password/forgot" class="mt-5 inline-flex items-center rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100">Forgot password?</a>
+            </aside>
+        </div>
+    </div>
 </div>
-</body>
-</html>
