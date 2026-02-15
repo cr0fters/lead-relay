@@ -59,107 +59,14 @@
         <div class="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">@Model.Success</div>
     }
 
-    <div class="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(340px,1fr)]">
-        <main class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel">
-            <div class="border-b border-slate-100 px-4 py-3 sm:px-5">
-                <div class="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                        <h2 class="text-sm font-semibold text-slate-900">Conversation</h2>
-                        <p class="text-xs text-slate-500">Review the message timeline and send a reply from the same screen.</p>
-                    </div>
-                    @if (!Model.IsPaused)
-                    {
-                        <span class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-emerald-700">
-                            <i data-lucide="bot" class="h-3.5 w-3.5"></i>
-                            <span>Auto-reply on</span>
-                        </span>
-                    }
-                    else
-                    {
-                        <span class="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-700">
-                            <i data-lucide="pause-circle" class="h-3.5 w-3.5"></i>
-                            <span>Auto-reply off</span>
-                        </span>
-                    }
-                </div>
-            </div>
-
-            @if (!hasConversation)
-            {
-                <div class="px-4 py-10 text-sm text-slate-500 sm:px-5">No messages yet.</div>
-            }
-            else
-            {
-                <div id="conversationTimeline" class="max-h-[34rem] space-y-3 overflow-auto bg-slate-50/70 px-4 py-4 sm:px-5">
-                    @foreach (var turn in Model.Conversation)
-                    {
-                        var isIncoming = string.Equals(turn.Role, "user", StringComparison.OrdinalIgnoreCase) ||
-                                         string.Equals(turn.Role, "customer", StringComparison.OrdinalIgnoreCase);
-                        var roleLabel = isIncoming ? "Customer" : "LeadRelay";
-                        <article class="max-w-[90%] @(isIncoming ? "mr-auto" : "ml-auto")">
-                            <p class="mb-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">@roleLabel · @turn.AtUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm") UTC</p>
-                            <div class="rounded-xl px-3 py-2.5 text-sm leading-6 ring-1 whitespace-pre-wrap break-words @(isIncoming ? "bg-white text-slate-800 ring-slate-200" : "bg-sky-50 text-slate-800 ring-sky-100")">@turn.Text</div>
-                        </article>
-                    }
-                </div>
-            }
-
-            <div class="border-t border-slate-100 bg-white px-4 py-4 sm:px-5">
-                <h3 class="text-sm font-semibold text-slate-900">Reply</h3>
-                <p class="mt-1 text-xs text-slate-500">Choose a channel, then send a message directly to this lead.</p>
-
-                <form method="post" action="/owner/leads/@Model.Id/reply" class="mt-3 space-y-3">
-                    @Html.AntiForgeryToken()
-                    <div class="grid gap-3 md:grid-cols-[220px_1fr]">
-                        <div>
-                            <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="replyChannel">Send via</label>
-                            <select class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 ring-slate-200 outline-none focus:ring" id="replyChannel" name="replyChannel">
-                                @if (Model.CanReplyViaWhatsApp)
-                                {
-                                    if (string.Equals(Model.ReplyChannel, "whatsapp", StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        <option value="whatsapp" selected>WhatsApp</option>
-                                    }
-                                    else
-                                    {
-                                        <option value="whatsapp">WhatsApp</option>
-                                    }
-                                }
-                                @if (Model.CanReplyViaEmail)
-                                {
-                                    if (string.Equals(Model.ReplyChannel, "email", StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        <option value="email" selected>Email</option>
-                                    }
-                                    else
-                                    {
-                                        <option value="email">Email</option>
-                                    }
-                                }
-                            </select>
-                        </div>
-                        <div>
-                            <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="message">Message</label>
-                            <textarea class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 ring-slate-200 outline-none focus:ring" id="message" name="message" rows="5" placeholder="Write your message to the customer..." required></textarea>
-                            <p class="mt-1 text-xs text-slate-500">Available channels depend on lead contact details.</p>
-                        </div>
-                    </div>
-
-                    <button class="inline-flex items-center gap-2 rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700" type="submit">
-                        <i data-lucide="send" class="h-4 w-4"></i>
-                        <span>Send reply</span>
-                    </button>
-                </form>
-            </div>
-        </main>
-
-        <aside class="space-y-3">
+    <div class="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <aside class="space-y-3 xl:sticky xl:top-4 xl:self-start">
             <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-panel">
                 <h2 class="text-sm font-semibold text-slate-900">Contact profile</h2>
                 <dl class="mt-3 grid gap-2 text-sm">
-                    <div class="grid grid-cols-[100px_1fr] gap-2"><dt class="text-slate-500">Name</dt><dd class="font-medium text-slate-900">@(string.IsNullOrWhiteSpace(Model.Name) ? "-" : Model.Name)</dd></div>
-                    <div class="grid grid-cols-[100px_1fr] gap-2"><dt class="text-slate-500">Email</dt><dd class="break-all font-medium text-slate-900">@(string.IsNullOrWhiteSpace(Model.Email) ? "-" : Model.Email)</dd></div>
-                    <div class="grid grid-cols-[100px_1fr] gap-2"><dt class="text-slate-500">Phone</dt><dd class="break-all font-medium text-slate-900">@(string.IsNullOrWhiteSpace(Model.Phone) ? "-" : Model.Phone)</dd></div>
+                    <div class="grid grid-cols-[92px_1fr] gap-2"><dt class="text-slate-500">Name</dt><dd class="font-medium text-slate-900">@(string.IsNullOrWhiteSpace(Model.Name) ? "-" : Model.Name)</dd></div>
+                    <div class="grid grid-cols-[92px_1fr] gap-2"><dt class="text-slate-500">Email</dt><dd class="break-all font-medium text-slate-900">@(string.IsNullOrWhiteSpace(Model.Email) ? "-" : Model.Email)</dd></div>
+                    <div class="grid grid-cols-[92px_1fr] gap-2"><dt class="text-slate-500">Phone</dt><dd class="break-all font-medium text-slate-900">@(string.IsNullOrWhiteSpace(Model.Phone) ? "-" : Model.Phone)</dd></div>
                 </dl>
             </section>
 
@@ -236,6 +143,109 @@
                 </form>
             </section>
         </aside>
+
+        <main class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel">
+            <div class="border-b border-slate-100 px-4 py-3 sm:px-5">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                        <h2 class="text-sm font-semibold text-slate-900">Activity timeline</h2>
+                        <p class="text-xs text-slate-500">Chronological conversation history and outbound messaging.</p>
+                    </div>
+                    @if (!Model.IsPaused)
+                    {
+                        <span class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-emerald-700">
+                            <i data-lucide="bot" class="h-3.5 w-3.5"></i>
+                            <span>Auto-reply on</span>
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-700">
+                            <i data-lucide="pause-circle" class="h-3.5 w-3.5"></i>
+                            <span>Auto-reply off</span>
+                        </span>
+                    }
+                </div>
+            </div>
+
+            @if (!hasConversation)
+            {
+                <div class="px-4 py-10 text-sm text-slate-500 sm:px-5">No messages yet.</div>
+            }
+            else
+            {
+                <div id="conversationTimeline" class="max-h-[34rem] space-y-3 overflow-auto bg-slate-50/60 px-4 py-4 sm:px-5">
+                    @foreach (var turn in Model.Conversation)
+                    {
+                        var isIncoming = string.Equals(turn.Role, "user", StringComparison.OrdinalIgnoreCase) ||
+                                         string.Equals(turn.Role, "customer", StringComparison.OrdinalIgnoreCase);
+                        var roleLabel = isIncoming ? "Customer" : "LeadRelay";
+                        var toneClass = isIncoming
+                            ? "border-slate-200 bg-white"
+                            : "border-sky-200 bg-sky-50";
+
+                        <article class="relative rounded-xl border p-3 shadow-sm @toneClass">
+                            <span class="absolute bottom-0 left-4 top-0 hidden w-px bg-slate-200 lg:block"></span>
+                            <div class="relative z-10 pl-0 lg:pl-3">
+                                <div class="mb-1 flex flex-wrap items-center gap-2">
+                                    <span class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] @(isIncoming ? "bg-slate-100 text-slate-700" : "bg-sky-100 text-sky-700")">@roleLabel</span>
+                                    <span class="text-[11px] font-medium text-slate-500">@turn.AtUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm") UTC</span>
+                                </div>
+                                <p class="whitespace-pre-wrap break-words text-sm leading-6 text-slate-800">@turn.Text</p>
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+
+            <div class="border-t border-slate-100 bg-white px-4 py-4 sm:px-5">
+                <h3 class="text-sm font-semibold text-slate-900">Send message</h3>
+                <p class="mt-1 text-xs text-slate-500">Choose a channel and send an outbound response.</p>
+
+                <form method="post" action="/owner/leads/@Model.Id/reply" class="mt-3 space-y-3">
+                    @Html.AntiForgeryToken()
+                    <div class="grid gap-3 md:grid-cols-[220px_1fr]">
+                        <div>
+                            <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="replyChannel">Channel</label>
+                            <select class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 ring-slate-200 outline-none focus:ring" id="replyChannel" name="replyChannel">
+                                @if (Model.CanReplyViaWhatsApp)
+                                {
+                                    if (string.Equals(Model.ReplyChannel, "whatsapp", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <option value="whatsapp" selected>WhatsApp</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="whatsapp">WhatsApp</option>
+                                    }
+                                }
+                                @if (Model.CanReplyViaEmail)
+                                {
+                                    if (string.Equals(Model.ReplyChannel, "email", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <option value="email" selected>Email</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="email">Email</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="message">Message</label>
+                            <textarea class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 ring-slate-200 outline-none focus:ring" id="message" name="message" rows="5" placeholder="Write your message to the customer..." required></textarea>
+                            <p class="mt-1 text-xs text-slate-500">Available channels depend on lead contact details.</p>
+                        </div>
+                    </div>
+
+                    <button class="inline-flex items-center gap-2 rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700" type="submit">
+                        <i data-lucide="send" class="h-4 w-4"></i>
+                        <span>Send reply</span>
+                    </button>
+                </form>
+            </div>
+        </main>
     </div>
 </div>
 
