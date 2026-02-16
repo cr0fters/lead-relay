@@ -86,14 +86,14 @@ public sealed class OwnerPasswordAuthService(
         }
 
         var body = $"""
-                    We received a password reset request for your LeadRelay owner portal.
+                    We received a password reset request for your LeadRelay account.
 
                     Reset your password: {resetUrl}
 
                     This link expires in {_options.PasswordResetTtlMinutes} minutes.
                     If you did not request this, you can ignore this email.
                     """;
-        await emailSender.SendAsync(site.OwnerEmail, "Reset your LeadRelay owner password", body, ct);
+        await emailSender.SendAsync(site.OwnerEmail, "Reset your LeadRelay password", body, ct);
     }
 
     public async Task<bool> ResetPasswordAsync(string? email, string? token, string? newPassword, CancellationToken ct)

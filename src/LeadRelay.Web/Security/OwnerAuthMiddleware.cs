@@ -20,6 +20,12 @@ public sealed class OwnerAuthMiddleware(RequestDelegate next)
             return;
         }
 
+        if (context.Request.Path.StartsWithSegments("/owner/register", StringComparison.OrdinalIgnoreCase))
+        {
+            await _next(context);
+            return;
+        }
+
         if (context.Request.Path.StartsWithSegments("/owner/password", StringComparison.OrdinalIgnoreCase))
         {
             await _next(context);

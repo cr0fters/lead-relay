@@ -1,0 +1,528 @@
+@model LeadRelay.Web.Controllers.OwnerLoginController.RegisterModel
+@{
+    Layout = "~/Views/Shared/_OwnerLayout.cshtml";
+    ViewData["Title"] = "Create account";
+}
+
+<div class="relative min-h-screen overflow-hidden bg-slate-950 px-4 py-8 sm:px-6 lg:px-8">
+    <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(16,185,129,0.25),transparent_38%),radial-gradient(circle_at_85%_20%,rgba(56,189,248,0.25),transparent_36%),radial-gradient(circle_at_55%_95%,rgba(244,114,182,0.16),transparent_42%)]"></div>
+
+    <div class="relative mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+        <aside class="rounded-3xl border border-white/10 bg-white/5 p-6 text-slate-100 backdrop-blur-xl sm:p-8">
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200/80">LeadRelay onboarding</p>
+            <h1 class="mt-3 font-display text-3xl font-semibold tracking-tight text-white sm:text-4xl">Launch faster with a guided setup.</h1>
+            <p class="mt-4 text-sm leading-relaxed text-slate-200/90">Tell us your business type, review suggested lead prompts, then create your account in the final step.</p>
+
+            <div class="mt-6 space-y-3">
+                <div class="rounded-2xl border border-emerald-300/30 bg-emerald-400/10 p-4">
+                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100">Conversion-first flow</p>
+                    <p class="mt-2 text-sm text-emerald-50">Credentials are requested only after your setup is already tailored.</p>
+                </div>
+                <div class="rounded-2xl border border-sky-300/30 bg-sky-400/10 p-4">
+                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-sky-100">Estimated time</p>
+                    <p class="mt-2 text-sm text-sky-50">About 2 minutes, including setup personalization.</p>
+                </div>
+            </div>
+        </aside>
+
+        <section x-data="registrationFlow()" x-init="init()" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl shadow-black/20 sm:p-8">
+            <div class="mb-6">
+                <div class="relative h-1.5 rounded-full bg-slate-200">
+                    <div class="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-500 transition-all duration-300" :style="`width: ${(step / 4) * 100}%`"></div>
+                </div>
+                <div class="mt-3 grid grid-cols-4 gap-2">
+                    <template x-for="(label, index) in steps" :key="label">
+                        <button type="button"
+                                x-on:click="jumpTo(index + 1)"
+                                class="rounded-2xl border px-2.5 py-2 text-left text-xs transition"
+                                :class="step === (index + 1)
+                                    ? 'border-sky-300 bg-sky-50 shadow-sm ring-1 ring-sky-200'
+                                    : step > (index + 1)
+                                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                        : 'border-slate-200 bg-slate-50 text-slate-500'">
+                            <p class="font-semibold" x-text="label"></p>
+                            <p class="mt-0.5 text-[11px]" x-text="`Step ${index + 1}`"></p>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Model.Error))
+            {
+                <div class="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">@Model.Error</div>
+            }
+
+            <form method="post" action="/owner/register" class="space-y-6">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+                <input type="hidden" name="BusinessType" :value="selectedType" />
+                <input type="hidden" name="CustomBusinessType" :value="customBusinessType" />
+                <input type="hidden" name="SiteName" :value="siteName" />
+                <input type="hidden" name="PayloadJson" :value="buildPayloadJson()" />
+
+                <div class="mx-auto w-full max-w-2xl">
+                    <div x-show="step === 1" x-cloak>
+                        <h2 class="font-display text-2xl font-semibold tracking-tight text-slate-900">What type of business are you?</h2>
+                        <p class="mt-2 text-sm text-slate-600">Choose the closest fit. We’ll generate tailored suggestions in the next steps.</p>
+
+                        <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                            <template x-for="option in businessTypes" :key="option.id">
+                                <button type="button"
+                                        class="group rounded-2xl border px-4 py-3 text-left transition"
+                                        :class="selectedType === option.id ? 'border-sky-300 bg-sky-50 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'"
+                                        x-on:click="selectType(option.id)">
+                                    <div class="flex items-center gap-3">
+                                        <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl"
+                                              :class="selectedType === option.id ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-600'">
+                                            <i :data-lucide="option.icon" class="h-4 w-4"></i>
+                                        </span>
+                                        <p class="text-sm font-semibold text-slate-900" x-text="option.label"></p>
+                                    </div>
+                                </button>
+                            </template>
+                        </div>
+
+                        <div x-show="selectedType === 'other'" x-cloak class="mt-4">
+                            <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="customBusinessType">Your business type</label>
+                            <input id="customBusinessType"
+                                   x-model="customBusinessType"
+                                   type="text"
+                                   class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring"
+                                   placeholder="Tell us your business type" />
+                        </div>
+                    </div>
+
+                    <div x-show="step === 2" x-cloak>
+                        <h2 class="font-display text-2xl font-semibold tracking-tight text-slate-900">What is your business name?</h2>
+                        <p class="mt-2 text-sm text-slate-600">We’ll use this in your suggested summary and field prompts.</p>
+
+                        <div class="mt-5">
+                            <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="siteName">Business name</label>
+                            <input id="siteName"
+                                   x-model="siteName"
+                                   type="text"
+                                   class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring"
+                                   placeholder="For example: North Shore Build Co." />
+                        </div>
+                    </div>
+
+                    <div x-show="step === 3" x-cloak>
+                        <h2 class="font-display text-2xl font-semibold tracking-tight text-slate-900">Review your suggested setup</h2>
+                        <p class="mt-2 text-sm text-slate-600">Descriptions are fully editable. Field IDs are generated automatically behind the scenes.</p>
+
+                        <div class="mt-5 space-y-4">
+                            <div>
+                                <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="businessSummary">Business summary</label>
+                                <textarea id="businessSummary"
+                                          x-model="businessSummary"
+                                          rows="4"
+                                          class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring"></textarea>
+                            </div>
+
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between gap-2">
+                                    <label class="block text-sm font-semibold text-slate-700">Suggested lead fields</label>
+                                    <button type="button"
+                                            x-on:click="addField()"
+                                            class="inline-flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-100">
+                                        <i data-lucide="plus" class="h-3.5 w-3.5"></i>
+                                        Add field
+                                    </button>
+                                </div>
+
+                                <template x-for="(field, index) in fields" :key="index">
+                                    <article class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                                        <input type="hidden" x-model="field.id" />
+
+                                        <div x-show="!field.editing" x-cloak class="flex items-start justify-between gap-3">
+                                            <div>
+                                                <p class="text-sm font-semibold text-slate-900" x-text="field.name || 'Untitled field'"></p>
+                                                <p class="mt-1 whitespace-pre-wrap text-sm text-slate-600" x-text="field.description || 'No description yet.'"></p>
+                                            </div>
+                                            <div class="flex shrink-0 gap-2">
+                                                <button type="button" x-on:click="editField(index)" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">Edit</button>
+                                                <button type="button" x-on:click="removeField(index)" class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100">Remove</button>
+                                            </div>
+                                        </div>
+
+                                        <div x-show="field.editing" x-cloak class="space-y-2">
+                                            <label class="block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Field name</label>
+                                            <input x-model="field.name"
+                                                   x-on:input="syncFieldId(index)"
+                                                   type="text"
+                                                   class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring"
+                                                   placeholder="For example: Timeline" />
+
+                                            <label class="mt-2 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Description</label>
+                                            <textarea x-model="field.description"
+                                                      rows="3"
+                                                      class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring"
+                                                      placeholder="Optional guidance prompt"></textarea>
+
+                                            <div class="flex justify-end gap-2">
+                                                <button type="button" x-on:click="removeField(index)" class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100">Remove</button>
+                                                <button type="button" x-on:click="saveField(index)" class="rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-100">Done</button>
+                                            </div>
+                                        </div>
+                                    </article>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div x-show="step === 4" x-cloak>
+                        <h2 class="font-display text-2xl font-semibold tracking-tight text-slate-900">Create your login</h2>
+                        <p class="mt-2 text-sm text-slate-600">Final step: enter your account credentials.</p>
+
+                        <div class="mt-5 space-y-4">
+                            <div>
+                                <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="email">Email</label>
+                                <input id="email"
+                                       x-model="email"
+                                       name="Email"
+                                       type="email"
+                                       required
+                                       autocomplete="email"
+                                       class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" />
+                            </div>
+
+                            <div>
+                                <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="password">Password</label>
+                                <input id="password"
+                                       x-model="password"
+                                       name="Password"
+                                       type="password"
+                                       required
+                                       autocomplete="new-password"
+                                       class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" />
+                                <p class="mt-1 text-xs text-slate-500">Use at least 8 characters.</p>
+                            </div>
+
+                            <div>
+                                <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="confirmPassword">Confirm password</label>
+                                <input id="confirmPassword"
+                                       x-model="confirmPassword"
+                                       name="ConfirmPassword"
+                                       type="password"
+                                       required
+                                       autocomplete="new-password"
+                                       class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
+                    <button type="button"
+                            x-show="step > 1"
+                            x-cloak
+                            x-on:click="back()"
+                            class="inline-flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                        <i data-lucide="arrow-left" class="h-4 w-4"></i>
+                        Back
+                    </button>
+                    <span x-show="step === 1" class="text-xs text-slate-500">Already registered? <a href="/owner/login" class="font-semibold text-sky-700 hover:text-sky-800">Sign in</a></span>
+
+                    <button x-show="step < 4"
+                            x-cloak
+                            type="button"
+                            x-on:click="next()"
+                            :disabled="!canContinue()"
+                            class="ml-auto inline-flex items-center gap-1 rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-300">
+                        Continue
+                        <i data-lucide="arrow-right" class="h-4 w-4"></i>
+                    </button>
+
+                    <button x-show="step === 4"
+                            x-cloak
+                            type="submit"
+                            :disabled="!canSubmit()"
+                            class="ml-auto inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300">
+                        Create account
+                        <i data-lucide="check" class="h-4 w-4"></i>
+                    </button>
+                </div>
+            </form>
+        </section>
+    </div>
+</div>
+
+@section PageScripts {
+<script>
+    function registrationFlow() {
+        return {
+            steps: ["Business", "Name", "Setup", "Account"],
+            step: 1,
+            businessTypes: [
+                { id: "interior_design", label: "Interior design", icon: "lamp" },
+                { id: "home_remodeling", label: "Home remodeling", icon: "hammer" },
+                { id: "real_estate", label: "Real estate", icon: "building-2" },
+                { id: "legal_services", label: "Legal services", icon: "scale" },
+                { id: "financial_advisory", label: "Financial advisory", icon: "wallet" },
+                { id: "health_wellness", label: "Health and wellness", icon: "heart-pulse" },
+                { id: "fitness_coaching", label: "Fitness coaching", icon: "dumbbell" },
+                { id: "photography", label: "Photography", icon: "camera" },
+                { id: "event_planning", label: "Event planning", icon: "calendar-heart" },
+                { id: "other", label: "Other", icon: "sparkles" }
+            ],
+            suggestionCatalog: {
+                interior_design: {
+                    summary: "{business} is an interior design business helping clients create functional, beautiful spaces tailored to their lifestyle.",
+                    fields: [
+                        { name: "Project type", description: "Which space needs design support?" },
+                        { name: "Timeline", description: "When are you planning to start?" },
+                        { name: "Budget", description: "Do you have a rough budget range?" },
+                        { name: "Location", description: "Where is the project based?" }
+                    ]
+                },
+                home_remodeling: {
+                    summary: "{business} provides remodeling services for homeowners looking to upgrade or transform their spaces.",
+                    fields: [
+                        { name: "Project scope", description: "What rooms or areas are being remodeled?" },
+                        { name: "Timeline", description: "When should work begin?" },
+                        { name: "Budget", description: "What budget range are you targeting?" },
+                        { name: "Property type", description: "Single-family, condo, or other?" }
+                    ]
+                },
+                real_estate: {
+                    summary: "{business} helps buyers and sellers navigate real estate decisions with responsive, local expertise.",
+                    fields: [
+                        { name: "Buying or selling", description: "Are you buying, selling, or both?" },
+                        { name: "Timeline", description: "When do you want to move?" },
+                        { name: "Preferred area", description: "Which locations are you considering?" },
+                        { name: "Price range", description: "What budget or listing range applies?" }
+                    ]
+                },
+                legal_services: {
+                    summary: "{business} offers legal services with clear guidance and practical support through each case stage.",
+                    fields: [
+                        { name: "Matter type", description: "What type of legal help do you need?" },
+                        { name: "Urgency", description: "How soon do you need support?" },
+                        { name: "Location", description: "Where is the matter based?" },
+                        { name: "Case details", description: "Share brief context for your request" }
+                    ]
+                },
+                financial_advisory: {
+                    summary: "{business} supports clients with strategic financial planning and personalized advisory recommendations.",
+                    fields: [
+                        { name: "Primary goal", description: "What are you trying to achieve?" },
+                        { name: "Timeline", description: "When do you want to reach this goal?" },
+                        { name: "Household status", description: "Any context that affects planning?" },
+                        { name: "Additional notes", description: "Anything else we should know?" }
+                    ]
+                },
+                health_wellness: {
+                    summary: "{business} helps clients improve wellbeing through personalized health and lifestyle support.",
+                    fields: [
+                        { name: "Wellness goal", description: "What do you want to improve first?" },
+                        { name: "Availability", description: "Preferred days and times" },
+                        { name: "Prior experience", description: "Have you worked with a coach or specialist before?" },
+                        { name: "Additional notes", description: "Anything relevant to your goals" }
+                    ]
+                },
+                fitness_coaching: {
+                    summary: "{business} delivers practical fitness coaching tailored to each client's goals and schedule.",
+                    fields: [
+                        { name: "Fitness goal", description: "Strength, weight loss, endurance, or other" },
+                        { name: "Current level", description: "Beginner, intermediate, advanced" },
+                        { name: "Availability", description: "Preferred training times" },
+                        { name: "Constraints", description: "Any injuries or limitations?" }
+                    ]
+                },
+                photography: {
+                    summary: "{business} offers photography services for clients who need high-quality, reliable creative coverage.",
+                    fields: [
+                        { name: "Shoot type", description: "What kind of photography do you need?" },
+                        { name: "Preferred date", description: "When should the shoot happen?" },
+                        { name: "Location", description: "Where will the shoot take place?" },
+                        { name: "Deliverables", description: "What output do you expect?" }
+                    ]
+                },
+                event_planning: {
+                    summary: "{business} helps clients plan and execute memorable events with clear communication from start to finish.",
+                    fields: [
+                        { name: "Event type", description: "Wedding, corporate, birthday, or other" },
+                        { name: "Event date", description: "When is your target date?" },
+                        { name: "Guest count", description: "Approximate number of attendees" },
+                        { name: "Budget", description: "Do you have a target budget range?" }
+                    ]
+                },
+                default: {
+                    summary: "{business} helps clients with tailored services and responsive communication from first inquiry to project completion.",
+                    fields: [
+                        { name: "Service needed", description: "What do you need help with?" },
+                        { name: "Timeline", description: "When do you need this?" },
+                        { name: "Budget", description: "Any budget guidance to share?" },
+                        { name: "Additional details", description: "Any helpful background information" }
+                    ]
+                }
+            },
+            selectedType: "@((Model.BusinessType ?? "").Trim())",
+            customBusinessType: "@((Model.CustomBusinessType ?? "").Trim())",
+            siteName: "@((Model.SiteName ?? "").Trim())",
+            businessSummary: "",
+            fields: [],
+            email: "@((Model.Email ?? "").Trim())",
+            password: "",
+            confirmPassword: "",
+
+            init() {
+                const payload = @Html.Raw(string.IsNullOrWhiteSpace(Model.PayloadJson)
+                    ? "null"
+                    : System.Text.Json.JsonSerializer.Serialize(System.Text.Json.JsonSerializer.Deserialize<LeadRelay.Web.Security.OwnerRegistrationPayload>(Model.PayloadJson)));
+
+                if (payload && typeof payload === "object") {
+                    this.businessSummary = payload.businessSummary || "";
+                    this.fields = Array.isArray(payload.fields)
+                        ? payload.fields.map(x => ({
+                            id: x.id || "",
+                            name: x.name || "",
+                            description: x.description || "",
+                            editing: false
+                        }))
+                        : [];
+                }
+
+                if (!this.selectedType) {
+                    this.selectedType = "interior_design";
+                }
+
+                if (!this.businessSummary || this.fields.length === 0) {
+                    this.applySuggestions();
+                }
+
+                this.$nextTick(() => window.refreshLucideIcons && window.refreshLucideIcons());
+            },
+
+            jumpTo(stepNumber) {
+                if (stepNumber < this.step) {
+                    this.step = stepNumber;
+                }
+            },
+
+            selectType(id) {
+                this.selectedType = id;
+                if (id !== "other") {
+                    this.customBusinessType = "";
+                }
+                this.applySuggestions();
+                this.$nextTick(() => window.refreshLucideIcons && window.refreshLucideIcons());
+            },
+
+            slugify(value) {
+                return (value || "")
+                    .toLowerCase()
+                    .trim()
+                    .replace(/[^a-z0-9\s_.-]/g, "")
+                    .replace(/[\s.-]+/g, "_")
+                    .replace(/^_+|_+$/g, "");
+            },
+
+            applySuggestions() {
+                const key = this.selectedType === "other" ? "default" : this.selectedType;
+                const suggestions = this.suggestionCatalog[key] || this.suggestionCatalog.default;
+                const name = this.siteName && this.siteName.trim().length > 0 ? this.siteName.trim() : "Your business";
+
+                this.businessSummary = suggestions.summary.replace("{business}", name);
+                this.fields = suggestions.fields.map(x => ({
+                    id: this.slugify(x.name),
+                    name: x.name,
+                    description: x.description || "",
+                    editing: false
+                }));
+            },
+
+            addField() {
+                this.fields.push({ id: "", name: "", description: "", editing: true });
+                this.$nextTick(() => window.refreshLucideIcons && window.refreshLucideIcons());
+            },
+
+            editField(index) {
+                this.fields[index].editing = true;
+            },
+
+            saveField(index) {
+                this.syncFieldId(index);
+                this.fields[index].editing = false;
+            },
+
+            syncFieldId(index) {
+                const candidate = this.slugify(this.fields[index].name);
+                this.fields[index].id = candidate;
+            },
+
+            removeField(index) {
+                this.fields.splice(index, 1);
+            },
+
+            canContinue() {
+                if (this.step === 1) {
+                    if (!this.selectedType) return false;
+                    if (this.selectedType === "other") return this.customBusinessType.trim().length > 0;
+                    return true;
+                }
+
+                if (this.step === 2) {
+                    return this.siteName.trim().length > 1;
+                }
+
+                if (this.step === 3) {
+                    if (this.businessSummary.trim().length === 0 || this.fields.length === 0) return false;
+                    return this.fields.every(x => (x.name || "").trim().length > 0);
+                }
+
+                return true;
+            },
+
+            canSubmit() {
+                if (!this.email || this.email.trim().length === 0) return false;
+                if (!this.password || this.password.length < 8) return false;
+                if (this.password !== this.confirmPassword) return false;
+                return true;
+            },
+
+            next() {
+                if (!this.canContinue()) return;
+                if (this.step === 2) {
+                    this.applySuggestions();
+                }
+
+                if (this.step === 3) {
+                    this.fields.forEach((_, idx) => this.syncFieldId(idx));
+                    if (this.fields.some(x => !(x.name || "").trim())) {
+                        return;
+                    }
+                }
+
+                this.step = Math.min(4, this.step + 1);
+                this.$nextTick(() => window.refreshLucideIcons && window.refreshLucideIcons());
+            },
+
+            back() {
+                this.step = Math.max(1, this.step - 1);
+                this.$nextTick(() => window.refreshLucideIcons && window.refreshLucideIcons());
+            },
+
+            buildPayloadJson() {
+                const fields = this.fields
+                    .map((x, index) => {
+                        const name = (x.name || "").trim();
+                        const description = (x.description || "").trim();
+                        const baseId = this.slugify(name) || `field_${index + 1}`;
+                        return {
+                            id: baseId,
+                            name,
+                            description
+                        };
+                    })
+                    .filter(x => x.name || x.description);
+
+                return JSON.stringify({
+                    businessSummary: (this.businessSummary || "").trim(),
+                    fields
+                });
+            }
+        };
+    }
+</script>
+}

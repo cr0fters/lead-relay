@@ -1,6 +1,7 @@
 using LeadRelay.Application.Abstractions;
 using LeadRelay.Domain.Leads;
 using LeadRelay.Domain.Sites;
+using LeadRelay.Web.Fields;
 using LeadRelay.Web.Security;
 using Microsoft.AspNetCore.Mvc;
 using System.Net.Mail;
@@ -308,32 +309,16 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
 
     private static (List<ConversationField> Fields, string? Error) ParseAndNormalizeFields(List<OwnerFieldInputModel>? fields)
     {
-        var normalized = new List<ConversationField>();
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var entry in fields ?? [])
-        {
-            var id = (entry.Id ?? "").Trim();
-            var name = (entry.Name ?? "").Trim();
-            var description = (entry.Description ?? "").Trim();
-
-            if (string.IsNullOrWhiteSpace(id) && string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(description))
-                continue;
-
-            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(name))
-                return (normalized, "Each field needs both an id and a name.");
-
-            if (!seen.Add(id))
-                return (normalized, "Field ids must be unique.");
-
-            normalized.Add(new ConversationField
+        var mapped = (fields ?? [])
+            .Select(entry => new ConversationField
             {
-                Id = id,
-                Name = name,
-                Description = string.IsNullOrWhiteSpace(description) ? null : description
-            });
-        }
+                Id = entry.Id ?? "",
+                Name = entry.Name ?? "",
+                Description = entry.Description
+            })
+            .ToList();
 
-        return (normalized, null);
+        return ConversationFieldNormalizer.Normalize(mapped);
     }
 
     private static IReadOnlyList<OwnerFieldDefinitionModel> BuildFieldDefinitions(

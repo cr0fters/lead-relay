@@ -5,7 +5,7 @@
 - Keep critical hardening work visible and scheduled (do not defer indefinitely).
 
 ## Priority 0: next build cycle (self-serve MVP)
-- [ ] Implement self-serve account registration flow (no manual admin provisioning required).
+- [x] Implement self-serve account registration flow (no manual admin provisioning required).
 - [ ] Build guided onboarding wizard after signup:
   - connect WhatsApp account
   - capture/store `phone_number_id` and required identifiers
@@ -16,7 +16,7 @@
   - WhatsApp connected
   - webhook verified
   - first lead captured
-- [ ] Add owner account bootstrap completion flow for new signups (set initial password via secure link).
+- [ ] Add account bootstrap completion flow for new signups (set initial password via secure link).
 - [ ] Add important notification emails (starting with new lead notifications).
 
 ## Priority 1: monetization and gating
@@ -46,7 +46,7 @@
 - [x] DB-backed repositories wired in.
 - [x] Admin site config API/UI implemented.
 - [x] Admin token protection middleware implemented.
-- [x] Owner login area and lead workspace implemented.
+- [x] Login area and lead workspace implemented.
 - [x] Password reset flow with Postmark template support implemented.
 - [x] Secrets required in non-development and documented.
 - [x] CI pipeline runs tests and validates migrations.
@@ -59,7 +59,7 @@
   2. complete WhatsApp onboarding in-product
   3. install widget on allowed domain
   4. capture first lead with correct site attribution
-  5. receive notification and sign in to owner portal
+  5. receive notification and sign in to the workspace
   6. reply successfully over chosen channel
   7. see meaningful errors/alerts when failures occur
 - [ ] Billing/trial gating behaves as expected for trial and paid states.

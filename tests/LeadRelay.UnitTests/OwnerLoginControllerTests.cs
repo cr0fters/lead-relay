@@ -61,7 +61,69 @@ public sealed class OwnerLoginControllerTests
         Assert.That(model.Error, Is.EqualTo("Passwords do not match."));
     }
 
+    [Test]
+    public async Task register_with_valid_input_redirects_to_owner_home()
+    {
+        OwnerRegistrationRequest? request = null;
+        var controller = BuildController(
+            new FakePasswordAuthService(),
+            new FakeOwnerRegistrationService
+            {
+                OnRegister = r => request = r,
+                Result = OwnerRegistrationResult.Success(new OwnerAuthContext("site_new", "new-owner@example.com"))
+            });
+
+        var result = await controller.RegisterPost(new OwnerLoginController.RegisterModel
+        {
+            BusinessType = "interior_design",
+            SiteName = "New Site",
+            PayloadJson = """
+                          {
+                            "businessSummary": "Interior design studio for family homes.",
+                            "fields": [
+                              { "id": "timeline", "name": "Timeline", "description": "When do you want to start?" }
+                            ]
+                          }
+                          """,
+            Email = "new-owner@example.com",
+            Password = "secure-pass",
+            ConfirmPassword = "secure-pass",
+            ReturnUrl = "/owner"
+        }, CancellationToken.None);
+
+        Assert.That(result, Is.TypeOf<RedirectResult>());
+        Assert.That(((RedirectResult)result).Url, Is.EqualTo("/owner"));
+        Assert.That(request, Is.Not.Null);
+        Assert.That(request!.BusinessSummary, Is.EqualTo("Interior design studio for family homes."));
+        Assert.That(request.Fields, Is.Not.Null);
+        Assert.That(request.Fields!.Count, Is.EqualTo(1));
+        Assert.That(request.Fields[0].Id, Is.EqualTo("timeline"));
+    }
+
+    [Test]
+    public async Task register_with_mismatch_returns_error()
+    {
+        var controller = BuildController(new FakePasswordAuthService());
+
+        var result = await controller.RegisterPost(new OwnerLoginController.RegisterModel
+        {
+            SiteName = "New Site",
+            Email = "new-owner@example.com",
+            Password = "password1",
+            ConfirmPassword = "password2"
+        }, CancellationToken.None);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var model = (OwnerLoginController.RegisterModel)((ViewResult)result).Model!;
+        Assert.That(model.Error, Is.EqualTo("Passwords do not match."));
+    }
+
     private static OwnerLoginController BuildController(FakePasswordAuthService passwordAuth)
+        => BuildController(passwordAuth, new FakeOwnerRegistrationService());
+
+    private static OwnerLoginController BuildController(
+        FakePasswordAuthService passwordAuth,
+        FakeOwnerRegistrationService? registration)
     {
         var sessions = new OwnerSessionService(
             Microsoft.Extensions.Options.Options.Create(new OwnerPortalOptions
@@ -73,7 +135,7 @@ public sealed class OwnerLoginControllerTests
             }),
             new LeadRelay.Infrastructure.Persistence.InMemorySiteRepository());
 
-        var controller = new OwnerLoginController(sessions, passwordAuth)
+        var controller = new OwnerLoginController(sessions, passwordAuth, registration ?? new FakeOwnerRegistrationService())
         {
             ControllerContext = new ControllerContext
             {
@@ -97,5 +159,17 @@ public sealed class OwnerLoginControllerTests
 
         public Task<bool> ResetPasswordAsync(string? email, string? token, string? newPassword, CancellationToken ct)
             => Task.FromResult(true);
+    }
+
+    private sealed class FakeOwnerRegistrationService : IOwnerRegistrationService
+    {
+        public Action<OwnerRegistrationRequest>? OnRegister { get; set; }
+        public OwnerRegistrationResult Result { get; set; } = OwnerRegistrationResult.Failure("not configured");
+
+        public Task<OwnerRegistrationResult> RegisterAsync(OwnerRegistrationRequest request, CancellationToken ct)
+        {
+            OnRegister?.Invoke(request);
+            return Task.FromResult(Result);
+        }
     }
 }

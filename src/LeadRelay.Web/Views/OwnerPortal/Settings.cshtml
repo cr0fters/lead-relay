@@ -2,7 +2,7 @@
 @model LeadRelay.Web.Controllers.OwnerPortalController.OwnerSiteSettingsModel
 @{
     Layout = "~/Views/Shared/_OwnerLayout.cshtml";
-    ViewData["Title"] = "Owner settings";
+    ViewData["Title"] = "Settings";
     var initialRowsJson = JsonSerializer.Serialize(Model.Fields.Select(x => new
     {
         id = x.Id ?? "",
@@ -49,34 +49,43 @@
         <form method="post" action="/owner/settings/fields" class="space-y-3">
             @Html.AntiForgeryToken()
 
-            <div class="hidden grid-cols-[1.1fr_1.2fr_2fr_auto] gap-2 px-1 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 md:grid">
-                <span>Field ID</span>
-                <span>Name</span>
-                <span>Description</span>
-                <span></span>
-            </div>
-
             <template x-for="(row, index) in rows" :key="index">
-                <div class="rounded-md border border-slate-200 bg-slate-50 p-3">
-                    <div class="grid gap-2 md:grid-cols-[1.1fr_1.2fr_2fr_auto]">
+                <article class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <input type="hidden" :name="`fields[${index}].Id`" x-model="row.id" />
+
+                    <div x-show="!row.editing" x-cloak class="flex items-start justify-between gap-3">
                         <div>
-                            <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.1em] text-slate-500 md:hidden">Field ID</label>
-                            <input class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm ring-slate-200 outline-none focus:ring" x-model="row.id" :name="`fields[${index}].Id`" placeholder="project_overview" />
+                            <p class="text-sm font-semibold text-slate-900" x-text="row.name || 'Untitled field'"></p>
+                            <p class="mt-1 whitespace-pre-wrap text-sm text-slate-600" x-text="row.description || 'No description yet.'"></p>
                         </div>
-                        <div>
-                            <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.1em] text-slate-500 md:hidden">Name</label>
-                            <input class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm ring-slate-200 outline-none focus:ring" x-model="row.name" :name="`fields[${index}].Name`" placeholder="Project overview" />
+                        <div class="flex shrink-0 gap-2">
+                            <button type="button" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100" @@click="editRow(index)">Edit</button>
+                            <button type="button" class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100" @@click="removeRow(index)">Remove</button>
                         </div>
-                        <div>
-                            <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.1em] text-slate-500 md:hidden">Description</label>
-                            <input class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm ring-slate-200 outline-none focus:ring" x-model="row.description" :name="`fields[${index}].Description`" placeholder="Optional guidance prompt" />
-                        </div>
-                        <button class="inline-flex items-center justify-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100" type="button" @@click="removeRow(index)">
-                            <i data-lucide="trash-2" class="h-4 w-4"></i>
-                            <span>Remove</span>
-                        </button>
                     </div>
-                </div>
+
+                    <div x-show="row.editing" x-cloak class="space-y-2">
+                        <div>
+                            <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">Name</label>
+                            <input class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm ring-slate-200 outline-none focus:ring" x-model="row.name" :name="`fields[${index}].Name`" placeholder="Project overview" @@input="syncRowId(index)" />
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">Description</label>
+                            <textarea class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm ring-slate-200 outline-none focus:ring" x-model="row.description" :name="`fields[${index}].Description`" rows="3" placeholder="Optional guidance prompt"></textarea>
+                        </div>
+                        <div class="flex justify-end gap-2">
+                            <button type="button" class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100" @@click="removeRow(index)">Remove</button>
+                            <button type="button" class="rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-100" @@click="finishEdit(index)">Done</button>
+                        </div>
+                    </div>
+
+                    <template x-if="!row.editing">
+                        <input type="hidden" :name="`fields[${index}].Name`" :value="row.name" />
+                    </template>
+                    <template x-if="!row.editing">
+                        <input type="hidden" :name="`fields[${index}].Description`" :value="row.description" />
+                    </template>
+                </article>
             </template>
 
             <div class="flex flex-wrap gap-2">
@@ -97,9 +106,31 @@
 <script>
     function fieldEditor(initialRows) {
         return {
-            rows: initialRows && initialRows.length ? initialRows : [{ id: "", name: "", description: "" }],
+            rows: initialRows && initialRows.length
+                ? initialRows.map(row => ({ ...row, editing: false }))
+                : [{ id: "", name: "", description: "", editing: true }],
+            slugify(value) {
+                return (value || "")
+                    .toLowerCase()
+                    .trim()
+                    .replace(/[^a-z0-9\s_.-]/g, "")
+                    .replace(/[\s.-]+/g, "_")
+                    .replace(/^_+|_+$/g, "");
+            },
+            syncRowId(index) {
+                if (!this.rows[index]) return;
+                if ((this.rows[index].id || "").trim().length > 0) return;
+                this.rows[index].id = this.slugify(this.rows[index].name);
+            },
+            editRow(index) {
+                this.rows[index].editing = true;
+            },
+            finishEdit(index) {
+                this.syncRowId(index);
+                this.rows[index].editing = false;
+            },
             addRow() {
-                this.rows.push({ id: "", name: "", description: "" });
+                this.rows.push({ id: "", name: "", description: "", editing: true });
                 this.$nextTick(() => window.refreshLucideIcons && window.refreshLucideIcons());
             },
             removeRow(index) {

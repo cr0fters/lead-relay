@@ -20,7 +20,7 @@ internal static class SiteValidationExtensions
 
         if (string.IsNullOrWhiteSpace(site.OwnerEmail))
         {
-            error = "Owner email is required.";
+            error = "Login email is required.";
             return false;
         }
 

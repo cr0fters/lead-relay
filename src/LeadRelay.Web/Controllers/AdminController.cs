@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using LeadRelay.Application.Abstractions;
 using LeadRelay.Domain.Sites;
+using LeadRelay.Web.Fields;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Net.Mail;
@@ -244,9 +245,10 @@ public sealed class AdminController(
         try
         {
             var items = JsonSerializer.Deserialize<List<ConversationField>>(json, JsonOptions) ?? new();
-            fields = items;
-            error = "";
-            return true;
+            var normalized = ConversationFieldNormalizer.Normalize(items);
+            fields = normalized.Fields;
+            error = normalized.Error ?? "";
+            return normalized.Error is null;
         }
         catch (JsonException ex)
         {

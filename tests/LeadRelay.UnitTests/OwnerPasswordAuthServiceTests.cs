@@ -93,7 +93,7 @@ public sealed class OwnerPasswordAuthServiceTests
 
         Assert.That(email.TemplateCalls, Is.Empty);
         Assert.That(email.PlainCalls.Count, Is.EqualTo(1));
-        Assert.That(email.PlainCalls[0].Subject, Is.EqualTo("Reset your LeadRelay owner password"));
+        Assert.That(email.PlainCalls[0].Subject, Is.EqualTo("Reset your LeadRelay password"));
     }
 
     private static LeadRelayDbContext CreateDb()

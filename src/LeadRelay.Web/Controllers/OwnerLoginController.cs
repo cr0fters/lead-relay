@@ -1,17 +1,21 @@
 using LeadRelay.Web.Security;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace LeadRelay.Web.Controllers;
 
 public sealed class OwnerLoginController(
     OwnerSessionService sessions,
-    IOwnerPasswordAuthService passwordAuth) : Controller
+    IOwnerPasswordAuthService passwordAuth,
+    IOwnerRegistrationService registration) : Controller
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
     [HttpGet("/owner/login")]
     public IActionResult Login([FromQuery] string? returnUrl = null, [FromQuery] string? reset = null)
     {
         if (!sessions.IsConfigured)
-            return Problem("Owner portal is not configured.", statusCode: StatusCodes.Status500InternalServerError);
+            return Problem("Login workspace is not configured.", statusCode: StatusCodes.Status500InternalServerError);
 
         return View(new OwnerLoginModel
         {
@@ -22,12 +26,84 @@ public sealed class OwnerLoginController(
         });
     }
 
+    [HttpGet("/owner/register")]
+    public IActionResult Register([FromQuery] string? returnUrl = null)
+    {
+        if (!sessions.IsConfigured)
+            return Problem("Login workspace is not configured.", statusCode: StatusCodes.Status500InternalServerError);
+
+        return View(new RegisterModel
+        {
+            ReturnUrl = NormalizeReturnUrl(returnUrl)
+        });
+    }
+
+    [HttpPost("/owner/register")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RegisterPost([FromForm] RegisterModel model, CancellationToken ct)
+    {
+        if (!sessions.IsConfigured)
+            return Problem("Login workspace is not configured.", statusCode: StatusCodes.Status500InternalServerError);
+
+        model.ReturnUrl = NormalizeReturnUrl(model.ReturnUrl);
+        if (string.IsNullOrWhiteSpace(model.SiteName) ||
+            string.IsNullOrWhiteSpace(model.Email) ||
+            string.IsNullOrWhiteSpace(model.Password) ||
+            string.IsNullOrWhiteSpace(model.ConfirmPassword))
+        {
+            model.Error = "All fields are required.";
+            return View("Register", model);
+        }
+
+        if (!string.Equals(model.Password, model.ConfirmPassword, StringComparison.Ordinal))
+        {
+            model.Error = "Passwords do not match.";
+            return View("Register", model);
+        }
+
+        OwnerRegistrationPayload? payload;
+        try
+        {
+            payload = string.IsNullOrWhiteSpace(model.PayloadJson)
+                ? null
+                : JsonSerializer.Deserialize<OwnerRegistrationPayload>(model.PayloadJson, JsonOptions);
+        }
+        catch (JsonException)
+        {
+            payload = null;
+        }
+
+        payload ??= new OwnerRegistrationPayload(null, []);
+
+        if (!OwnerRegistrationPayloadParser.TryNormalizeFields(payload.Fields, out var fields, out var fieldError))
+        {
+            model.Error = fieldError ?? "Please review your field setup.";
+            return View("Register", model);
+        }
+
+        var result = await registration.RegisterAsync(new OwnerRegistrationRequest(
+            model.SiteName,
+            payload.BusinessSummary,
+            fields,
+            model.Email,
+            model.Password), ct);
+        if (!result.Succeeded || result.Auth is null)
+        {
+            model.Error = result.Error ?? "Unable to create account.";
+            return View("Register", model);
+        }
+
+        var sessionToken = sessions.CreateLoginToken(result.Auth.SiteId, result.Auth.OwnerEmail, TimeSpan.FromHours(12));
+        sessions.SignIn(HttpContext, sessionToken);
+        return Redirect(model.ReturnUrl);
+    }
+
     [HttpPost("/owner/login")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> LoginPost([FromForm] OwnerLoginModel model, CancellationToken ct)
     {
         if (!sessions.IsConfigured)
-            return Problem("Owner portal is not configured.", statusCode: StatusCodes.Status500InternalServerError);
+            return Problem("Login workspace is not configured.", statusCode: StatusCodes.Status500InternalServerError);
 
         model.ReturnUrl = NormalizeReturnUrl(model.ReturnUrl);
         if (string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.Password))
@@ -155,6 +231,19 @@ public sealed class OwnerLoginController(
         public string? Token { get; set; }
         public string? NewPassword { get; set; }
         public string? ConfirmPassword { get; set; }
+        public string? Error { get; set; }
+    }
+
+    public sealed class RegisterModel
+    {
+        public string? BusinessType { get; set; }
+        public string? CustomBusinessType { get; set; }
+        public string? SiteName { get; set; }
+        public string? PayloadJson { get; set; }
+        public string? Email { get; set; }
+        public string? Password { get; set; }
+        public string? ConfirmPassword { get; set; }
+        public string ReturnUrl { get; set; } = "/owner";
         public string? Error { get; set; }
     }
 }
