@@ -40,9 +40,6 @@ public static class DatabaseExtensions
         {
             await using var command = connection.CreateCommand();
             command.CommandText = "SELECT DATABASE()";
-            var dbName = (await command.ExecuteScalarAsync())?.ToString() ?? "<null>";
-            logger.LogInformation("EF connection: {ConnectionString}", safeConnection);
-            logger.LogInformation("EF database: {DatabaseName}", dbName);
         }
         finally
         {

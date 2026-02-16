@@ -1,567 +1,599 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>LeadRelay | Turn website visitors into qualified WhatsApp leads</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-1: #081125;
-            --bg-2: #111a34;
-            --bg-3: #1c2749;
-            --ink: #eef2ff;
-            --muted: #b9c3de;
-            --line: rgba(255,255,255,0.16);
-            --panel: rgba(255,255,255,0.07);
-            --brand: #3ce2a3;
-            --brand-strong: #13bf83;
-            --accent: #ffbe4f;
-            --danger: #ff7f7f;
-            --shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
-        }
+@{
+    Layout = "~/Views/Shared/_MarketingLayout.cshtml";
+    ViewData["Title"] = "LeadRelay | WhatsApp lead qualification with AI";
+}
 
-        * { box-sizing: border-box; }
-
-        html, body {
-            margin: 0;
-            padding: 0;
-            min-height: 100%;
-        }
-
-        body {
-            font-family: "Outfit", "Segoe UI", sans-serif;
-            color: var(--ink);
-            background:
-                radial-gradient(1000px 500px at -10% -20%, rgba(60, 226, 163, 0.2), transparent 65%),
-                radial-gradient(900px 450px at 110% -10%, rgba(255, 190, 79, 0.2), transparent 70%),
-                linear-gradient(165deg, var(--bg-1), var(--bg-2) 40%, var(--bg-3));
-            overflow-x: hidden;
-        }
-
-        .back-grid {
-            position: fixed;
-            inset: 0;
-            z-index: -2;
-            background-image:
-                linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
-            background-size: 36px 36px;
-            mask-image: radial-gradient(circle at 50% 30%, black 35%, transparent 90%);
-        }
-
-        .orb {
-            position: fixed;
-            width: 520px;
-            height: 520px;
-            border-radius: 999px;
-            filter: blur(80px);
-            z-index: -1;
-            opacity: 0.45;
-            pointer-events: none;
-            animation: float 14s ease-in-out infinite;
-        }
-
-        .orb-a {
-            top: -180px;
-            left: -120px;
-            background: #2ee59f;
-        }
-
-        .orb-b {
-            right: -160px;
-            top: 30%;
-            background: #ffbe4f;
-            animation-delay: -5s;
-        }
-
-        @@keyframes float {
-            0%, 100% { transform: translateY(0px) translateX(0px); }
-            50% { transform: translateY(24px) translateX(-18px); }
-        }
-
-        a {
-            color: inherit;
-            text-decoration: none;
-        }
-
-        .wrap {
-            width: min(1120px, calc(100% - 32px));
-            margin: 0 auto;
-            padding: 18px 0 64px;
-        }
-
-        .topbar {
-            position: sticky;
-            top: 12px;
-            z-index: 10;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 14px;
-            border: 1px solid var(--line);
-            border-radius: 18px;
-            padding: 10px 14px;
-            background: rgba(9, 14, 31, 0.72);
-            backdrop-filter: blur(12px);
-            box-shadow: var(--shadow);
-        }
-
-        .brand {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 700;
-            letter-spacing: 0.2px;
-        }
-
-        .logo {
-            width: 34px;
-            height: 34px;
-            border-radius: 10px;
-            display: grid;
-            place-items: center;
-            color: #042115;
-            font-family: "Space Grotesk", sans-serif;
-            font-weight: 700;
-            background: linear-gradient(135deg, #2ee59f, #8cf8d0);
-        }
-
-        .nav {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 14px;
-            color: var(--muted);
-            font-size: 0.94rem;
-        }
-
-        .nav a:hover {
-            color: #ffffff;
-        }
-
-        .hero {
-            margin-top: 44px;
-            display: grid;
-            grid-template-columns: 1.2fr 0.9fr;
-            gap: 22px;
-            align-items: stretch;
-        }
-
-        .hero-main,
-        .hero-side,
-        .section-panel {
-            border: 1px solid var(--line);
-            border-radius: 26px;
-            background: var(--panel);
-            box-shadow: var(--shadow);
-            backdrop-filter: blur(8px);
-        }
-
-        .hero-main {
-            padding: 32px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .hero-main::before {
-            content: "";
-            position: absolute;
-            right: -80px;
-            top: -80px;
-            width: 240px;
-            height: 240px;
-            border-radius: 999px;
-            background: radial-gradient(circle at center, rgba(60,226,163,0.38), transparent 70%);
-        }
-
-        .tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 7px 12px;
-            border-radius: 999px;
-            border: 1px solid rgba(60, 226, 163, 0.45);
-            background: rgba(60, 226, 163, 0.12);
-            color: #9ffad8;
-            font-size: 0.8rem;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-            font-weight: 600;
-        }
-
-        .hero h1 {
-            font-family: "Space Grotesk", "Outfit", sans-serif;
-            font-weight: 700;
-            font-size: clamp(2rem, 4.5vw, 3.4rem);
-            line-height: 1.03;
-            margin: 16px 0 14px;
-            max-width: 14ch;
-        }
-
-        .hero p {
-            margin: 0;
-            color: var(--muted);
-            font-size: 1.05rem;
-            max-width: 56ch;
-        }
-
-        .cta-row {
-            margin-top: 22px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 11px;
-        }
-
-        .btn {
-            border: 1px solid transparent;
-            border-radius: 999px;
-            padding: 11px 16px;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: transform 0.12s ease, filter 0.12s ease;
-        }
-
-        .btn:hover {
-            transform: translateY(-1px);
-            filter: brightness(1.06);
-        }
-
-        .btn-primary {
-            color: #032417;
-            background: linear-gradient(135deg, var(--brand), #8cf8d0);
-        }
-
-        .btn-secondary {
-            color: var(--ink);
-            border-color: var(--line);
-            background: rgba(255,255,255,0.04);
-        }
-
-        .hero-side {
-            padding: 22px;
-            display: grid;
-            gap: 14px;
-            align-content: start;
-        }
-
-        .metric-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
-        .metric {
-            border: 1px solid var(--line);
-            border-radius: 14px;
-            padding: 12px;
-            background: rgba(255,255,255,0.04);
-        }
-
-        .metric strong {
-            display: block;
-            font-size: 1.2rem;
-            line-height: 1;
-            margin-bottom: 3px;
-        }
-
-        .metric span {
-            color: var(--muted);
-            font-size: 0.83rem;
-        }
-
-        .chat-card {
-            border: 1px solid var(--line);
-            border-radius: 16px;
-            padding: 14px;
-            background: rgba(3, 8, 19, 0.45);
-            display: grid;
-            gap: 10px;
-        }
-
-        .bubble {
-            max-width: 86%;
-            padding: 9px 11px;
-            border-radius: 12px;
-            font-size: 0.9rem;
-            line-height: 1.36;
-        }
-
-        .bubble.me {
-            margin-left: auto;
-            color: #062919;
-            background: #9ffad8;
-        }
-
-        .bubble.bot {
-            color: #e4ebff;
-            background: rgba(255,255,255,0.12);
-            border: 1px solid rgba(255,255,255,0.12);
-        }
-
-        .section {
-            margin-top: 22px;
-            display: grid;
-            gap: 22px;
-        }
-
-        .section-panel {
-            padding: 24px;
-        }
-
-        .section-title {
-            margin: 0 0 6px;
-            font-family: "Space Grotesk", sans-serif;
-            font-size: 1.55rem;
-        }
-
-        .section-sub {
-            margin: 0;
-            color: var(--muted);
-        }
-
-        .cards {
-            margin-top: 14px;
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 12px;
-        }
-
-        .card {
-            border: 1px solid var(--line);
-            border-radius: 16px;
-            padding: 14px;
-            background: rgba(255,255,255,0.04);
-        }
-
-        .card h3 {
-            margin: 8px 0 6px;
-            font-size: 1rem;
-        }
-
-        .card p {
-            margin: 0;
-            color: var(--muted);
-            font-size: 0.9rem;
-        }
-
-        .icon-pill {
-            width: 34px;
-            height: 34px;
-            border-radius: 10px;
-            display: grid;
-            place-items: center;
-            border: 1px solid rgba(60, 226, 163, 0.42);
-            background: rgba(60, 226, 163, 0.14);
-            color: #8df7d1;
-        }
-
-        .split {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-top: 14px;
-        }
-
-        .list {
-            margin: 0;
-            padding: 0;
-            list-style: none;
-            display: grid;
-            gap: 9px;
-        }
-
-        .list li {
-            display: flex;
-            gap: 8px;
-            color: var(--muted);
-            font-size: 0.93rem;
-        }
-
-        .list i {
-            color: var(--brand);
-            margin-top: 1px;
-            flex: 0 0 auto;
-        }
-
-        .cta-band {
-            margin-top: 18px;
-            border: 1px solid rgba(255,190,79,0.45);
-            background: linear-gradient(135deg, rgba(255,190,79,0.22), rgba(255,190,79,0.08));
-            border-radius: 18px;
-            padding: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        footer {
-            margin-top: 28px;
-            border-top: 1px solid var(--line);
-            padding-top: 14px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px 14px;
-            justify-content: space-between;
-            color: var(--muted);
-            font-size: 0.9rem;
-        }
-
-        footer a:hover { color: #fff; }
-
-        @@media (max-width: 960px) {
-            .hero { grid-template-columns: 1fr; }
-            .cards { grid-template-columns: 1fr 1fr; }
-            .split { grid-template-columns: 1fr; }
-        }
-
-        @@media (max-width: 620px) {
-            .wrap { width: calc(100% - 24px); }
-            .topbar { position: static; }
-            .hero-main,
-            .hero-side,
-            .section-panel { border-radius: 20px; }
-            .hero-main { padding: 22px; }
-            .cards { grid-template-columns: 1fr; }
-            .metric-grid { grid-template-columns: 1fr; }
-        }
-    </style>
-</head>
-<body>
-<div class="back-grid"></div>
-<div class="orb orb-a"></div>
-<div class="orb orb-b"></div>
-
-<div class="wrap">
-    <header class="topbar">
-        <div class="brand">
-            <span class="logo">LR</span>
-            <span>LeadRelay</span>
-        </div>
-        <nav class="nav">
-            <a href="#how-it-works">How it works</a>
-            <a href="#for-businesses">For businesses</a>
-            <a href="/owner/register">Create account</a>
-            <a href="/owner/login">Login</a>
-        </nav>
-    </header>
-
-    <section class="hero">
-        <article class="hero-main">
-            <span class="tag"><i data-lucide="sparkles" style="width:14px;height:14px;"></i> Lead capture on autopilot</span>
-            <h1>Turn website chats into qualified WhatsApp leads.</h1>
-            <p>LeadRelay helps small business teams capture better enquiries, ask the right questions, and follow up while intent is still high. No heavy CRM setup. No missed conversations.</p>
-            <div class="cta-row">
-                <a class="btn btn-primary" href="/owner/register"><i data-lucide="rocket" style="width:16px;height:16px;"></i> Create account</a>
-                <a class="btn btn-secondary" href="/owner/login"><i data-lucide="log-in" style="width:16px;height:16px;"></i> Open workspace</a>
-            </div>
-        </article>
-
-        <aside class="hero-side">
-            <div class="metric-grid">
-                <div class="metric">
-                    <strong>1 script</strong>
-                    <span>Drop into your site</span>
-                </div>
-                <div class="metric">
-                    <strong>24/7</strong>
-                    <span>Always-on capture</span>
-                </div>
-                <div class="metric">
-                    <strong>Per-site</strong>
-                    <span>Custom question flow</span>
-                </div>
-                <div class="metric">
-                    <strong>WhatsApp</strong>
-                    <span>Native follow-up</span>
-                </div>
-            </div>
-
-            <div class="chat-card">
-                <div class="bubble me">Hi, I run an interior design business and need more leads.</div>
-                <div class="bubble bot">Great. What type of projects do you usually take on, and where do you operate?</div>
-                <div class="bubble me">Mostly kitchen and living spaces in Bristol.</div>
-                <div class="bubble bot">Perfect. What's the best way and time to contact you?</div>
-            </div>
-        </aside>
-    </section>
-
-    <section class="section" id="how-it-works">
-        <article class="section-panel">
-            <h2 class="section-title">How it works</h2>
-            <p class="section-sub">A straightforward flow focused on lead quality and speed to first response.</p>
-            <div class="cards">
-                <div class="card">
-                    <div class="icon-pill"><i data-lucide="code" style="width:16px;height:16px;"></i></div>
-                    <h3>Add the widget</h3>
-                    <p>Embed one script and your WhatsApp chat entry point appears instantly.</p>
-                </div>
-                <div class="card">
-                    <div class="icon-pill"><i data-lucide="messages-square" style="width:16px;height:16px;"></i></div>
-                    <h3>Ask smart questions</h3>
-                    <p>Capture business context and contact preferences, not random back-and-forth.</p>
-                </div>
-                <div class="card">
-                    <div class="icon-pill"><i data-lucide="send" style="width:16px;height:16px;"></i></div>
-                    <h3>Follow up fast</h3>
-                    <p>Open a lead and reply directly from the workspace in seconds.</p>
-                </div>
-            </div>
-        </article>
-
-        <article class="section-panel" id="for-businesses">
-            <h2 class="section-title">Built for service businesses</h2>
-            <p class="section-sub">Ideal for interior designers, consultants, agencies, and local service teams that need a practical lead workflow.</p>
-            <div class="split">
-                <div>
-                    <ul class="list">
-                        <li><i data-lucide="check-circle-2" style="width:16px;height:16px;"></i><span>Qualify by business type, services, and service area</span></li>
-                        <li><i data-lucide="check-circle-2" style="width:16px;height:16px;"></i><span>Capture best contact method and preferred contact time</span></li>
-                        <li><i data-lucide="check-circle-2" style="width:16px;height:16px;"></i><span>Keep lead data scoped to each tenant/site</span></li>
-                    </ul>
-                </div>
-                <div>
-                    <ul class="list">
-                        <li><i data-lucide="shield-check" style="width:16px;height:16px;"></i><span>Domain allow-list to control where widget loads</span></li>
-                        <li><i data-lucide="gauge" style="width:16px;height:16px;"></i><span>Clean inbox with quick reply workflow</span></li>
-                        <li><i data-lucide="settings-2" style="width:16px;height:16px;"></i><span>Customizable fields per site without code changes</span></li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="cta-band">
-                <div>
-                    <strong>Ready to test the live widget?</strong><br />
-                    <span style="color:#fde4b7;">Use the WhatsApp button on this page to run the full flow now.</span>
-                </div>
-                <a class="btn btn-primary" href="#how-it-works"><i data-lucide="play" style="width:16px;height:16px;"></i> Start test flow</a>
-            </div>
-        </article>
-    </section>
-
-    <footer>
-        <span>LeadRelay for small business teams.</span>
-        <span>
-            <a href="/privacy-policy">Privacy policy</a> ·
-            <a href="/terms-and-conditions">Terms and conditions</a> ·
-            <a href="/user-data-deletion">User data deletion</a>
-        </span>
-        <span>Contact: hello@leadrelay.dev</span>
-    </footer>
-</div>
-
-<script src="https://unpkg.com/lucide@latest"></script>
-<script>
-    if (window.lucide) {
-        window.lucide.createIcons();
+@section Head {
+<style>
+    .landing {
+        display: grid;
+        gap: 72px;
+        padding-bottom: 24px;
     }
-</script>
 
-<script src="/widget/bootstrap.js?siteId=42bf2d82-3f8c-421f-a520-f32f029d8099"></script>
-</body>
-</html>
+    .full-bleed {
+        margin-left: calc(50% - 50vw);
+        margin-right: calc(50% - 50vw);
+        padding-left: calc(50vw - min(560px, 50vw - 16px));
+        padding-right: calc(50vw - min(560px, 50vw - 16px));
+    }
+
+    .hero {
+        text-align: center;
+        padding-top: 36px;
+    }
+
+    .eyebrow {
+        display: inline-flex;
+        padding: 6px 12px;
+        border: 1px solid #b8e7db;
+        background: #e9fbf5;
+        color: #0f766e;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+    }
+
+    .hero h1 {
+        margin: 16px auto 12px;
+        max-width: 14ch;
+        font-family: "Manrope", sans-serif;
+        font-size: clamp(2.2rem, 6vw, 4.15rem);
+        line-height: 1.02;
+        letter-spacing: -0.02em;
+    }
+
+    .hero h1 .accent {
+        color: #059669;
+    }
+
+    .hero p {
+        margin: 0 auto;
+        max-width: 60ch;
+        font-size: 1.04rem;
+        color: #526077;
+    }
+
+    .hero-cta {
+        margin-top: 24px;
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .hero-stats {
+        margin: 38px auto 0;
+        width: min(840px, 100%);
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        border-top: 1px solid #dfe5ef;
+        padding-top: 22px;
+    }
+
+    .metric {
+        text-align: center;
+        border-right: 1px solid #e5eaf2;
+    }
+
+    .metric:last-child { border-right: none; }
+
+    .metric strong {
+        display: block;
+        font-family: "Manrope", sans-serif;
+        font-size: clamp(1.45rem, 2.5vw, 2rem);
+        line-height: 1.1;
+    }
+
+    .metric span {
+        display: block;
+        margin-top: 4px;
+        color: #64748b;
+        font-size: 0.86rem;
+    }
+
+    .mint-band {
+        background:
+            radial-gradient(440px 260px at 10% 10%, rgba(16, 185, 129, 0.16), transparent 70%),
+            radial-gradient(420px 240px at 85% 84%, rgba(6, 182, 212, 0.12), transparent 72%),
+            #edf8f4;
+        border-top: 1px solid #d4e9e2;
+        border-bottom: 1px solid #d4e9e2;
+        padding-top: 68px;
+        padding-bottom: 68px;
+    }
+
+    .section-head {
+        text-align: center;
+        max-width: 760px;
+        margin: 0 auto 26px;
+    }
+
+    .section-head h2 {
+        margin: 0;
+        font-family: "Manrope", sans-serif;
+        font-size: clamp(1.8rem, 4vw, 2.8rem);
+        line-height: 1.06;
+    }
+
+    .section-head h2 .accent { color: #059669; }
+
+    .section-head p {
+        margin: 12px auto 0;
+        color: #526077;
+        max-width: 60ch;
+    }
+
+    .team-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .team-card {
+        background: #fff;
+        border: 1px solid #d5e9e2;
+        border-radius: 10px;
+        padding: 16px;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+    }
+
+    .team-card h3 {
+        margin: 0;
+        font-size: 1rem;
+        font-family: "Manrope", sans-serif;
+    }
+
+    .team-card p {
+        margin: 8px 0 0;
+        color: #526077;
+        font-size: 0.92rem;
+        line-height: 1.5;
+    }
+
+    .panel-row {
+        margin-top: 14px;
+        display: grid;
+        gap: 14px;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .panel {
+        background: #fff;
+        border: 1px solid #d5e9e2;
+        border-radius: 10px;
+        padding: 16px;
+    }
+
+    .panel h3 {
+        margin: 0;
+        font-size: 1rem;
+        font-family: "Manrope", sans-serif;
+    }
+
+    .panel p {
+        margin: 8px 0 0;
+        color: #526077;
+    }
+
+    .steps-wrap {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .step-card {
+        border: 1px solid #dbe4f0;
+        border-radius: 10px;
+        background: #fff;
+        padding: 16px;
+    }
+
+    .step-index {
+        display: inline-flex;
+        width: 30px;
+        height: 30px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        background: #e9fbf5;
+        color: #047857;
+        font-weight: 700;
+        font-size: 0.88rem;
+    }
+
+    .step-card h3 {
+        margin: 12px 0 8px;
+        font-size: 1.03rem;
+        font-family: "Manrope", sans-serif;
+    }
+
+    .step-card p {
+        margin: 0;
+        color: #526077;
+        line-height: 1.5;
+    }
+
+    .cta-band {
+        background: #059669;
+        border-top: 1px solid #047857;
+        border-bottom: 1px solid #047857;
+        color: #ecfdf5;
+        padding-top: 18px;
+        padding-bottom: 18px;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 14px;
+        align-items: center;
+    }
+
+    .cta-band p {
+        margin: 0;
+        color: #d1fae5;
+    }
+
+    .crm-band {
+        background:
+            radial-gradient(420px 260px at 12% 20%, rgba(16, 185, 129, 0.17), transparent 70%),
+            #edf8f4;
+        border-top: 1px solid #d4e9e2;
+        border-bottom: 1px solid #d4e9e2;
+        padding-top: 68px;
+        padding-bottom: 68px;
+    }
+
+    .crm-grid {
+        display: grid;
+        gap: 28px;
+        grid-template-columns: 1fr 1fr;
+        align-items: center;
+    }
+
+    .crm-copy h2 {
+        margin: 0;
+        font-family: "Manrope", sans-serif;
+        font-size: clamp(1.7rem, 4vw, 2.7rem);
+        line-height: 1.08;
+    }
+
+    .crm-copy h2 .accent { color: #059669; }
+
+    .crm-copy p {
+        margin: 12px 0 0;
+        color: #526077;
+        line-height: 1.58;
+    }
+
+    .crm-list {
+        margin: 16px 0 0;
+        padding-left: 18px;
+        color: #334155;
+        display: grid;
+        gap: 6px;
+    }
+
+    .crm-mock {
+        border: 1px solid #d9e3ef;
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 16px 34px rgba(15, 23, 42, 0.12);
+        padding: 18px;
+        display: grid;
+        gap: 12px;
+    }
+
+    .mock-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9rem;
+    }
+
+    .mock-chip {
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: #e9fbf5;
+        color: #047857;
+        font-size: 0.76rem;
+        font-weight: 700;
+    }
+
+    .mock-item {
+        border: 1px solid #e5eaf2;
+        border-radius: 8px;
+        padding: 10px;
+    }
+
+    .mock-item strong {
+        display: block;
+        font-size: 0.88rem;
+    }
+
+    .mock-item span {
+        color: #64748b;
+        font-size: 0.84rem;
+    }
+
+    .faq-grid {
+        display: grid;
+        grid-template-columns: 0.9fr 1.1fr;
+        gap: 20px;
+        align-items: start;
+    }
+
+    .faq-lead h2 {
+        margin: 0;
+        font-family: "Manrope", sans-serif;
+        font-size: clamp(1.5rem, 3vw, 2.2rem);
+        line-height: 1.1;
+    }
+
+    .faq-lead p {
+        margin: 10px 0 0;
+        color: #526077;
+    }
+
+    .faq-list {
+        display: grid;
+        gap: 0;
+        background: #fff;
+        border: 1px solid #dbe4f0;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .faq-item {
+        padding: 14px 16px;
+        border-bottom: 1px solid #e5eaf2;
+    }
+
+    .faq-item:last-child { border-bottom: none; }
+
+    .faq-item h3 {
+        margin: 0;
+        font-size: 0.98rem;
+        font-family: "Manrope", sans-serif;
+    }
+
+    .faq-item p {
+        margin: 7px 0 0;
+        color: #526077;
+        font-size: 0.9rem;
+    }
+
+    .security {
+        padding-top: 12px;
+    }
+
+    .security-grid {
+        margin-top: 20px;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .security-card {
+        border: 1px solid #d5e9e2;
+        border-radius: 10px;
+        background: #fff;
+        padding: 14px;
+    }
+
+    .security-card h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        font-family: "Manrope", sans-serif;
+    }
+
+    .security-card p {
+        margin: 7px 0 0;
+        color: #526077;
+        font-size: 0.86rem;
+    }
+
+    @@media (max-width: 980px) {
+        .hero-stats { grid-template-columns: 1fr 1fr; row-gap: 18px; }
+        .metric { border-right: none; }
+        .team-grid { grid-template-columns: 1fr 1fr; }
+        .steps-wrap { grid-template-columns: 1fr; }
+        .crm-grid { grid-template-columns: 1fr; }
+        .faq-grid { grid-template-columns: 1fr; }
+        .security-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    @@media (max-width: 640px) {
+        .landing { gap: 56px; }
+        .hero { padding-top: 16px; }
+        .hero-stats { grid-template-columns: 1fr; gap: 16px; }
+        .team-grid { grid-template-columns: 1fr; }
+        .panel-row { grid-template-columns: 1fr; }
+        .security-grid { grid-template-columns: 1fr; }
+        .cta-band { grid-template-columns: 1fr; }
+        .full-bleed {
+            padding-left: 12px;
+            padding-right: 12px;
+        }
+    }
+</style>
+}
+
+<div class="landing">
+    <section class="hero" id="product">
+        <span class="eyebrow">WhatsApp lead capture</span>
+        <h1>Turn site visitors into <span class="accent">qualified leads</span></h1>
+        <p>
+            Add a click-to-chat WhatsApp button in minutes. AI handles the conversation,
+            asks your qualification questions, and passes warm leads into your CRM inbox.
+        </p>
+        <div class="hero-cta">
+            <a class="btn btn-primary" href="/owner/register">Start free setup</a>
+            <a class="btn btn-secondary" href="/owner/login">Login</a>
+        </div>
+
+        <div class="hero-stats">
+            <div class="metric"><strong>2 min</strong><span>Typical setup time</span></div>
+            <div class="metric"><strong>24/7</strong><span>AI qualification</span></div>
+            <div class="metric"><strong>1 inbox</strong><span>Leads and replies</span></div>
+            <div class="metric"><strong>0 code</strong><span>Install complexity</span></div>
+        </div>
+    </section>
+
+    <section class="mint-band full-bleed" aria-label="AI qualification team overview">
+        <div class="section-head">
+            <h2>Meet your <span class="accent">AI qualification team</span></h2>
+            <p>Each specialist handles part of the lead journey so your team receives structured, reply-ready opportunities.</p>
+        </div>
+
+        <div class="team-grid">
+            <article class="team-card">
+                <h3>Greeter</h3>
+                <p>Welcomes visitors, identifies intent, and routes each chat into the right qualification path.</p>
+            </article>
+            <article class="team-card">
+                <h3>Qualifier</h3>
+                <p>Captures budget, timeline, service scope, and contact data using your custom questions.</p>
+            </article>
+            <article class="team-card">
+                <h3>Scheduler</h3>
+                <p>Prompts next steps and gathers availability so your sales follow-up starts with context.</p>
+            </article>
+        </div>
+
+        <div class="panel-row">
+            <article class="panel">
+                <h3>Trained on your business</h3>
+                <p>Use your business summary and field descriptions to shape how AI qualifies and responds.</p>
+            </article>
+            <article class="panel">
+                <h3>Works while your team is offline</h3>
+                <p>Capture and organize opportunities overnight, on weekends, and during busy hours.</p>
+            </article>
+        </div>
+    </section>
+
+    <section id="how-it-works">
+        <div class="section-head">
+            <h2>Go live in <span class="accent">three steps</span></h2>
+            <p>No heavy implementation project. Launch quickly and iterate from your settings.</p>
+        </div>
+
+        <div class="steps-wrap">
+            <article class="step-card">
+                <span class="step-index">1</span>
+                <h3>Add your button</h3>
+                <p>Drop in one website snippet and place your WhatsApp click-to-chat button.</p>
+            </article>
+            <article class="step-card">
+                <span class="step-index">2</span>
+                <h3>Connect your flow</h3>
+                <p>Set your lead fields and business summary so AI asks the right qualification questions.</p>
+            </article>
+            <article class="step-card">
+                <span class="step-index">3</span>
+                <h3>Start qualifying</h3>
+                <p>AI chats with visitors immediately and pushes organized leads into your CRM inbox.</p>
+            </article>
+        </div>
+    </section>
+
+    <section class="cta-band full-bleed" id="pricing">
+        <div>
+            <strong>Your next qualified lead is one click away</strong>
+            <p>Start free, connect your site, and scale when volume grows.</p>
+        </div>
+        <a class="btn btn-primary" href="/owner/register" style="background:#0f172a;">Start free</a>
+    </section>
+
+    <section class="crm-band full-bleed">
+        <div class="crm-grid">
+            <div class="crm-copy">
+                <h2>Ask your CRM <span class="accent">anything</span></h2>
+                <p>
+                    Every qualified chat lands in one place. Review lead details, continue the conversation,
+                    and track outcomes without switching tools.
+                </p>
+                <ul class="crm-list">
+                    <li>See qualification answers and chat history together</li>
+                    <li>Reply to leads from the same workspace</li>
+                    <li>Update fields and notes as deals progress</li>
+                </ul>
+            </div>
+
+            <article class="crm-mock" aria-label="CRM preview">
+                <div class="mock-top">
+                    <strong>Kitchen renovation inquiry</strong>
+                    <span class="mock-chip">Qualified</span>
+                </div>
+                <div class="mock-item">
+                    <strong>Budget</strong>
+                    <span>£45,000</span>
+                </div>
+                <div class="mock-item">
+                    <strong>Timeline</strong>
+                    <span>Start in April</span>
+                </div>
+                <div class="mock-item">
+                    <strong>Next action</strong>
+                    <span>Book consultation call</span>
+                </div>
+                <a class="btn btn-secondary" href="/owner/login">Open CRM</a>
+            </article>
+        </div>
+    </section>
+
+    <section id="faq">
+        <div class="faq-grid">
+            <div class="faq-lead">
+                <h2>Frequently asked questions</h2>
+                <p>Everything you need to launch your WhatsApp qualification flow confidently.</p>
+            </div>
+
+            <div class="faq-list">
+                <article class="faq-item">
+                    <h3>Can I customize the qualification questions?</h3>
+                    <p>Yes. Add and edit your lead fields at any time, and AI will use the latest setup.</p>
+                </article>
+                <article class="faq-item">
+                    <h3>Do I need engineering support to set this up?</h3>
+                    <p>No. The onboarding flow is self-serve and designed for non-technical teams.</p>
+                </article>
+                <article class="faq-item">
+                    <h3>Can my team still reply manually?</h3>
+                    <p>Yes. AI qualifies the lead, then your team can take over from the integrated inbox.</p>
+                </article>
+                <article class="faq-item">
+                    <h3>Where can I review legal and data policies?</h3>
+                    <p>Privacy policy, terms and conditions, and user data deletion are available in the footer.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="mint-band full-bleed security" aria-label="Security details">
+        <div class="section-head">
+            <h2>Your data, protected at every layer</h2>
+            <p>LeadRelay is built for secure lead handling from first message to closed deal.</p>
+        </div>
+
+        <div class="security-grid">
+            <article class="security-card">
+                <h3>Access controls</h3>
+                <p>Team access is scoped per workspace account.</p>
+            </article>
+            <article class="security-card">
+                <h3>Data controls</h3>
+                <p>Edit, export, and remove lead data from your dashboard.</p>
+            </article>
+            <article class="security-card">
+                <h3>Audit visibility</h3>
+                <p>Track chat history and lead updates in one timeline.</p>
+            </article>
+            <article class="security-card">
+                <h3>Policy transparency</h3>
+                <p>Clear policy documents linked directly in the footer.</p>
+            </article>
+        </div>
+    </section>
+</div>
