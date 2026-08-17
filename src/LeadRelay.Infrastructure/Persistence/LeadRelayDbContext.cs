@@ -16,6 +16,8 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
     public DbSet<CustomerRecord> Customers => Set<CustomerRecord>();
     public DbSet<ProjectRecord> Projects => Set<ProjectRecord>();
     public DbSet<OwnerAccountRecord> OwnerAccounts => Set<OwnerAccountRecord>();
+    public DbSet<WhatsAppConnectionRecord> WhatsAppConnections => Set<WhatsAppConnectionRecord>();
+    public DbSet<WhatsAppMessageReceiptRecord> WhatsAppMessageReceipts => Set<WhatsAppMessageReceiptRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -32,9 +34,11 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
             entity.Property(x => x.Name).HasColumnName("Name").IsRequired();
             entity.Property(x => x.BusinessSummary).HasColumnName("BusinessSummary");
             entity.Property(x => x.IntroMessage).HasColumnName("IntroMessage");
-            entity.Property(x => x.OwnerEmail).HasColumnName("OwnerEmail").IsRequired();
-            entity.Property(x => x.WhatsAppNumber).HasColumnName("WhatsAppNumber").IsRequired();
+            entity.Property(x => x.OwnerEmail).HasColumnName("OwnerEmail").HasMaxLength(255).IsRequired();
+            entity.Property(x => x.WhatsAppNumber).HasColumnName("WhatsAppNumber").HasMaxLength(64).IsRequired();
             entity.Property(x => x.WhatsAppPhoneNumberId).HasColumnName("WhatsAppPhoneNumberId").HasMaxLength(64);
+            entity.HasIndex(x => x.OwnerEmail).IsUnique();
+            entity.HasIndex(x => x.WhatsAppPhoneNumberId).IsUnique();
 
             entity.Property(x => x.AllowedDomains)
                 .HasColumnName("AllowedDomainsJson")
@@ -170,6 +174,51 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
                 .HasForeignKey(x => x.SiteId)
                 .HasPrincipalKey(x => x.Id)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<WhatsAppConnectionRecord>(entity =>
+        {
+            entity.ToTable("WhatsAppConnections");
+            entity.HasKey(x => x.SiteId);
+            entity.Property(x => x.SiteId).HasColumnName("SiteId").HasMaxLength(255);
+            entity.Property(x => x.WabaId).HasColumnName("WabaId").HasMaxLength(64).IsRequired();
+            entity.Property(x => x.PhoneNumberId).HasColumnName("PhoneNumberId").HasMaxLength(64).IsRequired();
+            entity.Property(x => x.DisplayPhoneNumber).HasColumnName("DisplayPhoneNumber").HasMaxLength(64).IsRequired();
+            entity.Property(x => x.AccessTokenCiphertext).HasColumnName("AccessTokenCiphertext").IsRequired();
+            entity.Property(x => x.Status).HasColumnName("Status").HasMaxLength(32).IsRequired();
+            entity.Property(x => x.WebhookSubscribedAtUtc).HasColumnName("WebhookSubscribedAtUtc");
+            entity.Property(x => x.LastValidatedAtUtc).HasColumnName("LastValidatedAtUtc");
+            entity.Property(x => x.LastInboundAtUtc).HasColumnName("LastInboundAtUtc");
+            entity.Property(x => x.LastOutboundTestAtUtc).HasColumnName("LastOutboundTestAtUtc");
+            entity.Property(x => x.LastError).HasColumnName("LastError").HasMaxLength(1000);
+            entity.Property(x => x.UpdatedAtUtc).HasColumnName("UpdatedAtUtc");
+            entity.HasIndex(x => x.PhoneNumberId).IsUnique();
+
+            entity.HasOne<SiteRecord>()
+                .WithOne()
+                .HasForeignKey<WhatsAppConnectionRecord>(x => x.SiteId)
+                .HasPrincipalKey<SiteRecord>(x => x.Id)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<WhatsAppMessageReceiptRecord>(entity =>
+        {
+            entity.ToTable("WhatsAppMessageReceipts");
+            entity.HasKey(x => new { x.SiteId, x.MessageId });
+            entity.Property(x => x.SiteId).HasColumnName("SiteId").HasMaxLength(255);
+            entity.Property(x => x.MessageId).HasColumnName("MessageId").HasMaxLength(255);
+            entity.Property(x => x.StartedAtUtc).HasColumnName("StartedAtUtc");
+            entity.Property(x => x.SideEffectsStartedAtUtc).HasColumnName("SideEffectsStartedAtUtc");
+            entity.Property(x => x.ProcessedAtUtc).HasColumnName("ProcessedAtUtc");
+            entity.HasIndex(x => x.StartedAtUtc);
+            entity.HasIndex(x => x.SideEffectsStartedAtUtc);
+            entity.HasIndex(x => x.ProcessedAtUtc);
+
+            entity.HasOne<SiteRecord>()
+                .WithMany()
+                .HasForeignKey(x => x.SiteId)
+                .HasPrincipalKey(x => x.Id)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 

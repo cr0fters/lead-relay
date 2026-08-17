@@ -15,6 +15,10 @@ Required outside Development:
 - `AdminAuth:Token`
 - `OwnerPortal:SigningSecret`
 - `PublicBaseUrl` (recommended behind load balancers, for example `https://leadrelay.dev`)
+- `WhatsApp:VerifyToken`
+- `WhatsApp:AppSecret`
+- `WhatsApp:CredentialEncryptionKey` (base64-encoded 32-byte key)
+- `WhatsApp:RequireSignatureValidation=true`
 
 The app fails fast on startup in non-Development if these are missing.
 
@@ -31,6 +35,8 @@ Optional local settings (only if using these integrations):
 dotnet user-secrets set "WhatsApp:VerifyToken" "dev_verify_token" --project src/LeadRelay.Web
 dotnet user-secrets set "WhatsApp:AccessToken" "<meta_cloud_api_access_token>" --project src/LeadRelay.Web
 dotnet user-secrets set "WhatsApp:MessagesEndpoint" "https://graph.facebook.com/v20.0/<PHONE_NUMBER_ID>/messages" --project src/LeadRelay.Web
+dotnet user-secrets set "WhatsApp:AppSecret" "<meta_app_secret>" --project src/LeadRelay.Web
+dotnet user-secrets set "WhatsApp:CredentialEncryptionKey" "<openssl_rand_base64_32_output>" --project src/LeadRelay.Web
 dotnet user-secrets set "OpenAI:ApiKey" "<openai_api_key>" --project src/LeadRelay.Web
 ```
 
@@ -42,12 +48,21 @@ AdminAuth__Token=...
 OwnerPortal__SigningSecret=...
 PublicBaseUrl=https://your-domain.com
 WhatsApp__VerifyToken=...
+WhatsApp__AppSecret=...
+WhatsApp__CredentialEncryptionKey=...
+WhatsApp__RequireSignatureValidation=true
+WhatsApp__IdempotencyProcessingLeaseMinutes=30
+WhatsApp__ProcessedReceiptRetentionDays=30
 WhatsApp__AccessToken=...
 WhatsApp__MessagesEndpoint=...
 WhatsApp__Senders__<PHONE_NUMBER_ID>__AccessToken=...
 WhatsApp__Senders__<PHONE_NUMBER_ID>__MessagesEndpoint=https://graph.facebook.com/v20.0/<PHONE_NUMBER_ID>/messages
+ForwardedHeaders__Enabled=true
+ForwardedHeaders__KnownProxies__0=<YOUR_REVERSE_PROXY_IP>
 OpenAI__ApiKey=...
 ```
+
+Leave forwarded headers disabled for direct hosting. When running behind a reverse proxy, enable them and add at least one proxy IP you operate or explicitly trust. The app fails startup if forwarding is enabled without a trusted proxy, and headers from every other source are ignored.
 
 ## CI/CD (GitHub tests + Railway deploy)
 This repo includes `.github/workflows/ci-cd.yml` to:
@@ -107,6 +122,7 @@ dotnet ef database update --project src/LeadRelay.Infrastructure --startup-proje
 - `GET /owner/password/forgot` — request password reset
 - `GET /owner/password/reset` — set new password with reset token
 - `GET /owner` — lead inbox
+- `GET /owner/onboarding` — guided WhatsApp + widget onboarding and progress checklist
 - `GET /owner/leads/{id}` — lead detail view
 - `POST /owner/leads/{id}/reply` — send WhatsApp reply to lead
 - `GET /debug/whatsapp` — local UI to simulate chat flow
@@ -144,9 +160,19 @@ Set these in `src/LeadRelay.Web/appsettings.json`:
 ```
 
 For multi-tenant routing:
-- set each site's `WhatsAppPhoneNumberId` in admin/API config
+- owners can connect WhatsApp from `/owner/onboarding`; tokens are encrypted before database storage
+- the onboarding flow validates the phone number, subscribes the app to the WABA, and stores the sender identifiers
+- `WhatsAppConnections` is the source of truth for self-serve sender identifiers; legacy fields on `Sites` are synchronized for backward compatibility and operator-managed tenants
+- admin/API configuration and `WhatsApp:Senders` remain available as a legacy/operator fallback
 - webhook inbound routing matches `entry[].changes[].value.metadata.phone_number_id` to that site
 - outbound sends use per-sender credentials when `WhatsApp:Senders:<PHONE_NUMBER_ID>` is configured
+- unmatched inbound messages are logged and ignored; they are never assigned to an arbitrary tenant
+
+Generate the credential encryption key once and retain it in the production secret store:
+```bash
+openssl rand -base64 32
+```
+Changing or losing this key makes previously stored tenant access tokens unreadable.
 
 ## Admin auth token
 All `/admin` endpoints are protected by a shared token configured under `AdminAuth`.
@@ -172,6 +198,7 @@ Inbox supports:
 
 Login sessions are signed tokens and require `OwnerPortal:SigningSecret` to be set.  
 New users can self-register at `/owner/register`.  
+After registration they are signed in and sent to `/owner/onboarding`. The setup checklist is resumable and remains available from the WhatsApp status badge in the workspace header.
 Users sign in from `/owner/login` with email and password.  
 Password reset is available via `/owner/password/forgot` (email link) and `/owner/password/reset`.  
 Admin site edit pages include the login URL (`/owner/login`) to share as the canonical entry point.

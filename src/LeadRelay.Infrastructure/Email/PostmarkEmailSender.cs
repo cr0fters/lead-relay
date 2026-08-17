@@ -99,11 +99,10 @@ public sealed class PostmarkEmailSender(
 
     private async Task SendAndValidateAsync(HttpRequestMessage request, CancellationToken ct)
     {
-        var response = await httpClient.SendAsync(request, ct);
+        using var response = await httpClient.SendAsync(request, ct);
         if (response.IsSuccessStatusCode) return;
 
-        var body = await response.Content.ReadAsStringAsync(ct);
-        logger.LogError("Postmark send failed with status {StatusCode}. Response: {Body}", (int)response.StatusCode, body);
+        logger.LogError("Postmark send failed with status {StatusCode}.", (int)response.StatusCode);
         throw new InvalidOperationException($"Postmark email send failed with status {(int)response.StatusCode}.");
     }
 }

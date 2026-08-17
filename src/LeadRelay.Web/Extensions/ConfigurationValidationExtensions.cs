@@ -17,6 +17,17 @@ public static class ConfigurationValidationExtensions
         Require(builder.Configuration, "OwnerPortal:SigningSecret", missing);
         Require(builder.Configuration, "Postmark:ServerToken", missing);
         Require(builder.Configuration, "Postmark:FromEmail", missing);
+        Require(builder.Configuration, "WhatsApp:VerifyToken", missing);
+        Require(builder.Configuration, "WhatsApp:AppSecret", missing);
+        Require(builder.Configuration, "WhatsApp:CredentialEncryptionKey", missing);
+        if (!IsValidEncryptionKey(builder.Configuration["WhatsApp:CredentialEncryptionKey"]) &&
+            !missing.Contains("WhatsApp:CredentialEncryptionKey", StringComparer.Ordinal))
+        {
+            missing.Add("WhatsApp:CredentialEncryptionKey (must be base64 for exactly 32 bytes)");
+        }
+
+        if (!builder.Configuration.GetValue<bool>("WhatsApp:RequireSignatureValidation"))
+            missing.Add("WhatsApp:RequireSignatureValidation=true");
 
         if (missing.Count == 0) return;
 
@@ -40,5 +51,18 @@ public static class ConfigurationValidationExtensions
         if (trimmed.Contains("paste_your", StringComparison.OrdinalIgnoreCase)) return true;
 
         return false;
+    }
+
+    private static bool IsValidEncryptionKey(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        try
+        {
+            return Convert.FromBase64String(value.Trim()).Length == 32;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
     }
 }

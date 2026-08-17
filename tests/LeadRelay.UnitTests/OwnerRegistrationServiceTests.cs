@@ -4,6 +4,7 @@ using LeadRelay.Infrastructure.Persistence;
 using LeadRelay.Web.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
 
 namespace LeadRelay.UnitTests;
@@ -15,7 +16,7 @@ public sealed class OwnerRegistrationServiceTests
     {
         using var db = CreateDb();
         var now = new DateTimeOffset(2026, 2, 16, 12, 0, 0, TimeSpan.Zero);
-        var service = new OwnerRegistrationService(db, new FixedClock(now));
+        var service = new OwnerRegistrationService(db, new FixedClock(now), NullLogger<OwnerRegistrationService>.Instance);
 
         var result = await service.RegisterAsync(
             new OwnerRegistrationRequest(
@@ -59,7 +60,7 @@ public sealed class OwnerRegistrationServiceTests
     public async Task register_generates_field_ids_from_names_when_missing()
     {
         using var db = CreateDb();
-        var service = new OwnerRegistrationService(db, new FixedClock(DateTimeOffset.UtcNow));
+        var service = new OwnerRegistrationService(db, new FixedClock(DateTimeOffset.UtcNow), NullLogger<OwnerRegistrationService>.Instance);
 
         var result = await service.RegisterAsync(
             new OwnerRegistrationRequest(
@@ -91,7 +92,7 @@ public sealed class OwnerRegistrationServiceTests
         });
         await db.SaveChangesAsync();
 
-        var service = new OwnerRegistrationService(db, new FixedClock(DateTimeOffset.UtcNow));
+        var service = new OwnerRegistrationService(db, new FixedClock(DateTimeOffset.UtcNow), NullLogger<OwnerRegistrationService>.Instance);
         var result = await service.RegisterAsync(
             new OwnerRegistrationRequest("New Site", null, [], "OWNER@example.com", "strong-pass"),
             CancellationToken.None);
@@ -106,7 +107,7 @@ public sealed class OwnerRegistrationServiceTests
     public async Task register_rejects_invalid_email()
     {
         using var db = CreateDb();
-        var service = new OwnerRegistrationService(db, new FixedClock(DateTimeOffset.UtcNow));
+        var service = new OwnerRegistrationService(db, new FixedClock(DateTimeOffset.UtcNow), NullLogger<OwnerRegistrationService>.Instance);
 
         var result = await service.RegisterAsync(
             new OwnerRegistrationRequest("New Site", null, [], "not-an-email", "strong-pass"),
@@ -122,7 +123,7 @@ public sealed class OwnerRegistrationServiceTests
     public async Task register_rejects_duplicate_field_ids()
     {
         using var db = CreateDb();
-        var service = new OwnerRegistrationService(db, new FixedClock(DateTimeOffset.UtcNow));
+        var service = new OwnerRegistrationService(db, new FixedClock(DateTimeOffset.UtcNow), NullLogger<OwnerRegistrationService>.Instance);
 
         var result = await service.RegisterAsync(
             new OwnerRegistrationRequest(

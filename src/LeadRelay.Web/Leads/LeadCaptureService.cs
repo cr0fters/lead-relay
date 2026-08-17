@@ -86,13 +86,20 @@ public sealed class LeadCaptureService(ILeadRepository leads, IEmailSender email
         await leads.SaveAsync(lead, ct);
 
         if (input.NotifyOwner)
-        {
-            var fieldsBlock = string.Join("\n", input.Fields.Select(kv => $"{kv.Key}: {kv.Value}"));
-            var body = $"New lead for {site.Name}\n\nChannel: {lead.Channel}\nFields:\n{fieldsBlock}\n";
-            await emailSender.SendAsync(site.OwnerEmail, $"New lead ({site.Name})", body, ct);
-        }
+            await NotifyOwnerAsync(site, lead, input.Fields, ct);
 
         return new LeadCaptureResult(lead, leadJustCreated, true);
+    }
+
+    public Task NotifyOwnerAsync(
+        Site site,
+        Lead lead,
+        IReadOnlyDictionary<string, string> fields,
+        CancellationToken ct)
+    {
+        var fieldsBlock = string.Join("\n", fields.Select(kv => $"{kv.Key}: {kv.Value}"));
+        var body = $"New lead for {site.Name}\n\nChannel: {lead.Channel}\nFields:\n{fieldsBlock}\n";
+        return emailSender.SendAsync(site.OwnerEmail, $"New lead ({site.Name})", body, ct);
     }
 
     private async Task<CustomerRecord> ResolveOrCreateCustomerAsync(

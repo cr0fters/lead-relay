@@ -1,6 +1,7 @@
 using System.Text.Json;
 using LeadRelay.Application.Abstractions;
 using LeadRelay.Web.Security;
+using LeadRelay.Web.WhatsApp;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 
@@ -8,6 +9,7 @@ namespace LeadRelay.Web.Controllers;
 
 public sealed class WidgetController(
     ISiteRepository sites,
+    WhatsAppOnboardingService onboarding,
     IConfiguration configuration,
     ILogger<WidgetController> logger) : Controller
 {
@@ -16,6 +18,29 @@ public sealed class WidgetController(
     {
         var site = await sites.GetByIdAsync(siteId, ct);
         if (site is null) return Unauthorized();
+        if (string.IsNullOrWhiteSpace(site.WhatsAppNumber))
+        {
+            Response.Headers.CacheControl = "no-store";
+            return Content(
+                "console.warn(\"LeadRelay: widget unavailable until WhatsApp setup is complete.\");",
+                "application/javascript; charset=utf-8");
+        }
+        var selfServeConnection = await onboarding.GetSummaryAsync(site.Id, ct);
+        if (selfServeConnection.Exists &&
+            (!selfServeConnection.IsConnected || !selfServeConnection.IsWebhookVerified))
+        {
+            Response.Headers.CacheControl = "no-store";
+            return Content(
+                "console.warn(\"LeadRelay: widget unavailable until the WhatsApp connection and webhook are verified.\");",
+                "application/javascript; charset=utf-8");
+        }
+        if (selfServeConnection.Exists && site.AllowedDomains.Count == 0)
+        {
+            Response.Headers.CacheControl = "no-store";
+            return Content(
+                "console.warn(\"LeadRelay: widget unavailable until an allowed website domain is configured.\");",
+                "application/javascript; charset=utf-8");
+        }
 
         var referer = Request.Headers.Referer.ToString();
         var originHeader = Request.Headers.Origin.ToString();

@@ -12,7 +12,9 @@ public sealed class EfSiteRepository(LeadRelayDbContext db) : ISiteRepository
             .FirstOrDefaultAsync(x => x.Id == siteId, ct);
         if (record is null) return null;
 
-        return Map(record);
+        var connection = await db.WhatsAppConnections.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.SiteId == record.Id, ct);
+        return Map(record, connection);
     }
 
     public async Task<Site?> GetByWhatsAppPhoneNumberIdAsync(string phoneNumberId, CancellationToken ct)
@@ -21,11 +23,14 @@ public sealed class EfSiteRepository(LeadRelayDbContext db) : ISiteRepository
         if (string.IsNullOrWhiteSpace(normalized))
             return null;
 
-        var record = await db.Sites.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.WhatsAppPhoneNumberId == normalized, ct);
+        var connection = await db.WhatsAppConnections.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.PhoneNumberId == normalized, ct);
+        var record = connection is not null
+            ? await db.Sites.AsNoTracking().FirstOrDefaultAsync(x => x.Id == connection.SiteId, ct)
+            : await db.Sites.AsNoTracking().FirstOrDefaultAsync(x => x.WhatsAppPhoneNumberId == normalized, ct);
         if (record is null) return null;
 
-        return Map(record);
+        return Map(record, connection);
     }
 
     public async Task<IReadOnlyList<Site>> GetAllAsync(CancellationToken ct)
@@ -33,8 +38,12 @@ public sealed class EfSiteRepository(LeadRelayDbContext db) : ISiteRepository
         var records = await db.Sites.AsNoTracking()
             .OrderBy(x => x.Name)
             .ToListAsync(ct);
+        var connections = await db.WhatsAppConnections.AsNoTracking()
+            .ToDictionaryAsync(x => x.SiteId, StringComparer.Ordinal, ct);
 
-        return records.Select(Map).ToList();
+        return records.Select(record => Map(
+            record,
+            connections.TryGetValue(record.Id, out var connection) ? connection : null)).ToList();
     }
 
     public async Task UpsertAsync(Site site, CancellationToken ct)
@@ -63,7 +72,7 @@ public sealed class EfSiteRepository(LeadRelayDbContext db) : ISiteRepository
         await db.SaveChangesAsync(ct);
     }
 
-    private static Site Map(SiteRecord record)
+    private static Site Map(SiteRecord record, WhatsAppConnectionRecord? connection)
     {
         return new Site
         {
@@ -74,8 +83,8 @@ public sealed class EfSiteRepository(LeadRelayDbContext db) : ISiteRepository
             Fields = record.Fields,
             IntroMessage = record.IntroMessage,
             OwnerEmail = record.OwnerEmail,
-            WhatsAppNumber = record.WhatsAppNumber,
-            WhatsAppPhoneNumberId = record.WhatsAppPhoneNumberId
+            WhatsAppNumber = connection?.DisplayPhoneNumber ?? record.WhatsAppNumber,
+            WhatsAppPhoneNumberId = connection?.PhoneNumberId ?? record.WhatsAppPhoneNumberId
         };
     }
 }

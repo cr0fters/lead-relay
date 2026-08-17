@@ -132,6 +132,7 @@ public sealed class OwnerPortalReplyChannelTests
         Assert.That(updatedSite!.Fields.Count, Is.EqualTo(2));
         Assert.That(updatedSite.Fields[0].Id, Is.EqualTo("project_overview"));
         Assert.That(updatedSite.Fields[1].Id, Is.EqualTo("budget"));
+        Assert.That(updatedSite.WhatsAppPhoneNumberId, Is.EqualTo("demo-phone-number-id"));
     }
 
     [Test]

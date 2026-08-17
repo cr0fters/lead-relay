@@ -1,20 +1,20 @@
-using LeadRelay.Application.Abstractions;
 using LeadRelay.Web.Leads;
 using LeadRelay.Web.WhatsApp;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
-using System.Text;
 
 namespace LeadRelay.Web.Controllers;
 
 [ApiController]
 public sealed class WhatsAppWebhookController(
-    ISiteRepository sites,
+    WhatsAppSiteResolver siteResolver,
     LeadCaptureService leadCapture,
     WhatsAppClient whatsAppClient,
     WhatsAppConversationService conversations,
     IWhatsAppWebhookGuard webhookGuard,
+    WhatsAppWebhookRateLimiter webhookRateLimiter,
+    WhatsAppOnboardingService onboarding,
     IOptions<WhatsAppOptions> options,
     ILogger<WhatsAppWebhookController> logger) : ControllerBase
 {
@@ -35,6 +35,7 @@ public sealed class WhatsAppWebhookController(
     }
 
     [HttpPost("/v1/webhooks/whatsapp")]
+    [RequestSizeLimit(1_048_576)]
     public async Task<IActionResult> Receive(CancellationToken ct)
     {
         var payloadBytes = await ReadBodyBytesAsync(ct);
@@ -52,35 +53,75 @@ public sealed class WhatsAppWebhookController(
         var phoneNumberId = ExtractPhoneNumberId(payload);
         var displayPhoneNumber = ExtractDisplayPhoneNumber(payload);
         if (string.IsNullOrWhiteSpace(waId)) return Ok(new { ok = true });
+        if (string.IsNullOrWhiteSpace(messageId))
+        {
+            logger.LogWarning("Incoming WhatsApp message from {WaId} had no message ID and was not processed.", waId);
+            return Ok(new { ok = true });
+        }
 
-        var site = await ResolveSiteAsync(phoneNumberId, displayPhoneNumber, ct);
+        var site = await siteResolver.ResolveAsync(phoneNumberId, displayPhoneNumber, ct);
         if (site is null) return Ok(new { ok = true });
-        if (!string.IsNullOrWhiteSpace(messageId) && webhookGuard.IsDuplicate(site.Id, messageId))
+        if (!webhookRateLimiter.TryAcquire(site.Id, waId))
+            return StatusCode(StatusCodes.Status429TooManyRequests);
+
+        await onboarding.MarkInboundReceivedAsync(site.Id, ct);
+        var receiptStarted = await webhookGuard.TryBeginProcessingAsync(site.Id, messageId, ct);
+        if (!receiptStarted)
             return Ok(new { ok = true, duplicate = true });
 
-        var reply = await conversations.HandleMessageAsync(site, waId, text, contactName, null, ct);
-        foreach (var message in reply.Replies)
-            await whatsAppClient.SendTextAsync(waId, message, site.Id, ct);
+        var sideEffectsStarted = false;
+        try
+        {
+            var reply = await conversations.HandleMessageAsync(site, waId, text, contactName, null, ct);
+            var captured = await leadCapture.CaptureAsync(
+                site,
+                new LeadCaptureInput(
+                    Channel: "whatsapp",
+                    ExternalContactId: waId,
+                    ContactName: contactName,
+                    FallbackMessage: text,
+                    Fields: reply.Collected,
+                    Conversation: reply.History
+                        .Select(x => new LeadCaptureTurn(x.Role, x.Text, x.AtUtc))
+                        .ToList(),
+                    LeadId: reply.LeadId,
+                    LeadCreatedAtUtc: reply.LeadCreatedAtUtc,
+                    NotifyOwner: false,
+                    ProjectSummary: reply.ProjectSummary),
+                ct);
 
-        await leadCapture.CaptureAsync(
-            site,
-            new LeadCaptureInput(
-                Channel: "whatsapp",
-                ExternalContactId: waId,
-                ContactName: contactName,
-                FallbackMessage: text,
-                Fields: reply.Collected,
-                Conversation: reply.History
-                    .Select(x => new LeadCaptureTurn(x.Role, x.Text, x.AtUtc))
-                    .ToList(),
-                LeadId: reply.LeadId,
-                LeadCreatedAtUtc: reply.LeadCreatedAtUtc,
-                NotifyOwner: reply.LeadJustCreated,
-                ProjectSummary: reply.ProjectSummary),
-            ct);
+            await webhookGuard.MarkSideEffectsStartedAsync(site.Id, messageId, ct);
+            sideEffectsStarted = true;
 
-        if (!string.IsNullOrWhiteSpace(messageId))
-            webhookGuard.MarkProcessed(site.Id, messageId);
+            foreach (var message in reply.Replies)
+                await whatsAppClient.SendTextAsync(waId, message, site.Id, ct);
+
+            if (reply.LeadJustCreated && captured.Lead is not null)
+                await leadCapture.NotifyOwnerAsync(site, captured.Lead, reply.Collected, ct);
+
+            await webhookGuard.MarkProcessedAsync(site.Id, messageId, ct);
+        }
+        catch
+        {
+            if (!sideEffectsStarted)
+            {
+                try
+                {
+                    await webhookGuard.AbandonAsync(site.Id, messageId, CancellationToken.None);
+                }
+                catch (Exception exception)
+                {
+                    logger.LogError(exception, "Failed to release WhatsApp receipt {MessageId} for retry.", messageId);
+                }
+            }
+            else
+            {
+                logger.LogError(
+                    "WhatsApp processing failed after side effects started for message {MessageId}; the receipt was retained to prevent duplicate sends.",
+                    messageId);
+            }
+            throw;
+        }
 
         return Ok(new { ok = true });
     }
@@ -88,10 +129,10 @@ public sealed class WhatsAppWebhookController(
     private async Task<byte[]> ReadBodyBytesAsync(CancellationToken ct)
     {
         Request.EnableBuffering();
-        using var reader = new StreamReader(Request.Body, Encoding.UTF8, leaveOpen: true);
-        var body = await reader.ReadToEndAsync(ct);
+        await using var buffer = new MemoryStream();
+        await Request.Body.CopyToAsync(buffer, ct);
         Request.Body.Position = 0;
-        return Encoding.UTF8.GetBytes(body);
+        return buffer.ToArray();
     }
 
     private string? ExtractText(JsonElement payload)
@@ -264,30 +305,6 @@ public sealed class WhatsAppWebhookController(
         return null;
     }
 
-    private async Task<LeadRelay.Domain.Sites.Site?> ResolveSiteAsync(string? phoneNumberId, string? displayPhoneNumber, CancellationToken ct)
-    {
-        var normalizedPhoneNumberId = (phoneNumberId ?? "").Trim();
-        if (!string.IsNullOrWhiteSpace(normalizedPhoneNumberId))
-        {
-            var byPhoneId = await sites.GetByWhatsAppPhoneNumberIdAsync(normalizedPhoneNumberId, ct);
-            if (byPhoneId is not null)
-                return byPhoneId;
-
-            logger.LogWarning("No site matched incoming WhatsApp phone_number_id {PhoneNumberId}.", normalizedPhoneNumberId);
-        }
-
-        var allSites = await sites.GetAllAsync(ct);
-        var normalizedDisplayNumber = NormalizeDigits(displayPhoneNumber);
-        if (!string.IsNullOrWhiteSpace(normalizedDisplayNumber))
-        {
-            var byDisplayNumber = allSites.FirstOrDefault(x => NormalizeDigits(x.WhatsAppNumber) == normalizedDisplayNumber);
-            if (byDisplayNumber is not null)
-                return byDisplayNumber;
-        }
-
-        return allSites.FirstOrDefault();
-    }
-
     private static bool TryGetMetadata(JsonElement payload, out JsonElement metadata)
     {
         metadata = default;
@@ -341,10 +358,4 @@ public sealed class WhatsAppWebhookController(
         return false;
     }
 
-    private static string? NormalizeDigits(string? input)
-    {
-        if (string.IsNullOrWhiteSpace(input)) return null;
-        var digits = new string(input.Where(char.IsDigit).ToArray());
-        return digits.Length == 0 ? null : digits;
-    }
 }

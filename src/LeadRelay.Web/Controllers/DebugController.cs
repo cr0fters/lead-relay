@@ -9,17 +9,20 @@ public sealed class DebugController(
     ISiteRepository sites,
     LeadCaptureService leadCapture,
     ILeadRepository leads,
-    WhatsAppConversationService conversations) : Controller
+    WhatsAppConversationService conversations,
+    IWebHostEnvironment environment) : Controller
 {
     [HttpGet("/debug/whatsapp")]
-    public ViewResult WhatsApp()
+    public IActionResult WhatsApp()
     {
+        if (!environment.IsDevelopment()) return NotFound();
         return View();
     }
 
     [HttpPost("/debug/whatsapp/send")]
     public async Task<IActionResult> Send([FromForm] string contactId, [FromForm] string message, [FromForm] string? contactName, [FromForm] string? systemPrompt, CancellationToken ct)
     {
+        if (!environment.IsDevelopment()) return NotFound();
         var site = await ResolveDefaultSiteAsync(ct);
         if (site is null) return NotFound();
 
@@ -56,6 +59,7 @@ public sealed class DebugController(
     [HttpGet("/debug/whatsapp/leads")]
     public async Task<IActionResult> Leads([FromQuery] int limit, CancellationToken ct)
     {
+        if (!environment.IsDevelopment()) return NotFound();
         var items = await leads.GetRecentAsync(limit <= 0 ? 20 : limit, ct);
         return Ok(items.Select(x => new
         {
@@ -71,6 +75,7 @@ public sealed class DebugController(
     [HttpGet("/debug/whatsapp/leads/{id:guid}")]
     public async Task<IActionResult> LeadDetails(Guid id, CancellationToken ct)
     {
+        if (!environment.IsDevelopment()) return NotFound();
         var lead = await leads.GetByIdAsync(id, ct);
         if (lead is null) return NotFound();
 
@@ -91,6 +96,7 @@ public sealed class DebugController(
     [HttpPost("/debug/whatsapp/pause")]
     public async Task<IActionResult> Pause([FromForm] Guid leadId, [FromForm] bool paused, CancellationToken ct)
     {
+        if (!environment.IsDevelopment()) return NotFound();
         var lead = await leads.GetByIdAsync(leadId, ct);
         if (lead is null) return NotFound();
         lead.IsBotPaused = paused;

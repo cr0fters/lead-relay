@@ -1,5 +1,6 @@
 using LeadRelay.Web.Security;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Text.Json;
 
 namespace LeadRelay.Web.Controllers;
@@ -40,6 +41,7 @@ public sealed class OwnerLoginController(
 
     [HttpPost("/owner/register")]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> RegisterPost([FromForm] RegisterModel model, CancellationToken ct)
     {
         if (!sessions.IsConfigured)
@@ -95,11 +97,12 @@ public sealed class OwnerLoginController(
 
         var sessionToken = sessions.CreateLoginToken(result.Auth.SiteId, result.Auth.OwnerEmail, TimeSpan.FromHours(12));
         sessions.SignIn(HttpContext, sessionToken);
-        return Redirect(model.ReturnUrl);
+        return Redirect(model.ReturnUrl == "/owner" ? "/owner/onboarding" : model.ReturnUrl);
     }
 
     [HttpPost("/owner/login")]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> LoginPost([FromForm] OwnerLoginModel model, CancellationToken ct)
     {
         if (!sessions.IsConfigured)
@@ -132,6 +135,7 @@ public sealed class OwnerLoginController(
 
     [HttpPost("/owner/password/forgot")]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> ForgotPasswordPost([FromForm] ForgotPasswordModel model, CancellationToken ct)
     {
         var email = (model.Email ?? "").Trim();
@@ -159,6 +163,7 @@ public sealed class OwnerLoginController(
 
     [HttpPost("/owner/password/reset")]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> ResetPasswordPost([FromForm] ResetPasswordModel model, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(model.Email) ||

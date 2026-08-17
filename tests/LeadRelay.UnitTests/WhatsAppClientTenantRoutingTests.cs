@@ -1,7 +1,9 @@
 using System.Net;
 using LeadRelay.Application.Abstractions;
 using LeadRelay.Domain.Sites;
+using LeadRelay.Infrastructure.Persistence;
 using LeadRelay.Web.WhatsApp;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NUnit.Framework;
@@ -34,7 +36,8 @@ public sealed class WhatsAppClientTenantRoutingTests
             WhatsAppNumber = "447000000000",
             WhatsAppPhoneNumberId = "phone-1"
         });
-        var client = new WhatsAppClient(http, options, sites, NullLogger<WhatsAppClient>.Instance);
+        using var db = CreateDb();
+        var client = new WhatsAppClient(http, options, sites, db, new WhatsAppCredentialProtector(options), NullLogger<WhatsAppClient>.Instance);
 
         var sent = await client.SendTextAsync("447111111111", "hello", "site_a", CancellationToken.None);
 
@@ -63,7 +66,8 @@ public sealed class WhatsAppClientTenantRoutingTests
             WhatsAppNumber = "447000000000",
             WhatsAppPhoneNumberId = "phone-2"
         });
-        var client = new WhatsAppClient(http, options, sites, NullLogger<WhatsAppClient>.Instance);
+        using var db = CreateDb();
+        var client = new WhatsAppClient(http, options, sites, db, new WhatsAppCredentialProtector(options), NullLogger<WhatsAppClient>.Instance);
 
         var sent = await client.SendTextAsync("447111111111", "hello", "site_a", CancellationToken.None);
 
@@ -82,6 +86,14 @@ public sealed class WhatsAppClientTenantRoutingTests
             Requests.Add(request);
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
         }
+    }
+
+    private static LeadRelayDbContext CreateDb()
+    {
+        var dbOptions = new DbContextOptionsBuilder<LeadRelayDbContext>()
+            .UseInMemoryDatabase($"whatsapp-client-{Guid.NewGuid():N}")
+            .Options;
+        return new LeadRelayDbContext(dbOptions);
     }
 
     private sealed class FixedSiteRepository(Site site) : ISiteRepository

@@ -35,6 +35,20 @@ Use this runbook to onboard each tenant WhatsApp account into LeadRelay.
 - [ ] Webhook callback URL points to `https://<your-domain>/v1/webhooks/whatsapp`.
 - [ ] Webhook verification succeeds in Meta.
 - [ ] Alerting exists for webhook and outbound send failures.
+- [ ] `WhatsApp__AppSecret` is set and `WhatsApp__RequireSignatureValidation=true`.
+- [ ] `WhatsApp__CredentialEncryptionKey` is set to a retained base64-encoded 32-byte key.
+
+## Self-serve tenant onboarding
+Authenticated owners now use `/owner/onboarding` to:
+1. enter WABA ID, phone number ID, display number, and access token
+2. validate the phone number against Meta
+3. subscribe the LeadRelay app to the WABA
+4. store the access token encrypted at rest
+5. send a test message
+6. send an inbound message so LeadRelay can verify signed webhook delivery
+7. configure an allowed website domain and copy the widget snippet
+
+The workspace header distinguishes setup, action-required, awaiting-webhook-verification, and verified states and links back to the resumable checklist.
 
 ## Tenant tracker
 | Tenant | SiteId | WABA ID | Phone number ID | Display number (E.164) | App subscribed to WABA | Sender token stored | Site WhatsApp number set | Site WhatsApp phone number ID set | Inbound test passed | Owner reply test passed | Notes |
@@ -50,15 +64,13 @@ Use this runbook to onboard each tenant WhatsApp account into LeadRelay.
 - [ ] Register phone number if needed (`POST /{PHONE_NUMBER_ID}/register` with PIN).
 
 2. Secrets and config
-- [ ] Store sender access token in your secret manager.
-- [ ] Set env var: `WhatsApp__Senders__<PHONE_NUMBER_ID>__AccessToken`.
-- [ ] Set env var: `WhatsApp__Senders__<PHONE_NUMBER_ID>__MessagesEndpoint=https://graph.facebook.com/v20.0/<PHONE_NUMBER_ID>/messages`.
+- [ ] Complete `/owner/onboarding` so the tenant token is encrypted and stored dynamically.
+- [ ] For operator-managed legacy tenants only, store sender credentials under `WhatsApp__Senders__<PHONE_NUMBER_ID>__...`.
 
-3. LeadRelay admin config
-- [ ] Open `/admin/sites/{siteId}`.
-- [ ] Set `WhatsApp number` to tenant display number digits.
-- [ ] Set `WhatsApp phone number ID` to tenant `PHONE_NUMBER_ID`.
-- [ ] Save site.
+3. LeadRelay config
+- [ ] Confirm the owner onboarding page shows WhatsApp connected.
+- [ ] Send an inbound message and confirm the onboarding page marks webhook delivery verified.
+- [ ] Admin may inspect or repair the legacy site sender identifiers at `/admin/sites/{siteId}` if necessary.
 
 4. Validation
 - [ ] Restart app/deploy.

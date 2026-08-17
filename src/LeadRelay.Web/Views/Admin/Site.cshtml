@@ -1,4 +1,5 @@
 @model LeadRelay.Web.Controllers.AdminController.SiteFormModel
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment Environment
 @{
     Layout = "~/Views/Shared/_OwnerLayout.cshtml";
     ViewData["Title"] = "Site configuration";
@@ -17,10 +18,13 @@
                     <i data-lucide="arrow-left" class="h-4 w-4"></i>
                     <span>Back to dashboard</span>
                 </a>
-                <a class="inline-flex items-center gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100" href="/debug/whatsapp">
-                    <i data-lucide="wrench" class="h-4 w-4"></i>
-                    <span>Debug tool</span>
-                </a>
+                @if (Environment.IsDevelopment())
+                {
+                    <a class="inline-flex items-center gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100" href="/debug/whatsapp">
+                        <i data-lucide="wrench" class="h-4 w-4"></i>
+                        <span>Debug tool</span>
+                    </a>
+                }
             </div>
         </div>
     </header>
@@ -30,6 +34,7 @@
         <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">@Model.Error</div>
     }
     <form method="post" action="@(string.IsNullOrWhiteSpace(Model.Id) ? "/admin/sites/new" : $"/admin/sites/{Model.Id}")" class="space-y-4">
+        @Html.AntiForgeryToken()
         <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-panel sm:p-5">
             <h2 class="text-sm font-semibold text-slate-900">Core details</h2>
             <p class="mb-4 text-xs text-slate-500">Basic login and routing identity for this site.</p>

@@ -3,11 +3,15 @@ using LeadRelay.Infrastructure.Persistence;
 using LeadRelay.Web.Fields;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using MySqlConnector;
 using System.Net.Mail;
 
 namespace LeadRelay.Web.Security;
 
-public sealed class OwnerRegistrationService(LeadRelayDbContext db, IClock clock) : IOwnerRegistrationService
+public sealed class OwnerRegistrationService(
+    LeadRelayDbContext db,
+    IClock clock,
+    ILogger<OwnerRegistrationService> logger) : IOwnerRegistrationService
 {
     private readonly PasswordHasher<OwnerAccountRecord> _hasher = new();
 
@@ -59,12 +63,29 @@ public sealed class OwnerRegistrationService(LeadRelayDbContext db, IClock clock
 
         db.Sites.Add(site);
         db.OwnerAccounts.Add(account);
-        await db.SaveChangesAsync(ct);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException exception) when (IsOwnerEmailConflict(exception))
+        {
+            return OwnerRegistrationResult.Failure("An account with that email already exists.");
+        }
+        catch (DbUpdateException exception)
+        {
+            logger.LogError(exception, "Owner registration database write failed for site {SiteId}.", siteId);
+            return OwnerRegistrationResult.Failure("The account could not be created right now. Please try again.");
+        }
 
         return OwnerRegistrationResult.Success(new OwnerAuthContext(siteId, normalizedEmail));
     }
 
     private static string NormalizeEmail(string? email) => (email ?? "").Trim().ToLowerInvariant();
+
+    private static bool IsOwnerEmailConflict(DbUpdateException exception)
+        => exception.InnerException is MySqlException mysqlException &&
+           mysqlException.ErrorCode == MySqlErrorCode.DuplicateKeyEntry &&
+           mysqlException.Message.Contains("IX_Sites_OwnerEmail", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsAcceptablePassword(string? password)
     {

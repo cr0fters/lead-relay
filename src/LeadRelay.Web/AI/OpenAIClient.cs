@@ -40,7 +40,7 @@ public sealed class OpenAIClient(HttpClient http, IOptions<OpenAIOptions> option
 
         if (!response.IsSuccessStatusCode)
         {
-            logger.LogWarning("OpenAI response failed: {StatusCode} {Body}", (int)response.StatusCode, body);
+            logger.LogWarning("OpenAI response failed with status {StatusCode}.", (int)response.StatusCode);
             return null;
         }
 

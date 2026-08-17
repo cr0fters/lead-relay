@@ -57,6 +57,7 @@
 
         <form method="post" action="/admin/tools/email-test" class="grid gap-3 lg:grid-cols-2">
             @Html.AntiForgeryToken()
+            @Html.AntiForgeryToken()
             <div>
                 <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="ApiBaseUrl">API base URL</label>
                 <input class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" id="ApiBaseUrl" name="ApiBaseUrl" value="@Model.EmailTest.ApiBaseUrl" placeholder="https://api.postmarkapp.com/" />

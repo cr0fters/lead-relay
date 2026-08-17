@@ -4,7 +4,9 @@ using LeadRelay.Application.Abstractions;
 using LeadRelay.Domain.Sites;
 using LeadRelay.Web.Fields;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using MySqlConnector;
 using System.Net.Mail;
 using System.Text;
 
@@ -43,6 +45,7 @@ public sealed class AdminController(
     }
 
     [HttpPost("/admin/sites/new")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateSite([FromForm] SiteFormModel model, CancellationToken ct)
     {
         var siteId = CreateSiteId();
@@ -53,11 +56,21 @@ public sealed class AdminController(
             return View("Site", model);
         }
 
-        await sites.UpsertAsync(site, ct);
+        try
+        {
+            await sites.UpsertAsync(site, ct);
+        }
+        catch (DbUpdateException exception)
+        {
+            logger.LogWarning(exception, "Admin site creation failed for site {SiteId}.", site.Id);
+            model.Error = GetSiteConstraintError(exception) ?? "The site could not be saved right now. Please try again.";
+            return View("Site", model);
+        }
         return Redirect($"/admin/sites/{site.Id}");
     }
 
     [HttpPost("/admin/sites/{siteId}")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateSite([FromRoute] string siteId, [FromForm] SiteFormModel model, CancellationToken ct)
     {
         var existing = await sites.GetByIdAsync(siteId, ct);
@@ -70,11 +83,22 @@ public sealed class AdminController(
             return View("Site", model);
         }
 
-        await sites.UpsertAsync(site, ct);
+        try
+        {
+            await sites.UpsertAsync(site, ct);
+        }
+        catch (DbUpdateException exception)
+        {
+            logger.LogWarning(exception, "Admin site update failed for site {SiteId}.", site.Id);
+            model.Id = siteId;
+            model.Error = GetSiteConstraintError(exception) ?? "The site could not be saved right now. Please try again.";
+            return View("Site", model);
+        }
         return Redirect($"/admin/sites/{site.Id}");
     }
 
     [HttpPost("/admin/tools/email-test")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> SendGlobalEmailTest([FromForm] EmailTestInputModel input, CancellationToken ct)
     {
         var model = await BuildDashboardModelAsync(ct);
@@ -132,15 +156,14 @@ public sealed class AdminController(
             };
             request.Headers.Add("X-Postmark-Server-Token", model.EmailTest.ServerToken);
 
-            var response = await client.SendAsync(request, ct);
+            using var response = await client.SendAsync(request, ct);
             if (!response.IsSuccessStatusCode)
             {
                 var responseBody = await response.Content.ReadAsStringAsync(ct);
                 var details = ExtractPostmarkErrorDetails(responseBody);
                 logger.LogWarning(
-                    "Global admin Postmark test failed with status {StatusCode}. Response: {ResponseBody}",
-                    (int)response.StatusCode,
-                    responseBody);
+                    "Global admin Postmark test failed with status {StatusCode}.",
+                    (int)response.StatusCode);
 
                 model.EmailTest.Error = string.IsNullOrWhiteSpace(details)
                     ? $"Postmark error {(int)response.StatusCode}. Check token, sender signature, and server settings."
@@ -274,6 +297,21 @@ public sealed class AdminController(
 
     private static string CreateSiteId()
         => Guid.NewGuid().ToString("D");
+
+    private static string? GetSiteConstraintError(DbUpdateException exception)
+    {
+        if (exception.InnerException is not MySqlException mysqlException ||
+            mysqlException.ErrorCode != MySqlErrorCode.DuplicateKeyEntry)
+        {
+            return null;
+        }
+
+        if (mysqlException.Message.Contains("IX_Sites_OwnerEmail", StringComparison.OrdinalIgnoreCase))
+            return "A site with that owner email already exists.";
+        if (mysqlException.Message.Contains("IX_Sites_WhatsAppPhoneNumberId", StringComparison.OrdinalIgnoreCase))
+            return "That WhatsApp phone number ID is already assigned to another site.";
+        return null;
+    }
 
     public sealed class AdminDashboardModel
     {

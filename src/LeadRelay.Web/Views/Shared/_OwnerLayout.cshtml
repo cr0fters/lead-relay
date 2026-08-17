@@ -1,3 +1,5 @@
+@using LeadRelay.Web.WhatsApp
+@inject WhatsAppOnboardingService WhatsAppOnboarding
 <!doctype html>
 <html lang="en">
 <head>
@@ -35,6 +37,9 @@
     var ownerAuth = Context.Items.TryGetValue(LeadRelay.Web.Security.OwnerAuthMiddleware.ContextKey, out var authValue)
         ? authValue as LeadRelay.Web.Security.OwnerAuthContext
         : null;
+    var whatsappConnection = ownerAuth is null
+        ? null
+        : await WhatsAppOnboarding.GetSummaryAsync(ownerAuth.SiteId, Context.RequestAborted);
 }
 <body class="min-h-screen bg-slate-100 text-slate-800">
 @if (ownerAuth is not null)
@@ -53,6 +58,10 @@
                 <a href="/owner" class="ml-1 inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm font-semibold text-slate-100 transition hover:bg-slate-700">
                     <i data-lucide="inbox" class="h-4 w-4"></i>
                     <span>Leads</span>
+                </a>
+                <a href="/owner/onboarding" class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold @(whatsappConnection?.IsConnected == true && whatsappConnection.IsWebhookVerified ? "bg-emerald-500/20 text-emerald-200" : whatsappConnection?.Exists == true ? "bg-amber-500/20 text-amber-200" : "bg-slate-700 text-slate-200")">
+                    <span class="h-2 w-2 rounded-full @(whatsappConnection?.IsConnected == true && whatsappConnection.IsWebhookVerified ? "bg-emerald-400" : whatsappConnection?.Exists == true ? "bg-amber-400" : "bg-slate-400")"></span>
+                    @(whatsappConnection?.IsConnected == true && whatsappConnection.IsWebhookVerified ? "WhatsApp verified" : whatsappConnection?.IsConnected == true ? "Verify WhatsApp webhook" : whatsappConnection?.Exists == true ? "WhatsApp action required" : "Set up WhatsApp")
                 </a>
             </div>
 

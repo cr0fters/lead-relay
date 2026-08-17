@@ -1,6 +1,7 @@
 using LeadRelay.Application.Abstractions;
 using LeadRelay.Web.Leads;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace LeadRelay.Web.Controllers;
 
@@ -12,6 +13,7 @@ public sealed class AdminLeadIntakeController(
     LeadCaptureService leadCapture) : ControllerBase
 {
     [HttpPost("intake")]
+    [EnableRateLimiting("lead-intake")]
     public async Task<IActionResult> Intake([FromBody] LeadIntakeRequest request, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.SiteId))

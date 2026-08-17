@@ -62,7 +62,7 @@ public sealed class OwnerLoginControllerTests
     }
 
     [Test]
-    public async Task register_with_valid_input_redirects_to_owner_home()
+    public async Task register_with_valid_input_redirects_to_onboarding()
     {
         OwnerRegistrationRequest? request = null;
         var controller = BuildController(
@@ -92,7 +92,7 @@ public sealed class OwnerLoginControllerTests
         }, CancellationToken.None);
 
         Assert.That(result, Is.TypeOf<RedirectResult>());
-        Assert.That(((RedirectResult)result).Url, Is.EqualTo("/owner"));
+        Assert.That(((RedirectResult)result).Url, Is.EqualTo("/owner/onboarding"));
         Assert.That(request, Is.Not.Null);
         Assert.That(request!.BusinessSummary, Is.EqualTo("Interior design studio for family homes."));
         Assert.That(request.Fields, Is.Not.Null);

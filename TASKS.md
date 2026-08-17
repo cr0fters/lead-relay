@@ -6,18 +6,18 @@
 
 ## Priority 0: next build cycle (self-serve MVP)
 - [x] Implement self-serve account registration flow (no manual admin provisioning required).
-- [ ] Build guided onboarding wizard after signup:
+- [x] Build guided onboarding wizard after signup:
   - connect WhatsApp account
   - capture/store `phone_number_id` and required identifiers
   - validate webhook configuration and connectivity
   - send and verify a test WhatsApp message
-- [ ] Add onboarding progress UI/checklist in app:
+- [x] Add onboarding progress UI/checklist in app:
   - account created
   - WhatsApp connected
   - webhook verified
   - first lead captured
 - [ ] Add account bootstrap completion flow for new signups (set initial password via secure link).
-- [ ] Add important notification emails (starting with new lead notifications).
+- [x] Add important notification emails (starting with new lead notifications).
 
 ## Priority 1: monetization and gating
 - [ ] Add basic billing state model (`trialing`, `active`, `past_due`, `canceled`).
@@ -27,17 +27,20 @@
 
 ## Priority 1: production hardening required for dogfood/early customers
 - [x] Implement real transactional email sender (Postmark).
-- [ ] Add basic rate limiting for webhook and lead intake endpoints (by site + sender/contact).
+- [x] Add basic rate limiting for webhook and lead intake endpoints.
+  - [x] IP-partitioned limits added for authentication and lead intake behind explicitly trusted proxies.
+  - [x] WhatsApp webhook limits partition by site + sender/contact after signature validation and tenant attribution.
 - [ ] Add minimal production monitoring/alerts for:
   - webhook receive failures
   - outbound message failures
   - password reset email failures
 - [ ] Run one end-to-end production-like dry run and document rollback steps.
-- [ ] Add health checks for DB and upstream dependencies with degraded status.
-- [ ] Review logs/errors for token/secret leakage and redact where needed.
+- [x] Add database readiness and process liveness health checks.
+- [ ] Add active upstream dependency health checks with degraded status.
+- [x] Review integration failure logs and remove raw provider response bodies.
 
 ## Priority 2: post-MVP stabilization
-- [ ] Improve WhatsApp attribution model beyond "first site wins" for multi-site readiness.
+- [x] Remove "first site wins" fallback and reject/quarantine unattributed WhatsApp traffic.
 - [ ] Version and cache-bust widget runtime assets on every release.
 - [ ] Add backup/restore runbook and execute one restore drill.
 

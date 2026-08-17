@@ -91,7 +91,8 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
             Fields = parsed.Fields,
             IntroMessage = site.IntroMessage,
             OwnerEmail = site.OwnerEmail,
-            WhatsAppNumber = site.WhatsAppNumber
+            WhatsAppNumber = site.WhatsAppNumber,
+            WhatsAppPhoneNumberId = site.WhatsAppPhoneNumberId
         };
 
         await sites.UpsertAsync(site, ct);

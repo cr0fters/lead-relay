@@ -10,14 +10,39 @@ using LeadRelay.Web.WhatsApp;
 using LeadRelay.Web.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
+using System.Threading.RateLimiting;
 using System.Text.RegularExpressions;
+using System.Net;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.ValidateRequiredSecrets();
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddMemoryCache();
+builder.Services.AddRateLimiter(rateLimiting =>
+{
+    rateLimiting.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    rateLimiting.AddPolicy("auth", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(10),
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 0
+        }));
+    rateLimiting.AddPolicy("lead-intake", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 120,
+            Window = TimeSpan.FromMinutes(1),
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 0
+        }));
+});
 
 builder.Services.AddSingleton<IClock, SystemClock>();
 var connectionString = builder.Configuration.GetConnectionString("LeadRelay");
@@ -66,19 +91,37 @@ builder.Services.AddScoped<IMessageChannel, WhatsAppMessageChannel>();
 builder.Services.AddScoped<IMessageChannel, EmailMessageChannel>();
 builder.Services.AddScoped<IMessageDispatcher, MessageDispatcher>();
 builder.Services.AddScoped<IWhatsAppWebhookGuard, WhatsAppWebhookGuard>();
+builder.Services.AddSingleton<WhatsAppWebhookRateLimiter>();
+builder.Services.AddScoped<WhatsAppSiteResolver>();
+builder.Services.AddScoped<WhatsAppCredentialProtector>();
 builder.Services.AddHttpClient<WhatsAppClient>();
+builder.Services.AddHttpClient<WhatsAppOnboardingService>();
 builder.Services.AddHttpClient<OpenAIClient>();
 
 
 var app = builder.Build();
 
-var forwardedHeadersOptions = new ForwardedHeadersOptions
+if (builder.Configuration.GetValue<bool>("ForwardedHeaders:Enabled"))
 {
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost
-};
-forwardedHeadersOptions.KnownNetworks.Clear();
-forwardedHeadersOptions.KnownProxies.Clear();
-app.UseForwardedHeaders(forwardedHeadersOptions);
+    var configuredProxies = builder.Configuration
+        .GetSection("ForwardedHeaders:KnownProxies")
+        .Get<string[]>() ?? [];
+    if (configuredProxies.Length == 0)
+        throw new InvalidOperationException("ForwardedHeaders:Enabled requires at least one ForwardedHeaders:KnownProxies IP address.");
+
+    var forwardedHeadersOptions = new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost
+    };
+    foreach (var configuredProxy in configuredProxies)
+    {
+        if (IPAddress.TryParse(configuredProxy, out var proxyAddress))
+            forwardedHeadersOptions.KnownProxies.Add(proxyAddress);
+        else
+            throw new InvalidOperationException($"ForwardedHeaders:KnownProxies contains an invalid IP address: {configuredProxy}");
+    }
+    app.UseForwardedHeaders(forwardedHeadersOptions);
+}
 
 if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/error");
@@ -91,6 +134,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseStaticFiles();
+app.UseRouting();
+app.UseRateLimiter();
 app.UseMiddleware<AdminTokenMiddleware>();
 app.UseMiddleware<OwnerAuthMiddleware>();
 app.MapControllers();

@@ -1,0 +1,133 @@
+@model LeadRelay.Web.Controllers.OwnerOnboardingController.OwnerOnboardingModel
+@{
+    Layout = "~/Views/Shared/_OwnerLayout.cshtml";
+    ViewData["Title"] = "Setup";
+    var connected = Model.Connection.IsConnected;
+    var hasDomain = Model.AllowedDomains.Count > 0;
+}
+
+<div class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+    <header class="mb-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-panel">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Guided setup</p>
+                <h1 class="mt-1 font-display text-3xl font-semibold tracking-tight text-slate-900">Get @Model.SiteName ready for leads</h1>
+                <p class="mt-2 text-sm text-slate-600">Complete each step now or return later. Your workspace remains available throughout.</p>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-right">
+                <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Progress</p>
+                <p class="font-display text-2xl font-semibold text-slate-900">@Model.CompletedSteps / 6</p>
+            </div>
+        </div>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(Model.Error))
+    {
+        <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">@Model.Error</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.Success))
+    {
+        <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">@Model.Success</div>
+    }
+
+    <div class="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+        <aside class="space-y-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-panel">
+            @foreach (var item in new[]
+            {
+                ("Account created", true),
+                ("WhatsApp connected", Model.Connection.IsConnected),
+                ("Webhook verified", Model.Connection.IsWebhookVerified),
+                ("Test message sent", Model.Connection.HasSuccessfulTest),
+                ("Website configured", hasDomain),
+                ("First lead captured", Model.HasFirstLead)
+            })
+            {
+                <div class="flex items-center gap-3 rounded-xl border px-3 py-2.5 @(item.Item2 ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50")">
+                    <span class="inline-flex h-7 w-7 items-center justify-center rounded-full @(item.Item2 ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-500")">
+                        <i data-lucide="@(item.Item2 ? "check" : "circle")" class="h-4 w-4"></i>
+                    </span>
+                    <span class="text-sm font-semibold @(item.Item2 ? "text-emerald-900" : "text-slate-600")">@item.Item1</span>
+                </div>
+            }
+        </aside>
+
+        <main class="space-y-4">
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-panel">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Step 1</p>
+                        <h2 class="font-display text-xl font-semibold text-slate-900">Connect WhatsApp</h2>
+                    </div>
+                    <span class="rounded-full px-3 py-1 text-xs font-semibold @(connected ? "bg-emerald-100 text-emerald-800" : Model.Connection.Exists ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600")">
+                        @(connected ? "Connected" : Model.Connection.Exists ? "Action required" : "Not connected")
+                    </span>
+                </div>
+
+                @if (connected)
+                {
+                    <dl class="mt-4 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
+                        <div><dt class="text-slate-500">Display number</dt><dd class="font-semibold text-slate-900">@Model.Connection.DisplayPhoneNumber</dd></div>
+                        <div><dt class="text-slate-500">Phone number ID</dt><dd class="font-semibold text-slate-900">@Model.Connection.PhoneNumberId</dd></div>
+                        <div><dt class="text-slate-500">WABA ID</dt><dd class="font-semibold text-slate-900">@Model.Connection.WabaId</dd></div>
+                        <div><dt class="text-slate-500">Last validated</dt><dd class="font-semibold text-slate-900">@(Model.Connection.LastValidatedAtUtc?.UtcDateTime.ToString("yyyy-MM-dd HH:mm 'UTC'") ?? "Not available")</dd></div>
+                        <div><dt class="text-slate-500">App subscription</dt><dd class="font-semibold text-slate-900">@(Model.Connection.IsWebhookSubscribed ? "Accepted by Meta" : "Not confirmed")</dd></div>
+                        <div><dt class="text-slate-500">Webhook delivery</dt><dd class="font-semibold @(Model.Connection.IsWebhookVerified ? "text-emerald-700" : "text-amber-700")">@(Model.Connection.IsWebhookVerified ? "Verified by inbound message" : "Awaiting inbound message")</dd></div>
+                    </dl>
+                }
+                else
+                {
+                    <p class="mt-3 text-sm text-slate-600">Enter the identifiers from your Meta WhatsApp setup. LeadRelay validates the phone number and subscribes the app before storing the access token encrypted.</p>
+                    <form method="post" action="/owner/onboarding/whatsapp/connect" class="mt-4 grid gap-3 sm:grid-cols-2" data-ajax="off">
+                        @Html.AntiForgeryToken()
+                        <div><label class="mb-1 block text-sm font-semibold text-slate-700">WABA ID</label><input name="wabaId" required inputmode="numeric" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
+                        <div><label class="mb-1 block text-sm font-semibold text-slate-700">Phone number ID</label><input name="phoneNumberId" required inputmode="numeric" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
+                        <div><label class="mb-1 block text-sm font-semibold text-slate-700">Display phone number</label><input name="displayPhoneNumber" inputmode="tel" placeholder="447000000000" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
+                        <div><label class="mb-1 block text-sm font-semibold text-slate-700">Access token</label><input name="accessToken" required type="password" autocomplete="off" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
+                        <button type="submit" class="sm:col-span-2 inline-flex justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">Validate and connect</button>
+                    </form>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Model.Connection.LastError))
+                {
+                    <p class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">@Model.Connection.LastError</p>
+                }
+
+                @if (connected)
+                {
+                    <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+                        <form method="post" action="/owner/onboarding/whatsapp/test" class="flex gap-2" data-ajax="off">
+                            @Html.AntiForgeryToken()
+                            <input name="recipient" required inputmode="tel" placeholder="Test recipient with country code" class="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                            <button class="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700" type="submit">Send test</button>
+                        </form>
+                        <form method="post" action="/owner/onboarding/whatsapp/disconnect" data-ajax="off" onsubmit="return confirm('Disconnect WhatsApp and remove the stored credential?');">
+                            @Html.AntiForgeryToken()
+                            <button class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100" type="submit">Disconnect</button>
+                        </form>
+                    </div>
+                    <p class="mt-2 text-xs text-slate-500">The recipient must be eligible to receive a free-form message. If the test is rejected, send a message to the business number first and retry.</p>
+                }
+            </section>
+
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-panel">
+                <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Step 2</p>
+                <h2 class="font-display text-xl font-semibold text-slate-900">Install the website widget</h2>
+                <form method="post" action="/owner/onboarding/domain" class="mt-4 flex gap-2" data-ajax="off">
+                    @Html.AntiForgeryToken()
+                    <input name="domain" value="@(Model.AllowedDomains.FirstOrDefault())" required placeholder="example.com" class="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                    <button class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800" type="submit">Save domain</button>
+                </form>
+                @if (hasDomain)
+                {
+                    <p class="mt-3 text-xs text-slate-500">Configured domains: @string.Join(", ", Model.AllowedDomains)</p>
+                    <p class="mt-4 text-sm font-semibold text-slate-700">Paste this before the closing <code>&lt;/body&gt;</code> tag:</p>
+                    <pre class="mt-2 overflow-x-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-100"><code>@Model.WidgetSnippet</code></pre>
+                }
+            </section>
+
+            <div class="flex justify-end">
+                <a href="/owner" class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Continue to workspace <i data-lucide="arrow-right" class="h-4 w-4"></i></a>
+            </div>
+        </main>
+    </div>
+</div>
