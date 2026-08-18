@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This file defines how Codex should make useful, bounded progress through the LeadRelay MVP backlog when asked to `Continue the MVP.` It complements `AGENTS.md`; it does not replace its engineering, security, verification, review, or authorization rules.
+This file defines how Codex should make useful, bounded progress through the LeadRelay MVP backlog when asked to `Continue the MVP.` It complements `AGENTS.md`; it does not replace its engineering, security, verification, review, or authorization rules. The phrase also explicitly authorizes Codex to commit and push each completed, reviewed milestone directly to `main` as described below.
 
 `TASKS.md` describes what remains to be done. This file describes how to choose and complete an appropriate portion of that work without running uncontrolled across the roadmap.
 
@@ -55,20 +55,30 @@ For implementation work:
 8. Mark a `TASKS.md` item complete only when its described outcome is genuinely implemented and the required verification exists. Do not mark external or human work complete based solely on local code.
 9. Continue onto closely related backlog work only while it remains part of the same coherent milestone and stays within the stopping rules below.
 
-Do not commit, push, deploy, change live services, send external communications, or mutate provider accounts unless the user's prompt explicitly authorizes that action, as required by `AGENTS.md`.
+`Continue the MVP.` authorizes commits and non-force pushes directly to `main` for milestones completed under this workflow. It does not authorize deployments, live-service changes, external communications, provider-account mutations, purchases, credential changes, or other external side effects.
+
+## Publish and continue
+
+After a milestone passes the required review and permitted local checks:
+
+1. Confirm that the working tree contains only the milestone's intended changes and that local `main` is based on the current `origin/main`.
+2. Commit the coherent milestone with a terse, accurate message and push it directly to `main`. Never force-push or rewrite shared history.
+3. Monitor the resulting GitHub Actions run. If CI fails because of the milestone, diagnose, fix, review, commit, and push the correction before selecting more work. If CI cannot be inspected, report that limitation and do not claim it passed.
+4. Add newly identified product decisions, credentials, legal review, provider setup, and other human actions to a cumulative run list. Keep their `TASKS.md` items incomplete.
+5. Re-read the relevant backlog and choose the next safe coherent milestone. Continue the loop while useful progress remains possible and the stopping rules are not met.
+
+Keep commits milestone-sized even when one autonomous run completes several milestones. Do not combine unrelated product areas into one commit merely because they were handled in the same run.
 
 ## Stop the autonomous run
 
 Stop and hand control back to the user when any of the following is true:
 
-- the current coherent milestone is complete;
 - a genuine blocker requires user input or human action before the milestone can remain coherent;
-- the next useful work belongs to a substantially different product area;
 - continuing requires an important product, business, legal, provider, or architectural decision that is not already established;
 - continuing would make the change set unnecessarily large, risky, or difficult to review; or
 - no further safe implementation work materially advances the MVP exit criteria.
 
-Completing one milestone is the normal end of an autonomous run. `Continue the MVP.` authorizes bounded autonomous progression, not implementation of the entire roadmap in one change set.
+Completing one milestone is a checkpoint, not normally the end of an autonomous run. Publish it, verify CI where possible, then select the next safe milestone. The workflow remains bounded: stop before the accumulated run becomes difficult to supervise or review, even though each milestone has its own commit.
 
 ## End-of-run report
 
@@ -79,7 +89,7 @@ Report:
 - important implementation decisions made and the established requirements they were based on;
 - tests and checks run, their results, and anything deferred to CI;
 - the exact `TASKS.md` items marked complete, if any;
-- remaining blockers, risks, and decisions or human actions required;
+- a consolidated checklist of remaining blockers, risks, decisions, credentials, provider setup, legal review, and other human actions required;
 - the recommended next coherent milestone; and
 - whether changes are uncommitted, committed, pushed, or otherwise published.
 

@@ -68,6 +68,12 @@ public sealed class OwnerLoginController(
             return View("Register", model);
         }
 
+        if (!model.AcceptedTermsAndPrivacy)
+        {
+            model.Error = "You must accept the terms and privacy policy to create an account.";
+            return View("Register", model);
+        }
+
         OwnerRegistrationPayload? payload;
         try
         {
@@ -93,7 +99,8 @@ public sealed class OwnerLoginController(
             payload.BusinessSummary,
             fields,
             model.Email,
-            model.Password), ct);
+            model.Password,
+            model.AcceptedTermsAndPrivacy), ct);
         if (!result.Succeeded || result.Auth is null)
         {
             model.Error = result.Error ?? "Unable to create account.";
@@ -331,6 +338,7 @@ public sealed class OwnerLoginController(
         public string? Email { get; set; }
         public string? Password { get; set; }
         public string? ConfirmPassword { get; set; }
+        public bool AcceptedTermsAndPrivacy { get; set; }
         public string ReturnUrl { get; set; } = "/owner";
         public string? Error { get; set; }
     }

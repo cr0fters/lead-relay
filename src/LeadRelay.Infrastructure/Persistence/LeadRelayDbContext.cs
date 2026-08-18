@@ -171,6 +171,9 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
             entity.Property(x => x.EmailVerificationTokenExpiresAtUtc).HasColumnName("EmailVerificationTokenExpiresAtUtc");
             entity.Property(x => x.EmailVerificationSentAtUtc).HasColumnName("EmailVerificationSentAtUtc");
             entity.Property(x => x.EmailVerifiedAtUtc).HasColumnName("EmailVerifiedAtUtc");
+            entity.Property(x => x.LegalDocumentsAcceptedAtUtc).HasColumnName("LegalDocumentsAcceptedAtUtc");
+            entity.Property(x => x.TermsVersion).HasColumnName("TermsVersion").HasMaxLength(32);
+            entity.Property(x => x.PrivacyPolicyVersion).HasColumnName("PrivacyPolicyVersion").HasMaxLength(32);
             entity.Property(x => x.UpdatedAtUtc).HasColumnName("UpdatedAtUtc");
 
             entity.HasOne<SiteRecord>()

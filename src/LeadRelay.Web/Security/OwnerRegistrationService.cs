@@ -1,6 +1,7 @@
 using LeadRelay.Application.Abstractions;
 using LeadRelay.Infrastructure.Persistence;
 using LeadRelay.Web.Fields;
+using LeadRelay.Web.Legal;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
@@ -37,6 +38,9 @@ public sealed class OwnerRegistrationService(
         if (!IsAcceptablePassword(request.Password))
             return OwnerRegistrationResult.Failure("Password must be at least 8 characters.");
 
+        if (!request.AcceptedTermsAndPrivacy)
+            return OwnerRegistrationResult.Failure("You must accept the terms and privacy policy to create an account.");
+
         var existingSite = await db.Sites
             .AsNoTracking()
             .AnyAsync(x => x.OwnerEmail.ToLower() == normalizedEmail, ct);
@@ -54,10 +58,14 @@ public sealed class OwnerRegistrationService(
             WhatsAppNumber = ""
         };
 
+        var now = clock.UtcNow;
         var account = new OwnerAccountRecord
         {
             SiteId = siteId,
-            UpdatedAtUtc = clock.UtcNow
+            LegalDocumentsAcceptedAtUtc = now,
+            TermsVersion = LegalDocumentVersions.TermsAndConditions,
+            PrivacyPolicyVersion = LegalDocumentVersions.PrivacyPolicy,
+            UpdatedAtUtc = now
         };
         account.PasswordHash = _hasher.HashPassword(account, request.Password!);
 

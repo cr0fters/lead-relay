@@ -1,6 +1,7 @@
 using LeadRelay.Application.Abstractions;
 using LeadRelay.Domain.Sites;
 using LeadRelay.Infrastructure.Persistence;
+using LeadRelay.Web.Legal;
 using LeadRelay.Web.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -31,7 +32,8 @@ public sealed class OwnerRegistrationServiceTests
                     }
                 ],
                 "Owner@Example.com",
-                "strong-pass"),
+                "strong-pass",
+                true),
             CancellationToken.None);
 
         Assert.That(result.Succeeded, Is.True);
@@ -50,6 +52,9 @@ public sealed class OwnerRegistrationServiceTests
         Assert.That(account.SiteId, Is.EqualTo(site.Id));
         Assert.That(account.UpdatedAtUtc, Is.EqualTo(now));
         Assert.That(account.PasswordHash, Is.Not.Null.And.Not.Empty);
+        Assert.That(account.LegalDocumentsAcceptedAtUtc, Is.EqualTo(now));
+        Assert.That(account.TermsVersion, Is.EqualTo(LegalDocumentVersions.TermsAndConditions));
+        Assert.That(account.PrivacyPolicyVersion, Is.EqualTo(LegalDocumentVersions.PrivacyPolicy));
 
         var hasher = new PasswordHasher<OwnerAccountRecord>();
         var verification = hasher.VerifyHashedPassword(account, account.PasswordHash!, "strong-pass");
@@ -70,7 +75,8 @@ public sealed class OwnerRegistrationServiceTests
                     new ConversationField { Name = "Project scope", Description = "Describe your space" }
                 ],
                 "owner@example.com",
-                "strong-pass"),
+                "strong-pass",
+                true),
             CancellationToken.None);
 
         Assert.That(result.Succeeded, Is.True);
@@ -94,7 +100,7 @@ public sealed class OwnerRegistrationServiceTests
 
         var service = new OwnerRegistrationService(db, new FixedClock(DateTimeOffset.UtcNow), NullLogger<OwnerRegistrationService>.Instance);
         var result = await service.RegisterAsync(
-            new OwnerRegistrationRequest("New Site", null, [], "OWNER@example.com", "strong-pass"),
+            new OwnerRegistrationRequest("New Site", null, [], "OWNER@example.com", "strong-pass", true),
             CancellationToken.None);
 
         Assert.That(result.Succeeded, Is.False);
@@ -110,7 +116,7 @@ public sealed class OwnerRegistrationServiceTests
         var service = new OwnerRegistrationService(db, new FixedClock(DateTimeOffset.UtcNow), NullLogger<OwnerRegistrationService>.Instance);
 
         var result = await service.RegisterAsync(
-            new OwnerRegistrationRequest("New Site", null, [], "not-an-email", "strong-pass"),
+            new OwnerRegistrationRequest("New Site", null, [], "not-an-email", "strong-pass", true),
             CancellationToken.None);
 
         Assert.That(result.Succeeded, Is.False);
@@ -134,11 +140,28 @@ public sealed class OwnerRegistrationServiceTests
                     new ConversationField { Id = "budget", Name = "Budget copy" }
                 ],
                 "owner@example.com",
-                "strong-pass"),
+                "strong-pass",
+                true),
             CancellationToken.None);
 
         Assert.That(result.Succeeded, Is.False);
         Assert.That(result.Error, Is.EqualTo("Field ids must be unique."));
+        Assert.That(await db.Sites.CountAsync(), Is.EqualTo(0));
+        Assert.That(await db.OwnerAccounts.CountAsync(), Is.EqualTo(0));
+    }
+
+    [Test]
+    public async Task register_rejects_missing_legal_acceptance()
+    {
+        using var db = CreateDb();
+        var service = new OwnerRegistrationService(db, new FixedClock(DateTimeOffset.UtcNow), NullLogger<OwnerRegistrationService>.Instance);
+
+        var result = await service.RegisterAsync(
+            new OwnerRegistrationRequest("New Site", null, [], "owner@example.com", "strong-pass", false),
+            CancellationToken.None);
+
+        Assert.That(result.Succeeded, Is.False);
+        Assert.That(result.Error, Is.EqualTo("You must accept the terms and privacy policy to create an account."));
         Assert.That(await db.Sites.CountAsync(), Is.EqualTo(0));
         Assert.That(await db.OwnerAccounts.CountAsync(), Is.EqualTo(0));
     }

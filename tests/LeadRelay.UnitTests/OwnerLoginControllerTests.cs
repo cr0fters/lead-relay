@@ -92,6 +92,7 @@ public sealed class OwnerLoginControllerTests
             Email = "new-owner@example.com",
             Password = "secure-pass",
             ConfirmPassword = "secure-pass",
+            AcceptedTermsAndPrivacy = true,
             ReturnUrl = "/owner"
         }, CancellationToken.None);
 
@@ -103,6 +104,7 @@ public sealed class OwnerLoginControllerTests
         Assert.That(request.Fields, Is.Not.Null);
         Assert.That(request.Fields!.Count, Is.EqualTo(1));
         Assert.That(request.Fields[0].Id, Is.EqualTo("timeline"));
+        Assert.That(request.AcceptedTermsAndPrivacy, Is.True);
     }
 
     [Test]
@@ -141,6 +143,27 @@ public sealed class OwnerLoginControllerTests
         Assert.That(result, Is.TypeOf<ViewResult>());
         var model = (OwnerLoginController.RegisterModel)((ViewResult)result).Model!;
         Assert.That(model.Error, Is.EqualTo("Passwords do not match."));
+    }
+
+    [Test]
+    public async Task register_without_legal_acceptance_returns_error_before_creating_account()
+    {
+        var registration = new FakeOwnerRegistrationService();
+        var controller = BuildController(new FakePasswordAuthService(), registration);
+
+        var result = await controller.RegisterPost(new OwnerLoginController.RegisterModel
+        {
+            SiteName = "New Site",
+            Email = "new-owner@example.com",
+            Password = "secure-pass",
+            ConfirmPassword = "secure-pass",
+            AcceptedTermsAndPrivacy = false
+        }, CancellationToken.None);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var model = (OwnerLoginController.RegisterModel)((ViewResult)result).Model!;
+        Assert.That(model.Error, Is.EqualTo("You must accept the terms and privacy policy to create an account."));
+        Assert.That(registration.RequestCount, Is.EqualTo(0));
     }
 
     private static OwnerLoginController BuildController(FakePasswordAuthService passwordAuth)
@@ -220,9 +243,11 @@ public sealed class OwnerLoginControllerTests
     {
         public Action<OwnerRegistrationRequest>? OnRegister { get; set; }
         public OwnerRegistrationResult Result { get; set; } = OwnerRegistrationResult.Failure("not configured");
+        public int RequestCount { get; private set; }
 
         public Task<OwnerRegistrationResult> RegisterAsync(OwnerRegistrationRequest request, CancellationToken ct)
         {
+            RequestCount++;
             OnRegister?.Invoke(request);
             return Task.FromResult(Result);
         }

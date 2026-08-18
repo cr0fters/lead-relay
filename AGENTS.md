@@ -10,7 +10,7 @@ This file defines the default engineering standards for all contributors (human 
 ## Repository Work Files
 - `TASKS.md` is the source of truth for outstanding MVP work, priorities, dependencies, human actions, and exit criteria.
 - `WORKFLOW.md` defines how an autonomous backlog-progression run should select, execute, and stop a coherent milestone.
-- When the user says `Continue the MVP.`, read and follow `WORKFLOW.md` in addition to this file.
+- When the user says `Continue the MVP.`, read and follow `WORKFLOW.md` in addition to this file. That phrase explicitly authorizes the bounded milestone commit-and-push loop defined there, including reviewed commits and non-force pushes directly to `main`; it does not authorize deployments or live-provider mutations.
 - Specific instructions in the user's current prompt override the general autonomous workflow where they conflict. All durable safety, security, quality, and authorization rules in this file still apply unless the user explicitly changes them within their authority.
 
 ## Before Making Changes
@@ -150,7 +150,7 @@ This file defines the default engineering standards for all contributors (human 
 - If a requested change cannot reasonably include tests, explain why and propose the smallest acceptable follow-up.
 - Prefer incremental, reviewable changes over broad rewrites.
 - Keep `TASKS.md` current when work completes or the repository review reveals a material missing requirement. Do not mark an item complete until the implementation and required verification exist.
-- Do not create commits, push branches, open pull requests, deploy, or mutate live provider state unless the user explicitly asks for that action.
+- Do not create commits, push branches, open pull requests, deploy, or mutate live provider state unless the user explicitly asks for that action. `Continue the MVP.` counts as explicit authorization only for the commit-and-push behavior defined in `WORKFLOW.md`.
 - Before an explicitly requested commit or push, confirm the intended scope, inspect the final diff and status, complete the required review, and avoid including unrelated user changes.
 - Never force-push, rewrite shared history, or use destructive Git commands unless the user explicitly requests it and the exact scope has been verified.
 - Preserve backward compatibility by default. When a breaking change is required, explain the migration path before implementation.

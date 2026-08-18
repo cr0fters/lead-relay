@@ -208,6 +208,27 @@
                                        autocomplete="new-password"
                                        class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" />
                             </div>
+
+                            <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                <div class="flex items-start gap-3 text-sm text-slate-700">
+                                    <input id="acceptedTermsAndPrivacy"
+                                           x-model="acceptedTermsAndPrivacy"
+                                           name="AcceptedTermsAndPrivacy"
+                                           type="checkbox"
+                                           value="true"
+                                           required
+                                           aria-describedby="legalDocuments"
+                                           class="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                                    <div>
+                                        <label class="cursor-pointer" for="acceptedTermsAndPrivacy">I have read and agree to these documents:</label>
+                                        <span id="legalDocuments" class="mt-1 block">
+                                            <a href="/terms-and-conditions" target="_blank" rel="noopener" class="font-semibold text-emerald-700 underline hover:text-emerald-800">Terms and conditions</a>
+                                            and
+                                            <a href="/privacy-policy" target="_blank" rel="noopener" class="font-semibold text-emerald-700 underline hover:text-emerald-800">privacy policy</a>.
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -365,6 +386,7 @@
             email: "@((Model.Email ?? "").Trim())",
             password: "",
             confirmPassword: "",
+            acceptedTermsAndPrivacy: @Html.Raw(Model.AcceptedTermsAndPrivacy ? "true" : "false"),
 
             init() {
                 const payload = @Html.Raw(string.IsNullOrWhiteSpace(Model.PayloadJson)
@@ -478,6 +500,7 @@
                 if (!this.email || this.email.trim().length === 0) return false;
                 if (!this.password || this.password.length < 8) return false;
                 if (this.password !== this.confirmPassword) return false;
+                if (!this.acceptedTermsAndPrivacy) return false;
                 return true;
             },
 

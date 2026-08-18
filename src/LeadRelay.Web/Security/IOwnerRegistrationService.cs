@@ -13,7 +13,8 @@ public sealed record OwnerRegistrationRequest(
     string? BusinessSummary,
     IReadOnlyList<ConversationField>? Fields,
     string? OwnerEmail,
-    string? Password);
+    string? Password,
+    bool AcceptedTermsAndPrivacy);
 
 public sealed record OwnerRegistrationField(string Id, string Name, string? Description);
 

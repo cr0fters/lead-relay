@@ -40,7 +40,7 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
   - issue a single-use, expiring verification token
   - resend safely with rate limiting and non-enumerating responses
   - record `EmailVerifiedAtUtc`
-- [ ] Record explicit acceptance of the terms and privacy policy at signup.
+- [x] Record explicit acceptance of the terms and privacy policy at signup.
   - store accepted document versions and timestamp
   - link both documents beside the checkbox
 - [ ] Replace manual WABA ID, phone-number ID, and access-token entry with Meta Embedded Signup.
