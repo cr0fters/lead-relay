@@ -157,7 +157,8 @@ public sealed class AdminTokenMiddlewareTests
         var context = new DefaultHttpContext();
         context.Request.Scheme = "http";
 
-        if (Uri.TryCreate(url, UriKind.Absolute, out var absolute))
+        if (Uri.TryCreate(url, UriKind.Absolute, out var absolute) &&
+            (absolute.Scheme == Uri.UriSchemeHttp || absolute.Scheme == Uri.UriSchemeHttps))
         {
             context.Request.Path = absolute.AbsolutePath;
             context.Request.QueryString = new QueryString(absolute.Query);
