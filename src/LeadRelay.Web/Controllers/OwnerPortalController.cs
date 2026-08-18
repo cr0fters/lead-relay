@@ -1,9 +1,11 @@
 using LeadRelay.Application.Abstractions;
 using LeadRelay.Domain.Leads;
+using LeadRelay.Domain.Projects;
 using LeadRelay.Domain.Sites;
 using LeadRelay.Web.Fields;
 using LeadRelay.Web.Security;
 using Microsoft.AspNetCore.Mvc;
+using System.Globalization;
 using System.Net.Mail;
 
 namespace LeadRelay.Web.Controllers;
@@ -11,17 +13,50 @@ namespace LeadRelay.Web.Controllers;
 public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatcher messages, ISiteRepository sites) : Controller
 {
     [HttpGet("/owner")]
-    public async Task<IActionResult> Index([FromQuery] string? q = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
+    public async Task<IActionResult> Index(
+        [FromQuery] string? q = null,
+        [FromQuery] string? stage = null,
+        [FromQuery] string? from = null,
+        [FromQuery] string? to = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
     {
         var auth = GetAuthContext();
         if (auth is null) return Redirect("/owner/login");
 
-        var result = await leads.SearchBySiteAsync(auth.SiteId, q, page, pageSize, ct);
+        var normalizedStage = NormalizeStageFilter(stage);
+        var fromDate = ParseDateFilter(from);
+        var toDate = ParseDateFilter(to);
+        var filterError = GetFilterError(stage, normalizedStage, from, fromDate, to, toDate);
+        var fromUtc = fromDate?.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        DateTime? beforeUtc = null;
+        if (toDate is not null && toDate != DateOnly.MaxValue)
+            beforeUtc = toDate.Value.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+
+        if (toDate == DateOnly.MaxValue)
+            filterError = "Enter a to date earlier than 9999-12-31.";
+
+        if (fromDate is not null && toDate is not null && fromDate > toDate)
+        {
+            filterError = "The from date must be on or before the to date.";
+            fromUtc = null;
+            beforeUtc = null;
+        }
+
+        var result = await leads.SearchBySiteAsync(
+            auth.SiteId,
+            new LeadSearchCriteria(q, normalizedStage, fromUtc, beforeUtc, page, pageSize),
+            ct);
         var model = new OwnerDashboardModel
         {
             SiteId = auth.SiteId,
             OwnerEmail = auth.OwnerEmail,
             Query = (q ?? "").Trim(),
+            Stage = normalizedStage ?? "",
+            FromDate = (from ?? "").Trim(),
+            ToDate = (to ?? "").Trim(),
+            Error = filterError,
             Page = result.Page,
             PageSize = result.PageSize,
             TotalCount = result.TotalCount,
@@ -32,11 +67,50 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
                 Phone = x.Phone,
                 Email = x.Email,
                 CreatedAtUtc = x.CreatedAtUtc,
-                Status = GetStatus(x)
+                ProjectStage = ProjectStatuses.Normalize(x.ProjectStage)
             }).ToList()
         };
 
         return View(model);
+    }
+
+    [HttpPost("/owner/leads/{id:guid}/stage")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateStage(
+        [FromRoute] Guid id,
+        [FromForm] string? stage,
+        CancellationToken ct)
+    {
+        var auth = GetAuthContext();
+        if (auth is null) return Redirect("/owner/login");
+
+        var normalizedStage = (stage ?? "").Trim().ToLowerInvariant();
+        if (!ProjectStatuses.IsOwnerStage(normalizedStage))
+        {
+            var invalidLead = await leads.GetByIdForSiteAsync(id, auth.SiteId, ct);
+            if (invalidLead is null) return NotFound();
+
+            var invalidSite = await sites.GetByIdAsync(auth.SiteId, ct);
+            var invalidModel = ToDetailModel(auth, invalidLead, invalidSite);
+            invalidModel.Error = "Choose a valid lead stage.";
+            return View("Lead", invalidModel);
+        }
+
+        var updated = await leads.UpdateProjectStageAsync(
+            id,
+            auth.SiteId,
+            normalizedStage,
+            DateTimeOffset.UtcNow,
+            ct);
+        if (!updated) return NotFound();
+
+        var lead = await leads.GetByIdForSiteAsync(id, auth.SiteId, ct);
+        if (lead is null) return NotFound();
+
+        var site = await sites.GetByIdAsync(auth.SiteId, ct);
+        var model = ToDetailModel(auth, lead, site);
+        model.Success = $"Lead moved to {GetStageLabel(normalizedStage)}.";
+        return View("Lead", model);
     }
 
     [HttpGet("/owner/leads/{id:guid}")]
@@ -275,12 +349,16 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
             Email = lead.Email,
             Phone = lead.Phone,
             Channel = lead.Channel,
-            Status = lead.Status,
+            ProjectStage = ProjectStatuses.Normalize(lead.ProjectStage),
+            StageOptions = ProjectStatuses.OwnerStages
+                .Select(x => new OwnerStageOptionModel { Value = x, Label = GetStageLabel(x) })
+                .ToList(),
             CreatedAtUtc = lead.CreatedAtUtc,
             ProjectSummary = lead.ProjectSummary,
             Fields = lead.Fields,
             FieldDefinitions = BuildFieldDefinitions(site, lead.Fields),
             Conversation = lead.Conversation,
+            Activity = BuildActivity(lead),
             ReplyChannel = defaultChannel,
             CanReplyViaWhatsApp = !string.IsNullOrWhiteSpace(lead.Phone),
             CanReplyViaEmail = !string.IsNullOrWhiteSpace(lead.Email),
@@ -434,11 +512,73 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
         return digits.Length >= 7 ? digits : null;
     }
 
-    private static string GetStatus(LeadSummary lead)
+    private static IReadOnlyList<OwnerLeadActivityModel> BuildActivity(Lead lead)
     {
-        if (!string.IsNullOrWhiteSpace(lead.Phone) || !string.IsNullOrWhiteSpace(lead.Email))
-            return "Contactable";
-        return "Needs Details";
+        var messages = lead.Conversation.Select(turn => new OwnerLeadActivityModel
+        {
+            Kind = "message",
+            Role = turn.Role,
+            Text = turn.Text,
+            AtUtc = turn.AtUtc
+        });
+        var stageChanges = lead.ProjectStageChanges.Select(change => new OwnerLeadActivityModel
+        {
+            Kind = "stage",
+            Role = "owner",
+            Text = $"Stage changed from {GetStageLabel(change.FromStage)} to {GetStageLabel(change.ToStage)}.",
+            AtUtc = change.AtUtc
+        });
+
+        return messages.Concat(stageChanges)
+            .OrderBy(x => x.AtUtc)
+            .ToList();
+    }
+
+    private static string? NormalizeStageFilter(string? stage)
+    {
+        var normalized = (stage ?? "").Trim().ToLowerInvariant();
+        return ProjectStatuses.IsOwnerStage(normalized) ? normalized : null;
+    }
+
+    private static DateOnly? ParseDateFilter(string? value)
+    {
+        return DateOnly.TryParseExact(
+            (value ?? "").Trim(),
+            "yyyy-MM-dd",
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out var parsed)
+            ? parsed
+            : null;
+    }
+
+    private static string? GetFilterError(
+        string? requestedStage,
+        string? normalizedStage,
+        string? requestedFrom,
+        DateOnly? parsedFrom,
+        string? requestedTo,
+        DateOnly? parsedTo)
+    {
+        if (!string.IsNullOrWhiteSpace(requestedStage) && normalizedStage is null)
+            return "Choose a valid lead stage.";
+        if (!string.IsNullOrWhiteSpace(requestedFrom) && parsedFrom is null)
+            return "Enter a valid from date.";
+        if (!string.IsNullOrWhiteSpace(requestedTo) && parsedTo is null)
+            return "Enter a valid to date.";
+        return null;
+    }
+
+    private static string GetStageLabel(string? stage)
+    {
+        return ProjectStatuses.Normalize(stage) switch
+        {
+            ProjectStatuses.Qualified => "Qualified",
+            ProjectStatuses.Contacted => "Contacted",
+            ProjectStatuses.Won => "Won",
+            ProjectStatuses.Lost => "Lost",
+            _ => "New"
+        };
     }
 
     public sealed class OwnerDashboardModel
@@ -446,6 +586,10 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
         public string SiteId { get; set; } = "";
         public string OwnerEmail { get; set; } = "";
         public string Query { get; set; } = "";
+        public string Stage { get; set; } = "";
+        public string FromDate { get; set; } = "";
+        public string ToDate { get; set; } = "";
+        public string? Error { get; set; }
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 20;
         public int TotalCount { get; set; }
@@ -464,7 +608,7 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
         public string? Email { get; set; }
         public string? Phone { get; set; }
         public DateTimeOffset CreatedAtUtc { get; set; }
-        public string Status { get; set; } = "";
+        public string ProjectStage { get; set; } = ProjectStatuses.New;
     }
 
     public sealed class OwnerLeadDetailModel
@@ -476,18 +620,34 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
         public string? Email { get; set; }
         public string? Phone { get; set; }
         public string Channel { get; set; } = "api";
-        public string Status { get; set; } = LeadStatuses.Open;
+        public string ProjectStage { get; set; } = ProjectStatuses.New;
+        public IReadOnlyList<OwnerStageOptionModel> StageOptions { get; set; } = Array.Empty<OwnerStageOptionModel>();
         public DateTimeOffset CreatedAtUtc { get; set; }
         public string? ProjectSummary { get; set; }
         public IReadOnlyDictionary<string, string> Fields { get; set; } = new Dictionary<string, string>();
         public IReadOnlyList<OwnerFieldDefinitionModel> FieldDefinitions { get; set; } = Array.Empty<OwnerFieldDefinitionModel>();
         public IReadOnlyList<LeadConversationTurn> Conversation { get; set; } = Array.Empty<LeadConversationTurn>();
+        public IReadOnlyList<OwnerLeadActivityModel> Activity { get; set; } = Array.Empty<OwnerLeadActivityModel>();
         public string? Error { get; set; }
         public string? Success { get; set; }
         public string ReplyChannel { get; set; } = "whatsapp";
         public bool CanReplyViaWhatsApp { get; set; }
         public bool CanReplyViaEmail { get; set; }
         public bool IsPaused { get; set; }
+    }
+
+    public sealed class OwnerStageOptionModel
+    {
+        public string Value { get; set; } = "";
+        public string Label { get; set; } = "";
+    }
+
+    public sealed class OwnerLeadActivityModel
+    {
+        public string Kind { get; set; } = "message";
+        public string Role { get; set; } = "";
+        public string Text { get; set; } = "";
+        public DateTimeOffset AtUtc { get; set; }
     }
 
     public sealed class OwnerFieldDefinitionModel

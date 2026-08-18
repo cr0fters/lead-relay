@@ -1,4 +1,6 @@
+using LeadRelay.Application.Abstractions;
 using LeadRelay.Domain.Leads;
+using LeadRelay.Domain.Projects;
 using LeadRelay.Infrastructure.Persistence;
 using NUnit.Framework;
 
@@ -11,21 +13,23 @@ public sealed class LeadRepositoryPagingTests
     {
         var repo = new InMemoryLeadRepository();
         var siteId = $"site_{Guid.NewGuid():N}";
+        var now = new DateTimeOffset(2026, 8, 18, 12, 0, 0, TimeSpan.Zero);
 
         await repo.SaveAsync(new Lead
         {
             Id = Guid.NewGuid(),
             SiteId = siteId,
-            CreatedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-3),
+            CreatedAtUtc = now.AddMinutes(-3),
             Name = "Alice",
-            Email = "alice@example.com"
+            Email = "alice@example.com",
+            ProjectStage = ProjectStatuses.Qualified
         }, CancellationToken.None);
 
         await repo.SaveAsync(new Lead
         {
             Id = Guid.NewGuid(),
             SiteId = siteId,
-            CreatedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-2),
+            CreatedAtUtc = now.AddMinutes(-2),
             Name = "Bob",
             Email = "bob@example.com"
         }, CancellationToken.None);
@@ -34,14 +38,19 @@ public sealed class LeadRepositoryPagingTests
         {
             Id = Guid.NewGuid(),
             SiteId = siteId,
-            CreatedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-1),
+            CreatedAtUtc = now.AddMinutes(-1),
             Name = "Charlie",
             Email = "charlie@example.com"
         }, CancellationToken.None);
 
-        var page1 = await repo.SearchBySiteAsync(siteId, "", page: 1, pageSize: 2, CancellationToken.None);
-        var page2 = await repo.SearchBySiteAsync(siteId, "", page: 2, pageSize: 2, CancellationToken.None);
-        var filtered = await repo.SearchBySiteAsync(siteId, "bob", page: 1, pageSize: 20, CancellationToken.None);
+        var page1 = await repo.SearchBySiteAsync(siteId, Criteria(page: 1, pageSize: 2), CancellationToken.None);
+        var page2 = await repo.SearchBySiteAsync(siteId, Criteria(page: 2, pageSize: 2), CancellationToken.None);
+        var filtered = await repo.SearchBySiteAsync(siteId, Criteria(query: "bob"), CancellationToken.None);
+        var stageFiltered = await repo.SearchBySiteAsync(siteId, Criteria(stage: ProjectStatuses.Qualified), CancellationToken.None);
+        var dateFiltered = await repo.SearchBySiteAsync(
+            siteId,
+            Criteria(createdFromUtc: now.AddMinutes(-2.5)),
+            CancellationToken.None);
 
         Assert.That(page1.TotalCount, Is.EqualTo(3));
         Assert.That(page1.Items.Count, Is.EqualTo(2));
@@ -49,5 +58,17 @@ public sealed class LeadRepositoryPagingTests
 
         Assert.That(filtered.TotalCount, Is.EqualTo(1));
         Assert.That(filtered.Items[0].Name, Is.EqualTo("Bob"));
+        Assert.That(stageFiltered.TotalCount, Is.EqualTo(1));
+        Assert.That(stageFiltered.Items[0].Name, Is.EqualTo("Alice"));
+        Assert.That(dateFiltered.TotalCount, Is.EqualTo(2));
     }
+
+    private static LeadSearchCriteria Criteria(
+        string? query = null,
+        string? stage = null,
+        DateTimeOffset? createdFromUtc = null,
+        DateTimeOffset? createdBeforeUtc = null,
+        int page = 1,
+        int pageSize = 20)
+        => new(query, stage, createdFromUtc, createdBeforeUtc, page, pageSize);
 }

@@ -147,9 +147,10 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
 - [x] Owner replies over available email/WhatsApp channels.
 - [x] Per-lead automation pause/takeover control.
 - [ ] Replace the current mostly inferred status display with owner-controlled CRM stages.
-  - recommended MVP stages: `new`, `qualified`, `contacted`, `won`, `lost`
-  - add stage changes to the activity timeline
-  - filter/search by stage and date
+  - [x] use the MVP stages `new`, `qualified`, `contacted`, `won`, and `lost`
+  - [x] add stage changes to the activity timeline
+  - [x] filter/search by stage and date
+  - [ ] confirm the authoritative CI build, tests, and migration validation for this milestone
 - [ ] Add owner notes and a next-action/reminder field to each lead.
 - [ ] Add unread/new-lead indication so the inbox is operationally useful.
 - [ ] Add CSV export for leads and their core qualification fields.

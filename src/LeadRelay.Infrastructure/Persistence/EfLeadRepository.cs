@@ -1,5 +1,6 @@
 using LeadRelay.Application.Abstractions;
 using LeadRelay.Domain.Leads;
+using LeadRelay.Domain.Projects;
 using Microsoft.EntityFrameworkCore;
 
 namespace LeadRelay.Infrastructure.Persistence;
@@ -64,8 +65,12 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
         var query =
             from lead in db.Leads.AsNoTracking()
             join customer in db.Customers.AsNoTracking()
-                on lead.CustomerId equals customer.Id into customerGroup
+                on new { lead.SiteId, Id = lead.CustomerId }
+                equals new { customer.SiteId, customer.Id } into customerGroup
             from customer in customerGroup.DefaultIfEmpty()
+            join project in db.Projects.AsNoTracking()
+                on new { lead.SiteId, Id = lead.ProjectId }
+                equals new { project.SiteId, project.Id }
             orderby lead.CreatedAtUtc descending
             select new
             {
@@ -74,7 +79,8 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
                 lead.CreatedAtUtc,
                 Name = customer != null ? customer.Name : null,
                 Phone = customer != null ? customer.Phone : null,
-                Email = customer != null ? customer.Email : null
+                Email = customer != null ? customer.Email : null,
+                ProjectStage = project.Status
             };
 
         return await query
@@ -85,7 +91,8 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
                 x.Name,
                 x.Phone,
                 x.Email,
-                x.CreatedAtUtc))
+                x.CreatedAtUtc,
+                x.ProjectStage))
             .ToListAsync(ct);
     }
 
@@ -98,8 +105,12 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
         var query =
             from lead in db.Leads.AsNoTracking()
             join customer in db.Customers.AsNoTracking()
-                on lead.CustomerId equals customer.Id into customerGroup
+                on new { lead.SiteId, Id = lead.CustomerId }
+                equals new { customer.SiteId, customer.Id } into customerGroup
             from customer in customerGroup.DefaultIfEmpty()
+            join project in db.Projects.AsNoTracking()
+                on new { lead.SiteId, Id = lead.ProjectId }
+                equals new { project.SiteId, project.Id }
             where lead.SiteId == normalizedSiteId
             orderby lead.CreatedAtUtc descending
             select new
@@ -109,7 +120,8 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
                 lead.CreatedAtUtc,
                 Name = customer != null ? customer.Name : null,
                 Phone = customer != null ? customer.Phone : null,
-                Email = customer != null ? customer.Email : null
+                Email = customer != null ? customer.Email : null,
+                ProjectStage = project.Status
             };
 
         return await query
@@ -120,25 +132,33 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
                 x.Name,
                 x.Phone,
                 x.Email,
-                x.CreatedAtUtc))
+                x.CreatedAtUtc,
+                x.ProjectStage))
             .ToListAsync(ct);
     }
 
-    public async Task<LeadPageResult> SearchBySiteAsync(string siteId, string? query, int page, int pageSize, CancellationToken ct)
+    public async Task<LeadPageResult> SearchBySiteAsync(string siteId, LeadSearchCriteria criteria, CancellationToken ct)
     {
         var normalizedSiteId = (siteId ?? "").Trim();
         if (string.IsNullOrWhiteSpace(normalizedSiteId))
-            return new LeadPageResult(Array.Empty<LeadSummary>(), 0, 1, Math.Clamp(pageSize, 1, 100));
+            return new LeadPageResult(Array.Empty<LeadSummary>(), 0, 1, Math.Clamp(criteria.PageSize, 1, 100));
 
-        var normalizedQuery = (query ?? "").Trim();
-        var effectivePageSize = Math.Clamp(pageSize, 1, 100);
-        var effectivePage = Math.Max(1, page);
+        var normalizedQuery = (criteria.Query ?? "").Trim();
+        var normalizedStage = ProjectStatuses.IsOwnerStage(criteria.ProjectStage)
+            ? criteria.ProjectStage!.Trim().ToLowerInvariant()
+            : null;
+        var effectivePageSize = Math.Clamp(criteria.PageSize, 1, 100);
+        var effectivePage = Math.Max(1, criteria.Page);
 
         var baseQuery =
             from lead in db.Leads.AsNoTracking()
             join customer in db.Customers.AsNoTracking()
-                on lead.CustomerId equals customer.Id into customerGroup
+                on new { lead.SiteId, Id = lead.CustomerId }
+                equals new { customer.SiteId, customer.Id } into customerGroup
             from customer in customerGroup.DefaultIfEmpty()
+            join project in db.Projects.AsNoTracking()
+                on new { lead.SiteId, Id = lead.ProjectId }
+                equals new { project.SiteId, project.Id }
             where lead.SiteId == normalizedSiteId
             select new
             {
@@ -147,7 +167,8 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
                 lead.CreatedAtUtc,
                 Name = customer != null ? customer.Name : null,
                 Email = customer != null ? customer.Email : null,
-                Phone = customer != null ? customer.Phone : null
+                Phone = customer != null ? customer.Phone : null,
+                ProjectStage = project.Status
             };
 
         if (!string.IsNullOrWhiteSpace(normalizedQuery))
@@ -159,9 +180,19 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
                 (x.Phone != null && EF.Functions.Like(x.Phone, pattern)));
         }
 
+        if (normalizedStage is not null)
+            baseQuery = baseQuery.Where(x => x.ProjectStage == normalizedStage);
+
+        if (criteria.CreatedFromUtc is not null)
+            baseQuery = baseQuery.Where(x => x.CreatedAtUtc >= criteria.CreatedFromUtc.Value);
+
+        if (criteria.CreatedBeforeUtc is not null)
+            baseQuery = baseQuery.Where(x => x.CreatedAtUtc < criteria.CreatedBeforeUtc.Value);
+
         var totalCount = await baseQuery.CountAsync(ct);
         var items = await baseQuery
             .OrderByDescending(x => x.CreatedAtUtc)
+            .ThenByDescending(x => x.Id)
             .Skip((effectivePage - 1) * effectivePageSize)
             .Take(effectivePageSize)
             .Select(x => new LeadSummary(
@@ -170,10 +201,43 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
                 x.Name,
                 x.Phone,
                 x.Email,
-                x.CreatedAtUtc))
+                x.CreatedAtUtc,
+                x.ProjectStage))
             .ToListAsync(ct);
 
         return new LeadPageResult(items, totalCount, effectivePage, effectivePageSize);
+    }
+
+    public async Task<bool> UpdateProjectStageAsync(
+        Guid leadId,
+        string siteId,
+        string stage,
+        DateTimeOffset changedAtUtc,
+        CancellationToken ct)
+    {
+        var normalizedSiteId = (siteId ?? "").Trim();
+        var normalizedStage = (stage ?? "").Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(normalizedSiteId) || !ProjectStatuses.IsOwnerStage(normalizedStage))
+            return false;
+
+        var lead = await db.Leads.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == leadId && x.SiteId == normalizedSiteId, ct);
+        if (lead is null) return false;
+
+        var project = await db.Projects
+            .FirstOrDefaultAsync(x => x.Id == lead.ProjectId && x.SiteId == normalizedSiteId, ct);
+        if (project is null) return false;
+
+        var previousStage = ProjectStatuses.Normalize(project.Status);
+        if (string.Equals(previousStage, normalizedStage, StringComparison.Ordinal))
+            return true;
+
+        project.Status = normalizedStage;
+        project.StageChanges ??= new List<ProjectStageChange>();
+        project.StageChanges.Add(new ProjectStageChange(previousStage, normalizedStage, changedAtUtc));
+        project.UpdatedAtUtc = changedAtUtc;
+        await db.SaveChangesAsync(ct);
+        return true;
     }
 
     public async Task<Lead?> GetByIdAsync(Guid id, CancellationToken ct)
@@ -212,6 +276,7 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
             Channel = NormalizeChannel(record.Channel),
             Status = NormalizeStatus(record.Status),
             IsBotPaused = record.IsBotPaused,
+            ProjectStage = ProjectStatuses.Normalize(project?.Status),
             ProjectSummary = project?.Summary,
             Name = customer?.Name,
             Email = customer?.Email,
@@ -224,6 +289,12 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
 
         foreach (var turn in record.Conversation)
             lead.Conversation.Add(turn);
+
+        if (project is not null)
+        {
+            foreach (var stageChange in project.StageChanges ?? [])
+                lead.ProjectStageChanges.Add(stageChange);
+        }
 
         return lead;
     }

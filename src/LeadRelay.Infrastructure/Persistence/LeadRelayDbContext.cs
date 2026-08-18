@@ -1,5 +1,6 @@
 using System.Text.Json;
 using LeadRelay.Domain.Leads;
+using LeadRelay.Domain.Projects;
 using LeadRelay.Domain.Sites;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -24,6 +25,7 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
         var stringListConverter = BuildJsonConverter<List<string>>();
         var conversationFieldListConverter = BuildJsonConverter<List<ConversationField>>();
         var leadConversationConverter = BuildJsonConverter<List<LeadConversationTurn>>();
+        var projectStageChangeConverter = BuildJsonConverter<List<ProjectStageChange>>();
         var dictionaryConverter = BuildJsonConverter<Dictionary<string, string>>();
 
         modelBuilder.Entity<SiteRecord>(entity =>
@@ -77,6 +79,7 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
 
             entity.HasIndex(x => new { x.SiteId, x.CustomerId });
             entity.HasIndex(x => new { x.SiteId, x.ProjectId });
+            entity.HasIndex(x => new { x.SiteId, x.CreatedAtUtc, x.Id });
             entity.HasIndex(x => new { x.SiteId, x.Id }).IsUnique();
 
             entity.HasOne<CustomerRecord>()
@@ -135,6 +138,10 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
             entity.Property(x => x.Name).HasColumnName("Name").IsRequired();
             entity.Property(x => x.Summary).HasColumnName("Summary");
             entity.Property(x => x.Status).HasColumnName("Status").HasMaxLength(32).IsRequired();
+            entity.Property(x => x.StageChanges)
+                .HasColumnName("StageChangesJson")
+                .HasConversion(projectStageChangeConverter)
+                .Metadata.SetValueComparer(BuildJsonComparer<List<ProjectStageChange>>());
             entity.Property(x => x.Fields)
                 .HasColumnName("FieldsJson")
                 .HasConversion(dictionaryConverter)
@@ -143,6 +150,7 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
             entity.Property(x => x.UpdatedAtUtc).HasColumnName("UpdatedAtUtc");
 
             entity.HasIndex(x => new { x.SiteId, x.CustomerId });
+            entity.HasIndex(x => new { x.SiteId, x.Status });
             entity.HasIndex(x => new { x.SiteId, x.Id }).IsUnique();
 
             entity.HasOne<CustomerRecord>()

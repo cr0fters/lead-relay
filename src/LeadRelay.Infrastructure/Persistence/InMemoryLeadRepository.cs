@@ -1,5 +1,6 @@
 using LeadRelay.Application.Abstractions;
 using LeadRelay.Domain.Leads;
+using LeadRelay.Domain.Projects;
 using System.Collections.Concurrent;
 
 namespace LeadRelay.Infrastructure.Persistence;
@@ -26,7 +27,8 @@ public sealed class InMemoryLeadRepository : ILeadRepository
                 x.Name,
                 x.Phone,
                 x.Email,
-                x.CreatedAtUtc))
+                x.CreatedAtUtc,
+                ProjectStatuses.Normalize(x.ProjectStage)))
             .ToList();
 
         return Task.FromResult<IReadOnlyList<LeadSummary>>(items);
@@ -49,18 +51,22 @@ public sealed class InMemoryLeadRepository : ILeadRepository
                 x.Name,
                 x.Phone,
                 x.Email,
-                x.CreatedAtUtc))
+                x.CreatedAtUtc,
+                ProjectStatuses.Normalize(x.ProjectStage)))
             .ToList();
 
         return Task.FromResult<IReadOnlyList<LeadSummary>>(items);
     }
 
-    public Task<LeadPageResult> SearchBySiteAsync(string siteId, string? query, int page, int pageSize, CancellationToken ct)
+    public Task<LeadPageResult> SearchBySiteAsync(string siteId, LeadSearchCriteria criteria, CancellationToken ct)
     {
         var normalizedSiteId = (siteId ?? "").Trim();
-        var normalizedQuery = (query ?? "").Trim();
-        var effectivePageSize = Math.Clamp(pageSize, 1, 100);
-        var effectivePage = Math.Max(1, page);
+        var normalizedQuery = (criteria.Query ?? "").Trim();
+        var normalizedStage = ProjectStatuses.IsOwnerStage(criteria.ProjectStage)
+            ? criteria.ProjectStage!.Trim().ToLowerInvariant()
+            : null;
+        var effectivePageSize = Math.Clamp(criteria.PageSize, 1, 100);
+        var effectivePage = Math.Max(1, criteria.Page);
 
         if (string.IsNullOrWhiteSpace(normalizedSiteId))
             return Task.FromResult(new LeadPageResult(Array.Empty<LeadSummary>(), 0, effectivePage, effectivePageSize));
@@ -76,7 +82,19 @@ public sealed class InMemoryLeadRepository : ILeadRepository
                 Contains(x.Phone, normalizedQuery));
         }
 
-        var ordered = filtered.OrderByDescending(x => x.CreatedAtUtc).ToList();
+        if (normalizedStage is not null)
+            filtered = filtered.Where(x => ProjectStatuses.Normalize(x.ProjectStage) == normalizedStage);
+
+        if (criteria.CreatedFromUtc is not null)
+            filtered = filtered.Where(x => x.CreatedAtUtc >= criteria.CreatedFromUtc.Value);
+
+        if (criteria.CreatedBeforeUtc is not null)
+            filtered = filtered.Where(x => x.CreatedAtUtc < criteria.CreatedBeforeUtc.Value);
+
+        var ordered = filtered
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .ThenByDescending(x => x.Id)
+            .ToList();
         var total = ordered.Count;
         var items = ordered
             .Skip((effectivePage - 1) * effectivePageSize)
@@ -87,10 +105,35 @@ public sealed class InMemoryLeadRepository : ILeadRepository
                 x.Name,
                 x.Phone,
                 x.Email,
-                x.CreatedAtUtc))
+                x.CreatedAtUtc,
+                ProjectStatuses.Normalize(x.ProjectStage)))
             .ToList();
 
         return Task.FromResult(new LeadPageResult(items, total, effectivePage, effectivePageSize));
+    }
+
+    public Task<bool> UpdateProjectStageAsync(
+        Guid leadId,
+        string siteId,
+        string stage,
+        DateTimeOffset changedAtUtc,
+        CancellationToken ct)
+    {
+        var normalizedSiteId = (siteId ?? "").Trim();
+        var normalizedStage = (stage ?? "").Trim().ToLowerInvariant();
+        if (!ProjectStatuses.IsOwnerStage(normalizedStage) ||
+            !Store.TryGetValue(leadId, out var lead) ||
+            !string.Equals(lead.SiteId, normalizedSiteId, StringComparison.Ordinal))
+            return Task.FromResult(false);
+
+        var previousStage = ProjectStatuses.Normalize(lead.ProjectStage);
+        if (!string.Equals(previousStage, normalizedStage, StringComparison.Ordinal))
+        {
+            lead.ProjectStage = normalizedStage;
+            lead.ProjectStageChanges.Add(new ProjectStageChange(previousStage, normalizedStage, changedAtUtc));
+        }
+
+        return Task.FromResult(true);
     }
 
     public Task<Lead?> GetByIdAsync(Guid id, CancellationToken ct)

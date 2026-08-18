@@ -2,8 +2,21 @@
 @{
     Layout = "~/Views/Shared/_OwnerLayout.cshtml";
     ViewData["Title"] = "Leads inbox";
-    var contactableCount = Model.Leads.Count(x => string.Equals(x.Status, "Contactable", StringComparison.OrdinalIgnoreCase));
-    var needsDetailsCount = Math.Max(0, Model.Leads.Count - contactableCount);
+    var selectedStageLabel = string.IsNullOrWhiteSpace(Model.Stage)
+        ? "All stages"
+        : char.ToUpperInvariant(Model.Stage[0]) + Model.Stage[1..];
+    var selectedDateLabel = string.IsNullOrWhiteSpace(Model.FromDate) && string.IsNullOrWhiteSpace(Model.ToDate)
+        ? "Any date"
+        : $"{(string.IsNullOrWhiteSpace(Model.FromDate) ? "Any" : Model.FromDate)} to {(string.IsNullOrWhiteSpace(Model.ToDate) ? "today" : Model.ToDate)}";
+    string PageUrl(int targetPage) => Url.Action("Index", "OwnerPortal", new
+    {
+        q = Model.Query,
+        stage = Model.Stage,
+        from = Model.FromDate,
+        to = Model.ToDate,
+        page = targetPage,
+        pageSize = Model.PageSize
+    }) ?? "/owner";
 }
 
 <div class="w-full px-4 py-5 sm:px-6 lg:px-8" x-data>
@@ -22,22 +35,53 @@
             <p class="mt-2 text-sm text-slate-600">Page @Model.Page of @Model.TotalPages</p>
         </article>
         <article class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 shadow-panel">
-            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Contactable</p>
-            <p class="mt-1 font-display text-3xl font-semibold text-slate-900">@contactableCount</p>
-            <p class="mt-2 text-sm text-emerald-700">Ready for direct reply</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Stage filter</p>
+            <p class="mt-1 font-display text-xl font-semibold text-slate-900">@selectedStageLabel</p>
+            <p class="mt-2 text-sm text-emerald-700">Owner-controlled pipeline</p>
         </article>
         <article class="rounded-lg border border-amber-200 bg-amber-50 p-3 shadow-panel">
-            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">Needs details</p>
-            <p class="mt-1 font-display text-3xl font-semibold text-slate-900">@needsDetailsCount</p>
-            <p class="mt-2 text-sm text-amber-700">Missing email or phone</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">Created</p>
+            <p class="mt-1 font-display text-lg font-semibold text-slate-900">@selectedDateLabel</p>
+            <p class="mt-2 text-sm text-amber-700">UTC date range</p>
         </article>
     </section>
 
+    @if (!string.IsNullOrWhiteSpace(Model.Error))
+    {
+        <div class="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">@Model.Error</div>
+    }
+
     <section class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-panel">
         <form class="border-b border-slate-200 bg-slate-50 p-3" method="get" action="/owner">
-            <div class="grid gap-2 md:grid-cols-[1fr_auto_auto]">
-                <input class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" type="text" name="q" value="@Model.Query" placeholder="Search name, email, or phone" />
-                <select class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" name="pageSize">
+            <div class="grid gap-2 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_auto_auto_auto_auto_auto]">
+                <label class="sr-only" for="lead-search">Search leads</label>
+                <input id="lead-search" class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" type="search" name="q" value="@Model.Query" placeholder="Search name, email, or phone" />
+                <label class="sr-only" for="stage-filter">Stage</label>
+                <select id="stage-filter" class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" name="stage">
+                    <option value="">All stages</option>
+                    @foreach (var option in new[] { "new", "qualified", "contacted", "won", "lost" })
+                    {
+                        var label = char.ToUpperInvariant(option[0]) + option[1..];
+                        if (string.Equals(Model.Stage, option, StringComparison.Ordinal))
+                        {
+                            <option value="@option" selected>@label</option>
+                        }
+                        else
+                        {
+                            <option value="@option">@label</option>
+                        }
+                    }
+                </select>
+                <div>
+                    <label class="sr-only" for="from-filter">Created from</label>
+                    <input id="from-filter" class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" type="date" name="from" value="@Model.FromDate" title="Created from" />
+                </div>
+                <div>
+                    <label class="sr-only" for="to-filter">Created to</label>
+                    <input id="to-filter" class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" type="date" name="to" value="@Model.ToDate" title="Created to" />
+                </div>
+                <label class="sr-only" for="page-size">Results per page</label>
+                <select id="page-size" class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-slate-200 transition focus:ring" name="pageSize">
                     @foreach (var size in new[] { 10, 20, 50, 100 })
                     {
                         if (Model.PageSize == size)
@@ -51,6 +95,10 @@
                     }
                 </select>
                 <button class="rounded-md border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-100" type="submit">Apply</button>
+                @if (!string.IsNullOrWhiteSpace(Model.Query) || !string.IsNullOrWhiteSpace(Model.Stage) || !string.IsNullOrWhiteSpace(Model.FromDate) || !string.IsNullOrWhiteSpace(Model.ToDate))
+                {
+                    <a class="rounded-md border border-slate-200 bg-white px-4 py-2 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-100" href="/owner">Clear</a>
+                }
             </div>
         </form>
 
@@ -68,21 +116,29 @@
                         <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Name</th>
                         <th class="hidden px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 lg:table-cell">Email</th>
                         <th class="hidden px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 lg:table-cell">Phone</th>
-                        <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Status</th>
+                        <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Stage</th>
                         <th class="px-4 py-3"></th>
                     </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 bg-white">
                     @foreach (var lead in Model.Leads)
                     {
-                        var isContactable = string.Equals(lead.Status, "Contactable", StringComparison.OrdinalIgnoreCase);
+                        var stageLabel = char.ToUpperInvariant(lead.ProjectStage[0]) + lead.ProjectStage[1..];
+                        var stageClass = lead.ProjectStage switch
+                        {
+                            "won" => "border border-emerald-200 bg-emerald-50 text-emerald-700",
+                            "lost" => "border border-slate-300 bg-slate-100 text-slate-600",
+                            "qualified" => "border border-indigo-200 bg-indigo-50 text-indigo-700",
+                            "contacted" => "border border-sky-200 bg-sky-50 text-sky-700",
+                            _ => "border border-amber-200 bg-amber-50 text-amber-700"
+                        };
                         <tr class="hover:bg-slate-50">
                             <td class="whitespace-nowrap px-4 py-3 text-sm text-slate-700">@lead.CreatedAtUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm") UTC</td>
                             <td class="px-4 py-3 text-sm font-medium text-slate-900">@(string.IsNullOrWhiteSpace(lead.Name) ? "-" : lead.Name)</td>
                             <td class="hidden px-4 py-3 text-sm text-slate-700 lg:table-cell">@(string.IsNullOrWhiteSpace(lead.Email) ? "-" : lead.Email)</td>
                             <td class="hidden px-4 py-3 text-sm text-slate-700 lg:table-cell">@(string.IsNullOrWhiteSpace(lead.Phone) ? "-" : lead.Phone)</td>
                             <td class="px-4 py-3 text-sm">
-                                <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] @(isContactable ? "border border-emerald-200 bg-emerald-50 text-emerald-700" : "border border-amber-200 bg-amber-50 text-amber-700")">@lead.Status</span>
+                                <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] @stageClass">@stageLabel</span>
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <a class="inline-flex items-center gap-1 rounded-md border border-sky-200 bg-sky-50 px-3 py-1.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-100" href="/owner/leads/@lead.Id">
@@ -102,7 +158,7 @@
             <div class="flex items-center gap-2 text-sm">
                 @if (Model.HasPrevious)
                 {
-                    <a class="rounded-md border border-sky-200 bg-sky-50 px-3 py-1.5 font-medium text-sky-700 hover:bg-sky-100" href="/owner?q=@Uri.EscapeDataString(Model.Query)&page=@(Model.Page - 1)&pageSize=@Model.PageSize">Previous</a>
+                    <a class="rounded-md border border-sky-200 bg-sky-50 px-3 py-1.5 font-medium text-sky-700 hover:bg-sky-100" href="@PageUrl(Model.Page - 1)">Previous</a>
                 }
                 else
                 {
@@ -113,7 +169,7 @@
 
                 @if (Model.HasNext)
                 {
-                    <a class="rounded-md border border-sky-200 bg-sky-50 px-3 py-1.5 font-medium text-sky-700 hover:bg-sky-100" href="/owner?q=@Uri.EscapeDataString(Model.Query)&page=@(Model.Page + 1)&pageSize=@Model.PageSize">Next</a>
+                    <a class="rounded-md border border-sky-200 bg-sky-50 px-3 py-1.5 font-medium text-sky-700 hover:bg-sky-100" href="@PageUrl(Model.Page + 1)">Next</a>
                 }
                 else
                 {

@@ -1,5 +1,6 @@
 using LeadRelay.Application.Abstractions;
 using LeadRelay.Domain.Leads;
+using LeadRelay.Domain.Projects;
 using LeadRelay.Domain.Sites;
 using LeadRelay.Infrastructure.Persistence;
 using LeadRelay.Web.Controllers;
@@ -196,6 +197,69 @@ public sealed class OwnerPortalReplyChannelTests
         Assert.That(repository.SavedLead!.IsBotPaused, Is.True);
     }
 
+    [Test]
+    public async Task update_stage_persists_owner_stage_and_adds_timeline_activity()
+    {
+        var siteId = InMemorySiteRepository.DefaultSiteId;
+        var lead = BuildLead(siteId);
+        var repository = new FakeLeadRepository(lead);
+        var controller = CreateController(repository, new InMemorySiteRepository(), siteId);
+
+        var result = await controller.UpdateStage(lead.Id, ProjectStatuses.Qualified, CancellationToken.None);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        Assert.That(lead.ProjectStage, Is.EqualTo(ProjectStatuses.Qualified));
+        Assert.That(lead.ProjectStageChanges, Has.Count.EqualTo(1));
+        var model = ((ViewResult)result).Model as OwnerPortalController.OwnerLeadDetailModel;
+        Assert.That(model, Is.Not.Null);
+        Assert.That(model!.Activity.Any(x => x.Kind == "stage" && x.Text.Contains("New to Qualified")), Is.True);
+    }
+
+    [Test]
+    public async Task update_stage_rejects_unknown_stage_without_changing_lead()
+    {
+        var siteId = InMemorySiteRepository.DefaultSiteId;
+        var lead = BuildLead(siteId);
+        var repository = new FakeLeadRepository(lead);
+        var controller = CreateController(repository, new InMemorySiteRepository(), siteId);
+
+        var result = await controller.UpdateStage(lead.Id, "deleted", CancellationToken.None);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        Assert.That(lead.ProjectStage, Is.EqualTo(ProjectStatuses.New));
+        Assert.That(lead.ProjectStageChanges, Is.Empty);
+        var model = ((ViewResult)result).Model as OwnerPortalController.OwnerLeadDetailModel;
+        Assert.That(model?.Error, Is.EqualTo("Choose a valid lead stage."));
+    }
+
+    [Test]
+    public async Task inbox_passes_stage_and_inclusive_utc_date_filters_to_repository()
+    {
+        var siteId = InMemorySiteRepository.DefaultSiteId;
+        var repository = new FakeLeadRepository(BuildLead(siteId));
+        var controller = CreateController(repository, new InMemorySiteRepository(), siteId);
+
+        var result = await controller.Index(
+            q: "jane",
+            stage: ProjectStatuses.Contacted,
+            from: "2026-08-01",
+            to: "2026-08-18",
+            page: 2,
+            pageSize: 50,
+            ct: CancellationToken.None);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        Assert.That(repository.LastSearchCriteria, Is.Not.Null);
+        Assert.That(repository.LastSearchCriteria!.Query, Is.EqualTo("jane"));
+        Assert.That(repository.LastSearchCriteria.ProjectStage, Is.EqualTo(ProjectStatuses.Contacted));
+        Assert.That(repository.LastSearchCriteria.CreatedFromUtc,
+            Is.EqualTo(new DateTimeOffset(2026, 8, 1, 0, 0, 0, TimeSpan.Zero)));
+        Assert.That(repository.LastSearchCriteria.CreatedBeforeUtc,
+            Is.EqualTo(new DateTimeOffset(2026, 8, 19, 0, 0, 0, TimeSpan.Zero)));
+        Assert.That(repository.LastSearchCriteria.Page, Is.EqualTo(2));
+        Assert.That(repository.LastSearchCriteria.PageSize, Is.EqualTo(50));
+    }
+
     private static Lead BuildLead(string siteId)
     {
         return new Lead
@@ -226,6 +290,7 @@ public sealed class OwnerPortalReplyChannelTests
     {
         private readonly Lead _lead;
         public Lead? SavedLead { get; private set; }
+        public LeadSearchCriteria? LastSearchCriteria { get; private set; }
 
         public FakeLeadRepository(Lead lead)
         {
@@ -244,8 +309,25 @@ public sealed class OwnerPortalReplyChannelTests
         public Task<IReadOnlyList<LeadSummary>> GetRecentBySiteAsync(string siteId, int limit, CancellationToken ct)
             => Task.FromResult<IReadOnlyList<LeadSummary>>(Array.Empty<LeadSummary>());
 
-        public Task<LeadPageResult> SearchBySiteAsync(string siteId, string? query, int page, int pageSize, CancellationToken ct)
-            => Task.FromResult(new LeadPageResult(Array.Empty<LeadSummary>(), 0, 1, 20));
+        public Task<LeadPageResult> SearchBySiteAsync(string siteId, LeadSearchCriteria criteria, CancellationToken ct)
+        {
+            LastSearchCriteria = criteria;
+            return Task.FromResult(new LeadPageResult(Array.Empty<LeadSummary>(), 0, criteria.Page, criteria.PageSize));
+        }
+
+        public Task<bool> UpdateProjectStageAsync(Guid leadId, string siteId, string stage, DateTimeOffset changedAtUtc, CancellationToken ct)
+        {
+            if (_lead.Id != leadId || _lead.SiteId != siteId)
+                return Task.FromResult(false);
+
+            var previousStage = ProjectStatuses.Normalize(_lead.ProjectStage);
+            if (!string.Equals(previousStage, stage, StringComparison.Ordinal))
+            {
+                _lead.ProjectStage = stage;
+                _lead.ProjectStageChanges.Add(new ProjectStageChange(previousStage, stage, changedAtUtc));
+            }
+            return Task.FromResult(true);
+        }
 
         public Task<Lead?> GetByIdAsync(Guid id, CancellationToken ct)
             => Task.FromResult<Lead?>(_lead.Id == id ? _lead : null);

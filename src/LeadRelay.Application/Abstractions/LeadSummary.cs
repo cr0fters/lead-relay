@@ -6,4 +6,5 @@ public sealed record LeadSummary(
     string? Name,
     string? Phone,
     string? Email,
-    DateTimeOffset CreatedAtUtc);
+    DateTimeOffset CreatedAtUtc,
+    string ProjectStage);

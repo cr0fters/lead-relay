@@ -3,7 +3,7 @@
     Layout = "~/Views/Shared/_OwnerLayout.cshtml";
     var leadDisplayName = string.IsNullOrWhiteSpace(Model.Name) ? "Unnamed lead" : Model.Name!;
     ViewData["Title"] = leadDisplayName;
-    var hasConversation = Model.Conversation.Count > 0;
+    var hasActivity = Model.Activity.Count > 0;
     var hasFields = Model.FieldDefinitions.Count > 0;
 }
 
@@ -18,8 +18,26 @@
 
             <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                 <article class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Status</p>
-                    <p class="mt-1 text-sm font-semibold text-slate-900">@Model.Status</p>
+                    <form method="post" action="/owner/leads/@Model.Id/stage">
+                        @Html.AntiForgeryToken()
+                        <label class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500" for="lead-stage">Stage</label>
+                        <div class="mt-1 flex items-center gap-1.5">
+                            <select id="lead-stage" name="stage" class="min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-sm font-semibold text-slate-900 outline-none ring-slate-200 focus:ring">
+                                @foreach (var stage in Model.StageOptions)
+                                {
+                                    if (string.Equals(Model.ProjectStage, stage.Value, StringComparison.Ordinal))
+                                    {
+                                        <option value="@stage.Value" selected>@stage.Label</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@stage.Value">@stage.Label</option>
+                                    }
+                                }
+                            </select>
+                            <button class="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100" type="submit">Save</button>
+                        </div>
+                    </form>
                 </article>
                 <article class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                     <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Channel</p>
@@ -182,32 +200,36 @@
         <main class="order-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel">
             <div class="border-b border-slate-100 px-4 py-3 sm:px-4">
                 <h2 class="text-sm font-semibold text-slate-900">Activity timeline</h2>
-                <p class="text-xs text-slate-500">Conversation history and outbound messaging in one thread.</p>
+                <p class="text-xs text-slate-500">Conversation history and CRM stage changes in one thread.</p>
             </div>
 
-            @if (!hasConversation)
+            @if (!hasActivity)
             {
-                <div class="px-4 py-10 text-sm text-slate-500 sm:px-5">No messages yet.</div>
+                <div class="px-4 py-10 text-sm text-slate-500 sm:px-5">No activity yet.</div>
             }
             else
             {
                 <div id="conversationTimeline" class="max-h-[38rem] space-y-2 overflow-auto bg-slate-50/60 px-4 py-3 sm:px-4">
-                    @foreach (var turn in Model.Conversation)
+                    @foreach (var activity in Model.Activity)
                     {
-                        var isIncoming = string.Equals(turn.Role, "user", StringComparison.OrdinalIgnoreCase) ||
-                                         string.Equals(turn.Role, "customer", StringComparison.OrdinalIgnoreCase);
-                        var isOwner = string.Equals(turn.Role, "owner", StringComparison.OrdinalIgnoreCase);
-                        var roleLabel = isIncoming ? "Customer" : (isOwner ? "You" : "LeadRelay");
-                        var toneClass = isIncoming
-                            ? "border-slate-200 bg-white"
-                            : (isOwner ? "border-indigo-200 bg-indigo-50" : "border-sky-200 bg-sky-50");
+                        var isStage = string.Equals(activity.Kind, "stage", StringComparison.Ordinal);
+                        var isIncoming = string.Equals(activity.Role, "user", StringComparison.OrdinalIgnoreCase) ||
+                                         string.Equals(activity.Role, "customer", StringComparison.OrdinalIgnoreCase);
+                        var isOwner = string.Equals(activity.Role, "owner", StringComparison.OrdinalIgnoreCase);
+                        var roleLabel = isStage ? "Stage change" : (isIncoming ? "Customer" : (isOwner ? "You" : "LeadRelay"));
+                        var toneClass = isStage
+                            ? "border-violet-200 bg-violet-50"
+                            : (isIncoming ? "border-slate-200 bg-white" : (isOwner ? "border-indigo-200 bg-indigo-50" : "border-sky-200 bg-sky-50"));
+                        var badgeClass = isStage
+                            ? "bg-violet-100 text-violet-700"
+                            : (isIncoming ? "bg-slate-100 text-slate-700" : (isOwner ? "bg-indigo-100 text-indigo-700" : "bg-sky-100 text-sky-700"));
 
                         <article class="rounded-xl border px-3 py-2.5 shadow-sm @toneClass">
                             <div class="mb-1 flex flex-wrap items-center gap-2">
-                                <span class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] @(isIncoming ? "bg-slate-100 text-slate-700" : (isOwner ? "bg-indigo-100 text-indigo-700" : "bg-sky-100 text-sky-700"))">@roleLabel</span>
-                                <span class="text-[11px] font-medium text-slate-500">@turn.AtUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm") UTC</span>
+                                <span class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] @badgeClass">@roleLabel</span>
+                                <span class="text-[11px] font-medium text-slate-500">@activity.AtUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm") UTC</span>
                             </div>
-                            <p class="whitespace-pre-wrap break-words text-sm leading-6 text-slate-800">@turn.Text</p>
+                            <p class="whitespace-pre-wrap break-words text-sm leading-6 text-slate-800">@activity.Text</p>
                         </article>
                     }
                 </div>
