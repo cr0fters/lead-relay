@@ -209,7 +209,7 @@ public sealed class EfLeadRepositoryIdentityTests
             siteId,
             "  ",
             null,
-            changedAt.AddDays(2),
+            null,
             changedAt.AddMinutes(6),
             CancellationToken.None);
         Assert.That(followUpCleared, Is.True);
