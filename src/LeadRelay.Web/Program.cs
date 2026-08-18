@@ -134,6 +134,7 @@ if (app.Environment.IsDevelopment())
     await app.ApplySeedDataAsync();
 }
 
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseStaticFiles();
 app.UseRouting();
 app.UseRateLimiter();
