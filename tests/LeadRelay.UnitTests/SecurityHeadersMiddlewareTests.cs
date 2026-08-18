@@ -23,6 +23,9 @@ public sealed class SecurityHeadersMiddlewareTests
         {
             Assert.That(context.Response.Headers["Content-Security-Policy"].ToString(), Does.Contain("frame-ancestors 'none'"));
             Assert.That(context.Response.Headers["Content-Security-Policy"].ToString(), Does.Contain("object-src 'none'"));
+            Assert.That(context.Response.Headers["Content-Security-Policy"].ToString(), Does.Not.Contain("cdn.tailwindcss.com"));
+            Assert.That(context.Response.Headers["Content-Security-Policy"].ToString(), Does.Not.Contain("cdn.jsdelivr.net"));
+            Assert.That(context.Response.Headers["Content-Security-Policy"].ToString(), Does.Not.Contain("unpkg.com"));
             Assert.That(context.Response.Headers["X-Content-Type-Options"].ToString(), Is.EqualTo("nosniff"));
             Assert.That(context.Response.Headers["X-Frame-Options"].ToString(), Is.EqualTo("DENY"));
             Assert.That(context.Response.Headers["Referrer-Policy"].ToString(), Is.EqualTo("strict-origin-when-cross-origin"));

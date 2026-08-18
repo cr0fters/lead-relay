@@ -6,6 +6,9 @@ on:
     branches:
       - "**"
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Test + Migration Validation
@@ -27,10 +30,21 @@ jobs:
       ConnectionStrings__LeadRelay: Server=127.0.0.1;Port=3307;User ID=root;Password=root;Database=LeadRelay
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Verify frontend assets
+        run: |
+          npm ci
+          npm run check
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
 

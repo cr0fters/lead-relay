@@ -232,10 +232,13 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
 - [ ] Treat the embedded widget script as a public compatibility contract: version releases, preserve old embeds where practical, and use deliberate cache busting/rollback.
 - [ ] Add production security headers, including HSTS, CSP, frame protections, content-type protections, and a deliberate referrer policy.
   - [x] enforce HSTS on HTTPS plus CSP, frame, content-type, referrer, and browser-permission policies outside development
-  - [x] allow only the currently required Google Fonts, Tailwind, Alpine, and Lucide origins while the existing inline/CDN assets remain
-  - [ ] remove CSP `unsafe-inline`/`unsafe-eval` allowances when the separate asset-bundling milestone is complete
+  - [x] allow only the currently required Google Fonts origins after serving application scripts and styles locally
+  - [ ] migrate inline scripts/styles and Alpine expressions to a nonce/CSP-safe approach before removing CSP `unsafe-inline`/`unsafe-eval`
   - [ ] confirm the authoritative CI build and tests for this milestone
 - [ ] Remove production reliance on unversioned CDN assets (`tailwindcss.com`, Alpine `3.x.x`, and Lucide `latest`); bundle or pin reviewed assets with integrity controls.
+  - [x] pin Tailwind CSS, Alpine, and Lucide in the npm lockfile and serve their generated assets locally
+  - [x] verify generated asset reproducibility in CI and document versions and licenses
+  - [ ] confirm the authoritative CI frontend asset check, build, and tests for this milestone
 - [ ] Force secure cookies in production and review session invalidation, signing-key rotation, and logout behavior.
 - [ ] Remove admin-token query-string authentication before launch; use a dedicated admin identity or restrict the admin surface to trusted operators/network access.
 - [ ] Add dependency/security scanning and secret scanning to CI.

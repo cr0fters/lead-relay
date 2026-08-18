@@ -9,6 +9,7 @@ Enable **Wait for CI** on the production Railway service's GitHub deployment tri
 Drop-in “Chat via WhatsApp” widget + server-side lead capture. Includes a simple POC chat flow and a debug page to simulate WhatsApp messages locally.
 
 ## Run
+- Install/build pinned frontend assets after checkout or dependency changes: `npm ci && npm run build`
 - `dotnet run --project src/LeadRelay.Web`
 - App binds to `http://localhost:5180` (configured in `src/LeadRelay.Web/appsettings.json`)
 - Debug console (no WhatsApp required): `http://localhost:5180/debug/whatsapp`
@@ -74,6 +75,7 @@ Leave forwarded headers disabled for direct hosting. When running behind a rever
 
 ## CI/CD (GitHub tests + Railway deploy)
 This repo includes `.github/workflows/ci-cd.yml` to:
+- rebuild locally served Tailwind, Alpine, and Lucide assets and fail if committed output has drifted
 - run tests on every PR and push
 - validate EF Core migrations against an ephemeral MySQL service
 - generate an idempotent SQL migration script artifact (`artifacts/migrations.sql`)

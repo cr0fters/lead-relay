@@ -10,28 +10,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="/brand/leadrelay-logo-icon.png" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script defer src="https://unpkg.com/lucide@latest"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ["Inter", "system-ui", "sans-serif"],
-                        display: ["Manrope", "Inter", "system-ui", "sans-serif"]
-                    },
-                    boxShadow: {
-                        panel: "0 1px 2px rgba(15, 23, 42, 0.06)"
-                    }
-                }
-            }
-        };
-    </script>
+    <link rel="stylesheet" href="/css/owner.css" asp-append-version="true" />
+    <script defer src="/vendor/alpine/alpine.min.js" asp-append-version="true"></script>
+    <script defer src="/vendor/lucide/lucide.min.js" asp-append-version="true"></script>
     @RenderSection("HeadScripts", required: false)
-    <style>
-        [x-cloak] { display: none !important; }
-    </style>
 </head>
 @{
     var ownerAuth = Context.Items.TryGetValue(LeadRelay.Web.Security.OwnerAuthMiddleware.ContextKey, out var authValue)
@@ -113,12 +95,12 @@ else
             <nav class="flex flex-wrap items-center gap-4 text-sm text-slate-600">
                 <a href="/#product" class="transition hover:text-slate-900">Product</a>
                 <a href="/#how-it-works" class="transition hover:text-slate-900">How it works</a>
-                <a href="/#pricing" class="transition hover:text-slate-900">Pricing</a>
+                <a href="/#what-you-need" class="transition hover:text-slate-900">What you need</a>
                 <a href="/#faq" class="transition hover:text-slate-900">FAQ</a>
             </nav>
 
             <div class="inline-flex items-center gap-2">
-                <a href="/owner/login" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Login</a>
+                <a href="/owner/login" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Sign in</a>
                 <a href="/owner/register" class="inline-flex items-center rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-slate-800">Create account</a>
             </div>
         </div>
