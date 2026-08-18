@@ -259,6 +259,24 @@ public sealed class OwnerPortalReplyChannelTests
             Is.EqualTo(new DateTimeOffset(2026, 8, 19, 0, 0, 0, TimeSpan.Zero)));
         Assert.That(repository.LastSearchCriteria.Page, Is.EqualTo(2));
         Assert.That(repository.LastSearchCriteria.PageSize, Is.EqualTo(50));
+        var model = ((ViewResult)result).Model as OwnerPortalController.OwnerDashboardModel;
+        Assert.That(model?.HasActiveFilters, Is.True);
+    }
+
+    [Test]
+    public async Task unfiltered_empty_inbox_is_identified_as_a_first_run_state()
+    {
+        var siteId = InMemorySiteRepository.DefaultSiteId;
+        var repository = new FakeLeadRepository(BuildLead(siteId));
+        var controller = CreateController(repository, new InMemorySiteRepository(), siteId);
+
+        var result = await controller.Index(ct: CancellationToken.None);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var model = ((ViewResult)result).Model as OwnerPortalController.OwnerDashboardModel;
+        Assert.That(model, Is.Not.Null);
+        Assert.That(model!.Leads, Is.Empty);
+        Assert.That(model.HasActiveFilters, Is.False);
     }
 
     [Test]

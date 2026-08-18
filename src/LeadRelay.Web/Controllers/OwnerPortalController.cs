@@ -697,6 +697,11 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
         public string FromDate { get; set; } = "";
         public string ToDate { get; set; } = "";
         public string? Error { get; set; }
+        public bool HasActiveFilters =>
+            !string.IsNullOrWhiteSpace(Query) ||
+            !string.IsNullOrWhiteSpace(Stage) ||
+            !string.IsNullOrWhiteSpace(FromDate) ||
+            !string.IsNullOrWhiteSpace(ToDate);
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 20;
         public int TotalCount { get; set; }

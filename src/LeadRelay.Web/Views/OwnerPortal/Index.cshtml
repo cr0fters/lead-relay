@@ -110,7 +110,31 @@
 
         @if (Model.Leads.Count == 0)
         {
-            <div class="p-6 text-sm text-slate-500">No leads match this view.</div>
+            if (Model.HasActiveFilters)
+            {
+                <div class="p-6 text-center">
+                    <div class="mx-auto grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-500">
+                        <i data-lucide="search-x" class="h-5 w-5"></i>
+                    </div>
+                    <h2 class="mt-3 text-base font-semibold text-slate-900">No leads match these filters</h2>
+                    <p class="mt-1 text-sm text-slate-500">Clear the filters or try a broader search.</p>
+                    <a class="mt-4 inline-flex rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" href="/owner">Clear filters</a>
+                </div>
+            }
+            else
+            {
+                <div class="p-6 text-center sm:p-10">
+                    <div class="mx-auto grid h-12 w-12 place-items-center rounded-full bg-emerald-50 text-emerald-700">
+                        <i data-lucide="message-circle" class="h-6 w-6"></i>
+                    </div>
+                    <h2 class="mt-3 text-lg font-semibold text-slate-900">Capture your first WhatsApp lead</h2>
+                    <p class="mx-auto mt-1 max-w-xl text-sm leading-6 text-slate-600">Finish connecting WhatsApp, install the widget on your website, and send a test enquiry. New leads will appear here automatically.</p>
+                    <a class="mt-4 inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700" href="/owner/onboarding">
+                        <i data-lucide="list-checks" class="h-4 w-4"></i>
+                        <span>Continue setup</span>
+                    </a>
+                </div>
+            }
         }
         else
         {

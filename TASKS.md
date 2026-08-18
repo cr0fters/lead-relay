@@ -164,6 +164,8 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
 - [ ] Clarify the source of each lead and whether a conversation is a test.
 - [ ] Prevent unsupported outbound WhatsApp free-form sends outside Meta's customer-service window; guide owners to approved templates where required.
 - [ ] Add a minimal empty-state experience that links a new owner back to onboarding and widget installation.
+  - [x] distinguish first-run and filtered-empty inbox states and link first-run owners to setup
+  - [ ] confirm the authoritative CI build and tests for this milestone
 
 ## Priority 0: landing page and product communication
 
