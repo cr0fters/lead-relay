@@ -167,6 +167,10 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
             entity.Property(x => x.PasswordHash).HasColumnName("PasswordHash");
             entity.Property(x => x.ResetTokenHash).HasColumnName("ResetTokenHash");
             entity.Property(x => x.ResetTokenExpiresAtUtc).HasColumnName("ResetTokenExpiresAtUtc");
+            entity.Property(x => x.EmailVerificationTokenHash).HasColumnName("EmailVerificationTokenHash").HasMaxLength(64).IsConcurrencyToken();
+            entity.Property(x => x.EmailVerificationTokenExpiresAtUtc).HasColumnName("EmailVerificationTokenExpiresAtUtc");
+            entity.Property(x => x.EmailVerificationSentAtUtc).HasColumnName("EmailVerificationSentAtUtc");
+            entity.Property(x => x.EmailVerifiedAtUtc).HasColumnName("EmailVerifiedAtUtc");
             entity.Property(x => x.UpdatedAtUtc).HasColumnName("UpdatedAtUtc");
 
             entity.HasOne<SiteRecord>()

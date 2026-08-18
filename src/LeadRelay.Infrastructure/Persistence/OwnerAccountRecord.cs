@@ -6,5 +6,9 @@ public sealed class OwnerAccountRecord
     public string? PasswordHash { get; set; }
     public string? ResetTokenHash { get; set; }
     public DateTimeOffset? ResetTokenExpiresAtUtc { get; set; }
+    public string? EmailVerificationTokenHash { get; set; }
+    public DateTimeOffset? EmailVerificationTokenExpiresAtUtc { get; set; }
+    public DateTimeOffset? EmailVerificationSentAtUtc { get; set; }
+    public DateTimeOffset? EmailVerifiedAtUtc { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }
 }

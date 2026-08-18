@@ -36,7 +36,7 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
 
 - [x] Self-service account registration with password creation.
 - [x] Sign in, sign out, forgotten-password, and password-reset flows.
-- [ ] Add email verification before an account can activate billing or publish a widget.
+- [x] Add email verification before an account can activate billing or publish a widget.
   - issue a single-use, expiring verification token
   - resend safely with rate limiting and non-enumerating responses
   - record `EmailVerifiedAtUtc`

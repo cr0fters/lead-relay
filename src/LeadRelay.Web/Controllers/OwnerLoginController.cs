@@ -8,12 +8,15 @@ namespace LeadRelay.Web.Controllers;
 public sealed class OwnerLoginController(
     OwnerSessionService sessions,
     IOwnerPasswordAuthService passwordAuth,
-    IOwnerRegistrationService registration) : Controller
+    IOwnerRegistrationService registration,
+    IOwnerEmailVerificationService emailVerification,
+    IConfiguration configuration,
+    ILogger<OwnerLoginController> logger) : Controller
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     [HttpGet("/owner/login")]
-    public IActionResult Login([FromQuery] string? returnUrl = null, [FromQuery] string? reset = null)
+    public IActionResult Login([FromQuery] string? returnUrl = null, [FromQuery] string? reset = null, [FromQuery] string? verified = null)
     {
         if (!sessions.IsConfigured)
             return Problem("Login workspace is not configured.", statusCode: StatusCodes.Status500InternalServerError);
@@ -23,7 +26,9 @@ public sealed class OwnerLoginController(
             ReturnUrl = NormalizeReturnUrl(returnUrl),
             Info = string.Equals(reset, "ok", StringComparison.OrdinalIgnoreCase)
                 ? "Password updated. You can now sign in."
-                : null
+                : string.Equals(verified, "ok", StringComparison.OrdinalIgnoreCase)
+                    ? "Email verified. You can now sign in."
+                    : null
         });
     }
 
@@ -97,7 +102,19 @@ public sealed class OwnerLoginController(
 
         var sessionToken = sessions.CreateLoginToken(result.Auth.SiteId, result.Auth.OwnerEmail, TimeSpan.FromHours(12));
         sessions.SignIn(HttpContext, sessionToken);
-        return Redirect(model.ReturnUrl == "/owner" ? "/owner/onboarding" : model.ReturnUrl);
+        var sent = false;
+        try
+        {
+            sent = await emailVerification.RequestAsync(
+                result.Auth.SiteId,
+                token => BuildVerificationUrl(result.Auth.OwnerEmail, token),
+                ct);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            logger.LogError(exception, "Initial email verification delivery failed for site {SiteId}.", result.Auth.SiteId);
+        }
+        return Redirect(sent ? "/owner/verify-email?sent=1" : "/owner/verify-email?delivery=failed");
     }
 
     [HttpPost("/owner/login")]
@@ -124,7 +141,59 @@ public sealed class OwnerLoginController(
 
         var sessionToken = sessions.CreateLoginToken(auth.SiteId, auth.OwnerEmail, TimeSpan.FromHours(12));
         sessions.SignIn(HttpContext, sessionToken);
+        if (!await emailVerification.IsVerifiedAsync(auth.SiteId, ct))
+            return Redirect("/owner/verify-email");
         return Redirect(model.ReturnUrl);
+    }
+
+    [HttpGet("/owner/verify-email")]
+    public async Task<IActionResult> VerifyEmail([FromQuery] string? sent = null, [FromQuery] string? delivery = null, CancellationToken ct = default)
+    {
+        var auth = GetAuthContext();
+        if (auth is null) return Redirect("/owner/login");
+        if (await emailVerification.IsVerifiedAsync(auth.SiteId, ct))
+            return Redirect("/owner/onboarding");
+
+        return View(new VerifyEmailModel
+        {
+            Email = auth.OwnerEmail,
+            Info = string.Equals(sent, "1", StringComparison.Ordinal) || string.Equals(delivery, "resent", StringComparison.Ordinal)
+                ? "Verification email sent. Check your inbox and spam folder."
+                : null,
+            Error = string.Equals(delivery, "failed", StringComparison.Ordinal)
+                ? "We could not send the verification email. Please try again."
+                : null
+        });
+    }
+
+    [HttpPost("/owner/verify-email/resend")]
+    [ValidateAntiForgeryToken]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> ResendVerification(CancellationToken ct)
+    {
+        var auth = GetAuthContext();
+        if (auth is null) return Redirect("/owner/login");
+
+        try
+        {
+            await emailVerification.RequestAsync(
+                auth.SiteId,
+                token => BuildVerificationUrl(auth.OwnerEmail, token),
+                ct);
+            return Redirect("/owner/verify-email?delivery=resent");
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            logger.LogError(exception, "Email verification resend failed for site {SiteId}.", auth.SiteId);
+            return Redirect("/owner/verify-email?delivery=failed");
+        }
+    }
+
+    [HttpGet("/owner/verify-email/confirm")]
+    public async Task<IActionResult> ConfirmEmail([FromQuery] string? email, [FromQuery] string? token, CancellationToken ct)
+    {
+        var verified = await emailVerification.VerifyAsync(email, token, ct);
+        return View("VerifyEmailConfirmed", new VerifyEmailConfirmedModel { Verified = verified });
     }
 
     [HttpGet("/owner/password/forgot")]
@@ -215,6 +284,20 @@ public sealed class OwnerLoginController(
         return returnUrl;
     }
 
+    private OwnerAuthContext? GetAuthContext()
+        => HttpContext.Items.TryGetValue(OwnerAuthMiddleware.ContextKey, out var value)
+            ? value as OwnerAuthContext
+            : null;
+
+    private string BuildVerificationUrl(string email, string token)
+    {
+        var configured = (configuration["PublicBaseUrl"] ?? "").TrimEnd('/');
+        var origin = Uri.TryCreate(configured, UriKind.Absolute, out var publicUri)
+            ? $"{publicUri.Scheme}://{publicUri.Authority}"
+            : $"{Request.Scheme}://{Request.Host}";
+        return $"{origin}/owner/verify-email/confirm?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(token)}";
+    }
+
     public sealed class OwnerLoginModel
     {
         public string? Email { get; set; }
@@ -250,5 +333,17 @@ public sealed class OwnerLoginController(
         public string? ConfirmPassword { get; set; }
         public string ReturnUrl { get; set; } = "/owner";
         public string? Error { get; set; }
+    }
+
+    public sealed class VerifyEmailModel
+    {
+        public string Email { get; set; } = "";
+        public string? Info { get; set; }
+        public string? Error { get; set; }
+    }
+
+    public sealed class VerifyEmailConfirmedModel
+    {
+        public bool Verified { get; set; }
     }
 }

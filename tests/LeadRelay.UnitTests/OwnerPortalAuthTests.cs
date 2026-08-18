@@ -151,6 +151,22 @@ public sealed class OwnerPortalAuthTests
         Assert.That(nextCalled, Is.True);
     }
 
+    [Test]
+    public async Task middleware_allows_email_confirmation_link_without_authentication()
+    {
+        var nextCalled = false;
+        var middleware = new OwnerAuthMiddleware(_ =>
+        {
+            nextCalled = true;
+            return Task.CompletedTask;
+        });
+        var context = CreateContext("/owner/verify-email/confirm?token=test");
+
+        await middleware.Invoke(context, CreateSessionService("test-secret"));
+
+        Assert.That(nextCalled, Is.True);
+    }
+
     private static OwnerSessionService CreateSessionService(string secret)
     {
         return new OwnerSessionService(

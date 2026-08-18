@@ -2,6 +2,8 @@ using LeadRelay.Web.Controllers;
 using LeadRelay.Web.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
 
 namespace LeadRelay.UnitTests;
@@ -62,16 +64,18 @@ public sealed class OwnerLoginControllerTests
     }
 
     [Test]
-    public async Task register_with_valid_input_redirects_to_onboarding()
+    public async Task register_with_valid_input_sends_verification_and_redirects_to_verify_email()
     {
         OwnerRegistrationRequest? request = null;
+        var verification = new FakeEmailVerificationService();
         var controller = BuildController(
             new FakePasswordAuthService(),
             new FakeOwnerRegistrationService
             {
                 OnRegister = r => request = r,
                 Result = OwnerRegistrationResult.Success(new OwnerAuthContext("site_new", "new-owner@example.com"))
-            });
+            },
+            verification);
 
         var result = await controller.RegisterPost(new OwnerLoginController.RegisterModel
         {
@@ -92,12 +96,33 @@ public sealed class OwnerLoginControllerTests
         }, CancellationToken.None);
 
         Assert.That(result, Is.TypeOf<RedirectResult>());
-        Assert.That(((RedirectResult)result).Url, Is.EqualTo("/owner/onboarding"));
+        Assert.That(((RedirectResult)result).Url, Is.EqualTo("/owner/verify-email?sent=1"));
+        Assert.That(verification.RequestedSiteIds, Is.EqualTo(new[] { "site_new" }));
         Assert.That(request, Is.Not.Null);
         Assert.That(request!.BusinessSummary, Is.EqualTo("Interior design studio for family homes."));
         Assert.That(request.Fields, Is.Not.Null);
         Assert.That(request.Fields!.Count, Is.EqualTo(1));
         Assert.That(request.Fields[0].Id, Is.EqualTo("timeline"));
+    }
+
+    [Test]
+    public async Task login_with_unverified_email_redirects_to_verification()
+    {
+        var passwordAuth = new FakePasswordAuthService
+        {
+            ValidateResult = new OwnerAuthContext("site_demo", "owner@example.com")
+        };
+        var verification = new FakeEmailVerificationService { IsVerified = false };
+        var controller = BuildController(passwordAuth, new FakeOwnerRegistrationService(), verification);
+
+        var result = await controller.LoginPost(new OwnerLoginController.OwnerLoginModel
+        {
+            Email = "owner@example.com",
+            Password = "valid-password",
+            ReturnUrl = "/owner"
+        }, CancellationToken.None);
+
+        Assert.That(((RedirectResult)result).Url, Is.EqualTo("/owner/verify-email"));
     }
 
     [Test]
@@ -119,11 +144,12 @@ public sealed class OwnerLoginControllerTests
     }
 
     private static OwnerLoginController BuildController(FakePasswordAuthService passwordAuth)
-        => BuildController(passwordAuth, new FakeOwnerRegistrationService());
+        => BuildController(passwordAuth, new FakeOwnerRegistrationService(), new FakeEmailVerificationService());
 
     private static OwnerLoginController BuildController(
         FakePasswordAuthService passwordAuth,
-        FakeOwnerRegistrationService? registration)
+        FakeOwnerRegistrationService? registration,
+        FakeEmailVerificationService? verification = null)
     {
         var sessions = new OwnerSessionService(
             Microsoft.Extensions.Options.Options.Create(new OwnerPortalOptions
@@ -135,7 +161,16 @@ public sealed class OwnerLoginControllerTests
             }),
             new LeadRelay.Infrastructure.Persistence.InMemorySiteRepository());
 
-        var controller = new OwnerLoginController(sessions, passwordAuth, registration ?? new FakeOwnerRegistrationService())
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["PublicBaseUrl"] = "https://leadrelay.test" })
+            .Build();
+        var controller = new OwnerLoginController(
+            sessions,
+            passwordAuth,
+            registration ?? new FakeOwnerRegistrationService(),
+            verification ?? new FakeEmailVerificationService(),
+            configuration,
+            NullLogger<OwnerLoginController>.Instance)
         {
             ControllerContext = new ControllerContext
             {
@@ -145,6 +180,26 @@ public sealed class OwnerLoginControllerTests
         controller.HttpContext.Request.Scheme = "https";
         controller.HttpContext.Request.Host = new HostString("leadrelay.test");
         return controller;
+    }
+
+    private sealed class FakeEmailVerificationService : IOwnerEmailVerificationService
+    {
+        public bool IsVerified { get; set; } = true;
+        public bool SendResult { get; set; } = true;
+        public List<string> RequestedSiteIds { get; } = [];
+
+        public Task<bool> IsVerifiedAsync(string siteId, CancellationToken ct)
+            => Task.FromResult(IsVerified);
+
+        public Task<bool> RequestAsync(string siteId, Func<string, string> verificationUrlFactory, CancellationToken ct)
+        {
+            RequestedSiteIds.Add(siteId);
+            _ = verificationUrlFactory("verification-token");
+            return Task.FromResult(SendResult);
+        }
+
+        public Task<bool> VerifyAsync(string? email, string? token, CancellationToken ct)
+            => Task.FromResult(IsVerified);
     }
 
     private sealed class FakePasswordAuthService : IOwnerPasswordAuthService

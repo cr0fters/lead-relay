@@ -10,6 +10,7 @@ namespace LeadRelay.Web.Controllers;
 public sealed class WidgetController(
     ISiteRepository sites,
     WhatsAppOnboardingService onboarding,
+    IOwnerEmailVerificationService emailVerification,
     IConfiguration configuration,
     ILogger<WidgetController> logger) : Controller
 {
@@ -18,6 +19,13 @@ public sealed class WidgetController(
     {
         var site = await sites.GetByIdAsync(siteId, ct);
         if (site is null) return Unauthorized();
+        if (!await emailVerification.IsVerifiedAsync(site.Id, ct))
+        {
+            Response.Headers.CacheControl = "no-store";
+            return Content(
+                "console.warn(\"LeadRelay: widget unavailable until the account email is verified.\");",
+                "application/javascript; charset=utf-8");
+        }
         if (string.IsNullOrWhiteSpace(site.WhatsAppNumber))
         {
             Response.Headers.CacheControl = "no-store";

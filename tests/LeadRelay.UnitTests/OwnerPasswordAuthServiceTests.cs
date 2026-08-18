@@ -96,6 +96,38 @@ public sealed class OwnerPasswordAuthServiceTests
         Assert.That(email.PlainCalls[0].Subject, Is.EqualTo("Reset your LeadRelay password"));
     }
 
+    [Test]
+    public async Task completing_password_reset_also_verifies_email_address()
+    {
+        using var db = CreateDb();
+        db.Sites.Add(new SiteRecord
+        {
+            Id = "site_demo",
+            Name = "Demo Site",
+            OwnerEmail = "owner@example.com",
+            WhatsAppNumber = "447000000000"
+        });
+        await db.SaveChangesAsync();
+        var now = new DateTimeOffset(2026, 2, 15, 12, 0, 0, TimeSpan.Zero);
+        var service = new OwnerPasswordAuthService(
+            db,
+            new FixedClock(now),
+            new RecordingEmailSender(),
+            Options.Create(new OwnerPortalOptions { SigningSecret = "secret", PasswordResetTtlMinutes = 30 }),
+            Options.Create(new PostmarkOptions()));
+        string? token = null;
+        await service.RequestPasswordResetAsync(
+            "owner@example.com",
+            value => { token = value; return $"https://leadrelay.test/{value}"; },
+            null,
+            CancellationToken.None);
+
+        var reset = await service.ResetPasswordAsync("owner@example.com", token, "new-password", CancellationToken.None);
+
+        Assert.That(reset, Is.True);
+        Assert.That((await db.OwnerAccounts.SingleAsync()).EmailVerifiedAtUtc, Is.EqualTo(now));
+    }
+
     private static LeadRelayDbContext CreateDb()
     {
         var options = new DbContextOptionsBuilder<LeadRelayDbContext>()

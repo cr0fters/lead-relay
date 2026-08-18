@@ -87,6 +87,7 @@ builder.Services.Configure<OwnerPortalOptions>(builder.Configuration.GetSection(
 builder.Services.AddScoped<OwnerSessionService>();
 builder.Services.AddScoped<IOwnerPasswordAuthService, OwnerPasswordAuthService>();
 builder.Services.AddScoped<IOwnerRegistrationService, OwnerRegistrationService>();
+builder.Services.AddScoped<IOwnerEmailVerificationService, OwnerEmailVerificationService>();
 builder.Services.AddScoped<IMessageChannel, WhatsAppMessageChannel>();
 builder.Services.AddScoped<IMessageChannel, EmailMessageChannel>();
 builder.Services.AddScoped<IMessageDispatcher, MessageDispatcher>();

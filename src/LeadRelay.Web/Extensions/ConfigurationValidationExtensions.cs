@@ -15,6 +15,12 @@ public static class ConfigurationValidationExtensions
         Require(builder.Configuration, "ConnectionStrings:LeadRelay", missing);
         Require(builder.Configuration, "AdminAuth:Token", missing);
         Require(builder.Configuration, "OwnerPortal:SigningSecret", missing);
+        Require(builder.Configuration, "PublicBaseUrl", missing);
+        if (!IsValidPublicBaseUrl(builder.Configuration["PublicBaseUrl"]) &&
+            !missing.Contains("PublicBaseUrl", StringComparer.Ordinal))
+        {
+            missing.Add("PublicBaseUrl (must be an absolute HTTPS URL)");
+        }
         Require(builder.Configuration, "Postmark:ServerToken", missing);
         Require(builder.Configuration, "Postmark:FromEmail", missing);
         Require(builder.Configuration, "WhatsApp:VerifyToken", missing);
@@ -65,4 +71,11 @@ public static class ConfigurationValidationExtensions
             return false;
         }
     }
+
+    private static bool IsValidPublicBaseUrl(string? value)
+        => Uri.TryCreate(value?.Trim(), UriKind.Absolute, out var uri) &&
+           string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) &&
+           string.IsNullOrEmpty(uri.UserInfo) &&
+           string.IsNullOrEmpty(uri.Query) &&
+           string.IsNullOrEmpty(uri.Fragment);
 }

@@ -116,6 +116,10 @@ public sealed class OwnerPasswordAuthService(
         account.PasswordHash = _hasher.HashPassword(account, newPassword!);
         account.ResetTokenHash = null;
         account.ResetTokenExpiresAtUtc = null;
+        // Completing an emailed password-reset link also proves control of the address.
+        account.EmailVerifiedAtUtc ??= clock.UtcNow;
+        account.EmailVerificationTokenHash = null;
+        account.EmailVerificationTokenExpiresAtUtc = null;
         account.UpdatedAtUtc = clock.UtcNow;
 
         await db.SaveChangesAsync(ct);

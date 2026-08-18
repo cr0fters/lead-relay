@@ -32,6 +32,12 @@ public sealed class OwnerAuthMiddleware(RequestDelegate next)
             return;
         }
 
+        if (context.Request.Path.StartsWithSegments("/owner/verify-email/confirm", StringComparison.OrdinalIgnoreCase))
+        {
+            await _next(context);
+            return;
+        }
+
         var token = sessions.GetSessionToken(context);
         var auth = await sessions.ValidateAsync(token, context.RequestAborted);
         if (auth is null)
