@@ -136,6 +136,32 @@ public sealed class InMemoryLeadRepository : ILeadRepository
         return Task.FromResult(true);
     }
 
+    public Task<bool> UpdateProjectFollowUpAsync(
+        Guid leadId,
+        string siteId,
+        string? ownerNotes,
+        string? nextAction,
+        DateTimeOffset? nextActionAtUtc,
+        DateTimeOffset updatedAtUtc,
+        CancellationToken ct)
+    {
+        var normalizedSiteId = (siteId ?? "").Trim();
+        var normalizedNotes = NormalizeText(ownerNotes);
+        var normalizedAction = NormalizeText(nextAction);
+        if (normalizedNotes?.Length > 4000 ||
+            normalizedAction?.Length > 500 ||
+            (normalizedAction is null && nextActionAtUtc is not null))
+            return Task.FromResult(false);
+        if (!Store.TryGetValue(leadId, out var lead) ||
+            !string.Equals(lead.SiteId, normalizedSiteId, StringComparison.Ordinal))
+            return Task.FromResult(false);
+
+        lead.OwnerNotes = normalizedNotes;
+        lead.NextAction = normalizedAction;
+        lead.NextActionAtUtc = lead.NextAction is null ? null : nextActionAtUtc;
+        return Task.FromResult(true);
+    }
+
     public Task<Lead?> GetByIdAsync(Guid id, CancellationToken ct)
     {
         Store.TryGetValue(id, out var lead);
@@ -158,5 +184,11 @@ public sealed class InMemoryLeadRepository : ILeadRepository
     {
         return !string.IsNullOrWhiteSpace(value) &&
                value.Contains(query, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? NormalizeText(string? value)
+    {
+        var normalized = (value ?? "").Trim();
+        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
     }
 }

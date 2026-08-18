@@ -240,6 +240,41 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
         return true;
     }
 
+    public async Task<bool> UpdateProjectFollowUpAsync(
+        Guid leadId,
+        string siteId,
+        string? ownerNotes,
+        string? nextAction,
+        DateTimeOffset? nextActionAtUtc,
+        DateTimeOffset updatedAtUtc,
+        CancellationToken ct)
+    {
+        var normalizedSiteId = (siteId ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(normalizedSiteId)) return false;
+
+        var normalizedNotes = NormalizeText(ownerNotes);
+        var normalizedAction = NormalizeText(nextAction);
+        if (normalizedNotes?.Length > 4000 ||
+            normalizedAction?.Length > 500 ||
+            (normalizedAction is null && nextActionAtUtc is not null))
+            return false;
+
+        var lead = await db.Leads.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == leadId && x.SiteId == normalizedSiteId, ct);
+        if (lead is null) return false;
+
+        var project = await db.Projects
+            .FirstOrDefaultAsync(x => x.Id == lead.ProjectId && x.SiteId == normalizedSiteId, ct);
+        if (project is null) return false;
+
+        project.OwnerNotes = normalizedNotes;
+        project.NextAction = normalizedAction;
+        project.NextActionAtUtc = project.NextAction is null ? null : nextActionAtUtc;
+        project.UpdatedAtUtc = updatedAtUtc;
+        await db.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task<Lead?> GetByIdAsync(Guid id, CancellationToken ct)
     {
         var record = await db.Leads.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
@@ -278,6 +313,9 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
             IsBotPaused = record.IsBotPaused,
             ProjectStage = ProjectStatuses.Normalize(project?.Status),
             ProjectSummary = project?.Summary,
+            OwnerNotes = project?.OwnerNotes,
+            NextAction = project?.NextAction,
+            NextActionAtUtc = project?.NextActionAtUtc,
             Name = customer?.Name,
             Email = customer?.Email,
             Phone = customer?.Phone,

@@ -103,7 +103,7 @@ public sealed class EfLeadRepositoryIdentityTests
     }
 
     [Test]
-    public async Task stage_update_is_tenant_scoped_and_records_each_actual_change_once()
+    public async Task project_updates_are_tenant_scoped_and_stage_changes_are_recorded_once()
     {
         await using var db = CreateDb();
         var repository = new EfLeadRepository(db);
@@ -178,6 +178,46 @@ public sealed class EfLeadRepositoryIdentityTests
             CancellationToken.None);
         Assert.That(filtered.TotalCount, Is.EqualTo(1));
         Assert.That(filtered.Items[0].ProjectStage, Is.EqualTo(ProjectStatuses.Qualified));
+
+        var crossTenantFollowUp = await repository.UpdateProjectFollowUpAsync(
+            leadId,
+            otherSiteId,
+            "Private note",
+            "Call customer",
+            changedAt.AddDays(1),
+            changedAt.AddMinutes(4),
+            CancellationToken.None);
+        var followUpUpdated = await repository.UpdateProjectFollowUpAsync(
+            leadId,
+            siteId,
+            "  Private note  ",
+            "  Call customer  ",
+            changedAt.AddDays(1),
+            changedAt.AddMinutes(5),
+            CancellationToken.None);
+
+        Assert.That(crossTenantFollowUp, Is.False);
+        Assert.That(followUpUpdated, Is.True);
+        db.ChangeTracker.Clear();
+        var leadWithFollowUp = await repository.GetByIdForSiteAsync(leadId, siteId, CancellationToken.None);
+        Assert.That(leadWithFollowUp?.OwnerNotes, Is.EqualTo("Private note"));
+        Assert.That(leadWithFollowUp?.NextAction, Is.EqualTo("Call customer"));
+        Assert.That(leadWithFollowUp?.NextActionAtUtc, Is.EqualTo(changedAt.AddDays(1)));
+
+        var followUpCleared = await repository.UpdateProjectFollowUpAsync(
+            leadId,
+            siteId,
+            "  ",
+            null,
+            changedAt.AddDays(2),
+            changedAt.AddMinutes(6),
+            CancellationToken.None);
+        Assert.That(followUpCleared, Is.True);
+        db.ChangeTracker.Clear();
+        var clearedLead = await repository.GetByIdForSiteAsync(leadId, siteId, CancellationToken.None);
+        Assert.That(clearedLead?.OwnerNotes, Is.Null);
+        Assert.That(clearedLead?.NextAction, Is.Null);
+        Assert.That(clearedLead?.NextActionAtUtc, Is.Null);
     }
 
     private static LeadRelayDbContext CreateDb()

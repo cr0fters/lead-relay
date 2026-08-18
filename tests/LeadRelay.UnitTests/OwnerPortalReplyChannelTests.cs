@@ -260,6 +260,49 @@ public sealed class OwnerPortalReplyChannelTests
         Assert.That(repository.LastSearchCriteria.PageSize, Is.EqualTo(50));
     }
 
+    [Test]
+    public async Task update_follow_up_saves_trimmed_notes_action_and_utc_due_date()
+    {
+        var siteId = InMemorySiteRepository.DefaultSiteId;
+        var lead = BuildLead(siteId);
+        var repository = new FakeLeadRepository(lead);
+        var controller = CreateController(repository, new InMemorySiteRepository(), siteId);
+
+        var result = await controller.UpdateFollowUp(
+            lead.Id,
+            "  Decision maker prefers email.  ",
+            "  Send proposal  ",
+            "2026-08-20T09:30",
+            CancellationToken.None);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        Assert.That(lead.OwnerNotes, Is.EqualTo("Decision maker prefers email."));
+        Assert.That(lead.NextAction, Is.EqualTo("Send proposal"));
+        Assert.That(lead.NextActionAtUtc,
+            Is.EqualTo(new DateTimeOffset(2026, 8, 20, 9, 30, 0, TimeSpan.Zero)));
+    }
+
+    [Test]
+    public async Task update_follow_up_requires_an_action_for_a_due_date()
+    {
+        var siteId = InMemorySiteRepository.DefaultSiteId;
+        var lead = BuildLead(siteId);
+        var repository = new FakeLeadRepository(lead);
+        var controller = CreateController(repository, new InMemorySiteRepository(), siteId);
+
+        var result = await controller.UpdateFollowUp(
+            lead.Id,
+            null,
+            null,
+            "2026-08-20T09:30",
+            CancellationToken.None);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        Assert.That(lead.NextActionAtUtc, Is.Null);
+        var model = ((ViewResult)result).Model as OwnerPortalController.OwnerLeadDetailModel;
+        Assert.That(model?.Error, Is.EqualTo("Add a next action before setting its due date."));
+    }
+
     private static Lead BuildLead(string siteId)
     {
         return new Lead
@@ -326,6 +369,24 @@ public sealed class OwnerPortalReplyChannelTests
                 _lead.ProjectStage = stage;
                 _lead.ProjectStageChanges.Add(new ProjectStageChange(previousStage, stage, changedAtUtc));
             }
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> UpdateProjectFollowUpAsync(
+            Guid leadId,
+            string siteId,
+            string? ownerNotes,
+            string? nextAction,
+            DateTimeOffset? nextActionAtUtc,
+            DateTimeOffset updatedAtUtc,
+            CancellationToken ct)
+        {
+            if (_lead.Id != leadId || _lead.SiteId != siteId)
+                return Task.FromResult(false);
+
+            _lead.OwnerNotes = ownerNotes;
+            _lead.NextAction = nextAction;
+            _lead.NextActionAtUtc = nextAction is null ? null : nextActionAtUtc;
             return Task.FromResult(true);
         }
 

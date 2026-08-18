@@ -142,6 +142,30 @@
                 </form>
             </section>
 
+            <section class="rounded-xl border border-slate-200 bg-white p-3 shadow-panel">
+                <div class="mb-2">
+                    <h3 class="text-sm font-semibold text-slate-900">Follow-up</h3>
+                    <p class="text-xs text-slate-500">Private notes and your next action for this lead.</p>
+                </div>
+                <form method="post" action="/owner/leads/@Model.Id/follow-up" class="space-y-2.5">
+                    @Html.AntiForgeryToken()
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-slate-700" for="owner-notes">Notes</label>
+                        <textarea id="owner-notes" name="ownerNotes" maxlength="4000" rows="4" class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 ring-slate-200 outline-none focus:ring" placeholder="Add private context for this lead...">@Model.OwnerNotes</textarea>
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-slate-700" for="next-action">Next action</label>
+                        <input id="next-action" name="nextAction" maxlength="500" type="text" value="@Model.NextAction" class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 ring-slate-200 outline-none focus:ring" placeholder="For example, send proposal" />
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-slate-700" for="next-action-at">Due (UTC)</label>
+                        <input id="next-action-at" name="nextActionAtUtc" type="datetime-local" value="@Model.NextActionAtInput" class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 ring-slate-200 outline-none focus:ring" />
+                        <p class="mt-1 text-xs text-slate-500">Leave blank if the next action has no due date.</p>
+                    </div>
+                    <button class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:border-slate-400" type="submit">Save follow-up</button>
+                </form>
+            </section>
+
             <section class="rounded-xl border border-slate-200 bg-white p-3 shadow-panel" x-data="{ editing: false }">
                 <div class="mb-2 flex items-center justify-between gap-2">
                     <h3 class="text-sm font-semibold text-slate-900">Fields</h3>

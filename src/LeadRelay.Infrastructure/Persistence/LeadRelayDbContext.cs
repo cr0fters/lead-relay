@@ -137,6 +137,9 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
             entity.Property(x => x.CustomerId).HasColumnName("CustomerId").IsRequired();
             entity.Property(x => x.Name).HasColumnName("Name").IsRequired();
             entity.Property(x => x.Summary).HasColumnName("Summary");
+            entity.Property(x => x.OwnerNotes).HasColumnName("OwnerNotes").HasMaxLength(4000);
+            entity.Property(x => x.NextAction).HasColumnName("NextAction").HasMaxLength(500);
+            entity.Property(x => x.NextActionAtUtc).HasColumnName("NextActionAtUtc");
             entity.Property(x => x.Status).HasColumnName("Status").HasMaxLength(32).IsRequired();
             entity.Property(x => x.StageChanges)
                 .HasColumnName("StageChangesJson")

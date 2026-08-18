@@ -152,6 +152,9 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
   - [x] filter/search by stage and date
   - [ ] confirm the authoritative CI build, tests, and migration validation for this milestone
 - [ ] Add owner notes and a next-action/reminder field to each lead.
+  - [x] persist tenant-scoped private notes, next action, and optional UTC due time
+  - [x] let owners view, edit, clear, and validate follow-up details from lead detail
+  - [ ] confirm the authoritative CI build, tests, and migration validation for this milestone
 - [ ] Add unread/new-lead indication so the inbox is operationally useful.
 - [ ] Add CSV export for leads and their core qualification fields.
 - [ ] Add safe single-lead deletion/anonymization and an account-level export/deletion workflow.

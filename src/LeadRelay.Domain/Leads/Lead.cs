@@ -14,6 +14,9 @@ public sealed class Lead
     public bool IsBotPaused { get; set; }
     public string ProjectStage { get; set; } = ProjectStatuses.New;
     public string? ProjectSummary { get; set; }
+    public string? OwnerNotes { get; set; }
+    public string? NextAction { get; set; }
+    public DateTimeOffset? NextActionAtUtc { get; set; }
     public string? Name { get; set; }
     public string? Email { get; set; }
     public string? Phone { get; set; }

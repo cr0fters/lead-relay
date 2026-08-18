@@ -9,6 +9,9 @@ public sealed class ProjectRecord
     public Guid CustomerId { get; set; }
     public string Name { get; set; } = "";
     public string? Summary { get; set; }
+    public string? OwnerNotes { get; set; }
+    public string? NextAction { get; set; }
+    public DateTimeOffset? NextActionAtUtc { get; set; }
     public string Status { get; set; } = ProjectStatuses.New;
     public List<ProjectStageChange> StageChanges { get; set; } = new();
     public Dictionary<string, string> Fields { get; set; } = new();

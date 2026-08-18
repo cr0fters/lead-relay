@@ -113,6 +113,69 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
         return View("Lead", model);
     }
 
+    [HttpPost("/owner/leads/{id:guid}/follow-up")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateFollowUp(
+        [FromRoute] Guid id,
+        [FromForm] string? ownerNotes,
+        [FromForm] string? nextAction,
+        [FromForm] string? nextActionAtUtc,
+        CancellationToken ct)
+    {
+        var auth = GetAuthContext();
+        if (auth is null) return Redirect("/owner/login");
+
+        var lead = await leads.GetByIdForSiteAsync(id, auth.SiteId, ct);
+        if (lead is null) return NotFound();
+
+        var site = await sites.GetByIdAsync(auth.SiteId, ct);
+        var model = ToDetailModel(auth, lead, site);
+        var normalizedNotes = NormalizeText(ownerNotes);
+        var normalizedAction = NormalizeText(nextAction);
+        var parsedDueAt = ParseUtcDateTime(nextActionAtUtc);
+        model.OwnerNotes = normalizedNotes;
+        model.NextAction = normalizedAction;
+        model.NextActionAtInput = (nextActionAtUtc ?? "").Trim();
+
+        if (normalizedNotes?.Length > 4000)
+        {
+            model.Error = "Notes must be 4,000 characters or fewer.";
+            return View("Lead", model);
+        }
+        if (normalizedAction?.Length > 500)
+        {
+            model.Error = "Next action must be 500 characters or fewer.";
+            return View("Lead", model);
+        }
+        if (!string.IsNullOrWhiteSpace(nextActionAtUtc) && parsedDueAt is null)
+        {
+            model.Error = "Enter a valid due date and time.";
+            return View("Lead", model);
+        }
+        if (normalizedAction is null && parsedDueAt is not null)
+        {
+            model.Error = "Add a next action before setting its due date.";
+            return View("Lead", model);
+        }
+
+        var updated = await leads.UpdateProjectFollowUpAsync(
+            id,
+            auth.SiteId,
+            normalizedNotes,
+            normalizedAction,
+            parsedDueAt,
+            DateTimeOffset.UtcNow,
+            ct);
+        if (!updated) return NotFound();
+
+        var refreshed = await leads.GetByIdForSiteAsync(id, auth.SiteId, ct);
+        if (refreshed is null) return NotFound();
+
+        var updatedModel = ToDetailModel(auth, refreshed, site);
+        updatedModel.Success = "Notes and next action updated.";
+        return View("Lead", updatedModel);
+    }
+
     [HttpGet("/owner/leads/{id:guid}")]
     public async Task<IActionResult> Lead([FromRoute] Guid id, CancellationToken ct)
     {
@@ -355,6 +418,10 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
                 .ToList(),
             CreatedAtUtc = lead.CreatedAtUtc,
             ProjectSummary = lead.ProjectSummary,
+            OwnerNotes = lead.OwnerNotes,
+            NextAction = lead.NextAction,
+            NextActionAtUtc = lead.NextActionAtUtc,
+            NextActionAtInput = lead.NextActionAtUtc?.UtcDateTime.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture) ?? "",
             Fields = lead.Fields,
             FieldDefinitions = BuildFieldDefinitions(site, lead.Fields),
             Conversation = lead.Conversation,
@@ -483,6 +550,20 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
     {
         var trimmed = (value ?? "").Trim();
         return string.IsNullOrWhiteSpace(trimmed) ? null : trimmed;
+    }
+
+    private static DateTimeOffset? ParseUtcDateTime(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+
+        return DateTime.TryParseExact(
+            value.Trim(),
+            "yyyy-MM-ddTHH:mm",
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+            out var parsed)
+            ? new DateTimeOffset(parsed)
+            : null;
     }
 
     private static string? NormalizeEmail(string? value)
@@ -624,6 +705,10 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
         public IReadOnlyList<OwnerStageOptionModel> StageOptions { get; set; } = Array.Empty<OwnerStageOptionModel>();
         public DateTimeOffset CreatedAtUtc { get; set; }
         public string? ProjectSummary { get; set; }
+        public string? OwnerNotes { get; set; }
+        public string? NextAction { get; set; }
+        public DateTimeOffset? NextActionAtUtc { get; set; }
+        public string NextActionAtInput { get; set; } = "";
         public IReadOnlyDictionary<string, string> Fields { get; set; } = new Dictionary<string, string>();
         public IReadOnlyList<OwnerFieldDefinitionModel> FieldDefinitions { get; set; } = Array.Empty<OwnerFieldDefinitionModel>();
         public IReadOnlyList<LeadConversationTurn> Conversation { get; set; } = Array.Empty<LeadConversationTurn>();
