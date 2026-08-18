@@ -20,6 +20,18 @@ var builder = WebApplication.CreateBuilder(args);
 builder.ValidateRequiredSecrets();
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        ? CookieSecurePolicy.SameAsRequest
+        : CookieSecurePolicy.Always;
+});
+builder.Services.Configure<Microsoft.AspNetCore.Mvc.CookieTempDataProviderOptions>(options =>
+{
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        ? CookieSecurePolicy.SameAsRequest
+        : CookieSecurePolicy.Always;
+});
 builder.Services.AddMemoryCache();
 builder.Services.AddRateLimiter(rateLimiting =>
 {
@@ -85,6 +97,7 @@ builder.Services.Configure<MessagingOptions>(builder.Configuration.GetSection("M
 builder.Services.Configure<AdminAuthOptions>(builder.Configuration.GetSection("AdminAuth"));
 builder.Services.Configure<OwnerPortalOptions>(builder.Configuration.GetSection("OwnerPortal"));
 builder.Services.AddScoped<OwnerSessionService>();
+builder.Services.AddScoped<IOwnerSessionVersionStore, EfOwnerSessionVersionStore>();
 builder.Services.AddScoped<IOwnerPasswordAuthService, OwnerPasswordAuthService>();
 builder.Services.AddScoped<IOwnerRegistrationService, OwnerRegistrationService>();
 builder.Services.AddScoped<IOwnerEmailVerificationService, OwnerEmailVerificationService>();

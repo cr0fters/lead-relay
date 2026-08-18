@@ -4,7 +4,10 @@ using Microsoft.Extensions.Options;
 
 namespace LeadRelay.Web.Security;
 
-public sealed class AdminTokenMiddleware(RequestDelegate next, IOptions<AdminAuthOptions> options)
+public sealed class AdminTokenMiddleware(
+    RequestDelegate next,
+    IOptions<AdminAuthOptions> options,
+    IWebHostEnvironment environment)
 {
     private readonly RequestDelegate _next = next;
     private readonly AdminAuthOptions _options = options.Value;
@@ -61,13 +64,7 @@ public sealed class AdminTokenMiddleware(RequestDelegate next, IOptions<AdminAut
 
     private void PersistTokenCookie(HttpContext context, string token)
     {
-        context.Response.Cookies.Append(_options.CookieName, token, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = context.Request.IsHttps,
-            SameSite = SameSiteMode.Lax,
-            IsEssential = true
-        });
+        context.Response.Cookies.Append(_options.CookieName, token, AuthCookieOptions.Create(context, environment));
     }
 
     private static bool TokenMatches(string expected, string? candidate)

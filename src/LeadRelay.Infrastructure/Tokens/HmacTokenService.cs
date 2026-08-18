@@ -9,7 +9,10 @@ public sealed class HmacTokenService(string secret) : ITokenService
     public string CreateSignedToken(Dictionary<string, string> claims, TimeSpan ttl)
     {
         var exp = DateTimeOffset.UtcNow.Add(ttl).ToUnixTimeSeconds();
-        var copy = new Dictionary<string, string>(claims) { ["exp"] = exp.ToString() };
+        var copy = new Dictionary<string, string>(claims)
+        {
+            ["exp"] = exp.ToString(System.Globalization.CultureInfo.InvariantCulture)
+        };
         var payload = Encode(copy);
         var sig = Sign(payload);
         return $"{payload}.{sig}";
@@ -29,9 +32,22 @@ public sealed class HmacTokenService(string secret) : ITokenService
         var expected = Sign(payload);
         if (!FixedTimeEquals(sig, expected)) return false;
 
-        var decoded = Decode(payload);
+        Dictionary<string, string> decoded;
+        try
+        {
+            decoded = Decode(payload);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+
         if (!decoded.TryGetValue("exp", out var expRaw)) return false;
-        if (!long.TryParse(expRaw, out var exp)) return false;
+        if (!long.TryParse(
+                expRaw,
+                System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var exp)) return false;
         if (DateTimeOffset.UtcNow.ToUnixTimeSeconds() > exp) return false;
 
         claims = decoded;

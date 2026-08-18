@@ -1,5 +1,6 @@
 using LeadRelay.Web.Security;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NUnit.Framework;
 
@@ -57,6 +58,7 @@ public sealed class AdminTokenMiddlewareTests
         await middleware.Invoke(context);
 
         Assert.That(nextCalled, Is.True);
+        Assert.That(context.Response.Headers.SetCookie.ToString(), Does.Contain("secure").IgnoreCase);
     }
 
     [Test]
@@ -130,7 +132,8 @@ public sealed class AdminTokenMiddlewareTests
                 onNext(context);
                 return Task.CompletedTask;
             },
-            Options.Create(options ?? new AdminAuthOptions { Token = "secret-token" }));
+            Options.Create(options ?? new AdminAuthOptions { Token = "secret-token" }),
+            new TestWebHostEnvironment(Environments.Production));
     }
 
     private static DefaultHttpContext CreateContext(string url)

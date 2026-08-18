@@ -107,7 +107,7 @@ public sealed class OwnerLoginController(
             return View("Register", model);
         }
 
-        var sessionToken = sessions.CreateLoginToken(result.Auth.SiteId, result.Auth.OwnerEmail, TimeSpan.FromHours(12));
+        var sessionToken = sessions.CreateLoginToken(result.Auth.SiteId, result.Auth.OwnerEmail, result.Auth.SessionVersion);
         sessions.SignIn(HttpContext, sessionToken);
         var sent = false;
         try
@@ -146,7 +146,7 @@ public sealed class OwnerLoginController(
             return View("Login", model);
         }
 
-        var sessionToken = sessions.CreateLoginToken(auth.SiteId, auth.OwnerEmail, TimeSpan.FromHours(12));
+        var sessionToken = sessions.CreateLoginToken(auth.SiteId, auth.OwnerEmail, auth.SessionVersion);
         sessions.SignIn(HttpContext, sessionToken);
         if (!await emailVerification.IsVerifiedAsync(auth.SiteId, ct))
             return Redirect("/owner/verify-email");

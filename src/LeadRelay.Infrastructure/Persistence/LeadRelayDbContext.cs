@@ -187,6 +187,7 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
             entity.Property(x => x.LegalDocumentsAcceptedAtUtc).HasColumnName("LegalDocumentsAcceptedAtUtc");
             entity.Property(x => x.TermsVersion).HasColumnName("TermsVersion").HasMaxLength(32);
             entity.Property(x => x.PrivacyPolicyVersion).HasColumnName("PrivacyPolicyVersion").HasMaxLength(32);
+            entity.Property(x => x.SessionVersion).HasColumnName("SessionVersion").HasDefaultValue(1L).IsConcurrencyToken();
             entity.Property(x => x.UpdatedAtUtc).HasColumnName("UpdatedAtUtc");
 
             entity.HasOne<SiteRecord>()

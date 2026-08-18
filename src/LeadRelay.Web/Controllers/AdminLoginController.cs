@@ -4,7 +4,9 @@ using Microsoft.Extensions.Options;
 
 namespace LeadRelay.Web.Controllers;
 
-public sealed class AdminLoginController(IOptions<AdminAuthOptions> options) : Controller
+public sealed class AdminLoginController(
+    IOptions<AdminAuthOptions> options,
+    IWebHostEnvironment environment) : Controller
 {
     private readonly AdminAuthOptions _options = options.Value;
 
@@ -32,13 +34,7 @@ public sealed class AdminLoginController(IOptions<AdminAuthOptions> options) : C
             return View("Login", model);
         }
 
-        Response.Cookies.Append(_options.CookieName, configuredToken, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = Request.IsHttps,
-            SameSite = SameSiteMode.Lax,
-            IsEssential = true
-        });
+        Response.Cookies.Append(_options.CookieName, configuredToken, AuthCookieOptions.Create(HttpContext, environment));
 
         return Redirect(NormalizeReturnUrl(model.ReturnUrl));
     }
@@ -47,7 +43,7 @@ public sealed class AdminLoginController(IOptions<AdminAuthOptions> options) : C
     [ValidateAntiForgeryToken]
     public IActionResult Logout()
     {
-        Response.Cookies.Delete(_options.CookieName);
+        Response.Cookies.Delete(_options.CookieName, AuthCookieOptions.Create(HttpContext, environment));
         return Redirect("/admin/login");
     }
 

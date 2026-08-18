@@ -3,6 +3,7 @@ using LeadRelay.Web.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
 
@@ -182,7 +183,9 @@ public sealed class OwnerLoginControllerTests
                 SessionTtlHours = 12,
                 PasswordResetTtlMinutes = 30
             }),
-            new LeadRelay.Infrastructure.Persistence.InMemorySiteRepository());
+            new LeadRelay.Infrastructure.Persistence.InMemorySiteRepository(),
+            new FakeSessionVersionStore(),
+            new TestWebHostEnvironment(Environments.Production));
 
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> { ["PublicBaseUrl"] = "https://leadrelay.test" })
@@ -203,6 +206,11 @@ public sealed class OwnerLoginControllerTests
         controller.HttpContext.Request.Scheme = "https";
         controller.HttpContext.Request.Host = new HostString("leadrelay.test");
         return controller;
+    }
+
+    private sealed class FakeSessionVersionStore : IOwnerSessionVersionStore
+    {
+        public Task<long?> GetAsync(string siteId, CancellationToken ct) => Task.FromResult<long?>(1);
     }
 
     private sealed class FakeEmailVerificationService : IOwnerEmailVerificationService

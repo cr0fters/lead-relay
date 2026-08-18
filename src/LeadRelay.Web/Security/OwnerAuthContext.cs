@@ -1,3 +1,3 @@
 namespace LeadRelay.Web.Security;
 
-public sealed record OwnerAuthContext(string SiteId, string OwnerEmail);
+public sealed record OwnerAuthContext(string SiteId, string OwnerEmail, long SessionVersion = 1);

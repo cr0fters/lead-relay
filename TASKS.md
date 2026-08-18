@@ -240,6 +240,10 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
   - [x] verify generated asset reproducibility in CI and document versions and licenses
   - [ ] confirm the authoritative CI frontend asset check, build, and tests for this milestone
 - [ ] Force secure cookies in production and review session invalidation, signing-key rotation, and logout behavior.
+  - [x] force owner, admin, antiforgery, and temporary-data cookies to use HTTPS in production and delete auth cookies with matching attributes
+  - [x] revoke existing owner sessions after password reset using a persisted per-account session version
+  - [x] support a bounded current-plus-previous signing-key rotation window and document the deployment procedure
+  - [ ] confirm the authoritative CI build, tests, and migration validation for this milestone
 - [ ] Remove admin-token query-string authentication before launch; use a dedicated admin identity or restrict the admin surface to trusted operators/network access.
 - [ ] Add dependency/security scanning and secret scanning to CI.
 - [ ] Confirm log redaction for access tokens, reset tokens, message content, and customer personal data.

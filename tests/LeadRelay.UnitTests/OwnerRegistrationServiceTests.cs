@@ -39,6 +39,7 @@ public sealed class OwnerRegistrationServiceTests
         Assert.That(result.Succeeded, Is.True);
         Assert.That(result.Auth, Is.Not.Null);
         Assert.That(result.Auth!.OwnerEmail, Is.EqualTo("owner@example.com"));
+        Assert.That(result.Auth.SessionVersion, Is.EqualTo(1));
 
         var site = await db.Sites.AsNoTracking().SingleAsync();
         Assert.That(site.Name, Is.EqualTo("Acme Interiors"));
@@ -52,6 +53,7 @@ public sealed class OwnerRegistrationServiceTests
         Assert.That(account.SiteId, Is.EqualTo(site.Id));
         Assert.That(account.UpdatedAtUtc, Is.EqualTo(now));
         Assert.That(account.PasswordHash, Is.Not.Null.And.Not.Empty);
+        Assert.That(account.SessionVersion, Is.EqualTo(1));
         Assert.That(account.LegalDocumentsAcceptedAtUtc, Is.EqualTo(now));
         Assert.That(account.TermsVersion, Is.EqualTo(LegalDocumentVersions.TermsAndConditions));
         Assert.That(account.PrivacyPolicyVersion, Is.EqualTo(LegalDocumentVersions.PrivacyPolicy));

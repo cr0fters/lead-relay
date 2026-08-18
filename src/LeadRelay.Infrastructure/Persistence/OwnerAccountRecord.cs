@@ -13,5 +13,6 @@ public sealed class OwnerAccountRecord
     public DateTimeOffset? LegalDocumentsAcceptedAtUtc { get; set; }
     public string? TermsVersion { get; set; }
     public string? PrivacyPolicyVersion { get; set; }
+    public long SessionVersion { get; set; } = 1;
     public DateTimeOffset UpdatedAtUtc { get; set; }
 }

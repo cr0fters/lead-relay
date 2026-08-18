@@ -125,7 +125,9 @@ public sealed class OwnerPasswordAuthServiceTests
         var reset = await service.ResetPasswordAsync("owner@example.com", token, "new-password", CancellationToken.None);
 
         Assert.That(reset, Is.True);
-        Assert.That((await db.OwnerAccounts.SingleAsync()).EmailVerifiedAtUtc, Is.EqualTo(now));
+        var account = await db.OwnerAccounts.SingleAsync();
+        Assert.That(account.EmailVerifiedAtUtc, Is.EqualTo(now));
+        Assert.That(account.SessionVersion, Is.EqualTo(2), "A password reset must revoke existing owner sessions.");
     }
 
     private static LeadRelayDbContext CreateDb()

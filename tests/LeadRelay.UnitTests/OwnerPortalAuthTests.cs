@@ -2,6 +2,7 @@ using LeadRelay.Infrastructure.Persistence;
 using LeadRelay.Infrastructure.Tokens;
 using LeadRelay.Web.Security;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NUnit.Framework;
 
@@ -13,8 +14,7 @@ public sealed class OwnerPortalAuthTests
     public async Task session_service_validates_site_owner_token()
     {
         var siteId = InMemorySiteRepository.DefaultSiteId;
-        var options = Options.Create(new OwnerPortalOptions { SigningSecret = "test-secret" });
-        var service = new OwnerSessionService(options, new InMemorySiteRepository());
+        var service = CreateSessionService("test-secret");
         var tokenService = new HmacTokenService("test-secret");
 
         var token = tokenService.CreateSignedToken(
@@ -36,8 +36,7 @@ public sealed class OwnerPortalAuthTests
     public async Task session_service_rejects_wrong_owner_email_claim()
     {
         var siteId = InMemorySiteRepository.DefaultSiteId;
-        var options = Options.Create(new OwnerPortalOptions { SigningSecret = "test-secret" });
-        var service = new OwnerSessionService(options, new InMemorySiteRepository());
+        var service = CreateSessionService("test-secret");
         var tokenService = new HmacTokenService("test-secret");
 
         var token = tokenService.CreateSignedToken(
@@ -51,6 +50,84 @@ public sealed class OwnerPortalAuthTests
         var auth = await service.ValidateAsync(token, CancellationToken.None);
 
         Assert.That(auth, Is.Null);
+    }
+
+    [Test]
+    public async Task session_service_accepts_previous_signing_secret_during_rotation()
+    {
+        var service = CreateSessionService("new-secret", "old-secret");
+        var token = new HmacTokenService("old-secret").CreateSignedToken(
+            new Dictionary<string, string>
+            {
+                ["siteId"] = InMemorySiteRepository.DefaultSiteId,
+                ["ownerEmail"] = "owner@example.com",
+                ["sessionVersion"] = "1"
+            },
+            TimeSpan.FromMinutes(5));
+
+        var auth = await service.ValidateAsync(token, CancellationToken.None);
+
+        Assert.That(auth, Is.Not.Null);
+    }
+
+    [Test]
+    public async Task session_service_rejects_revoked_session_version()
+    {
+        var service = CreateSessionService("test-secret", sessionVersion: 2);
+        var token = new HmacTokenService("test-secret").CreateSignedToken(
+            new Dictionary<string, string>
+            {
+                ["siteId"] = InMemorySiteRepository.DefaultSiteId,
+                ["ownerEmail"] = "owner@example.com",
+                ["sessionVersion"] = "1"
+            },
+            TimeSpan.FromMinutes(5));
+
+        var auth = await service.ValidateAsync(token, CancellationToken.None);
+
+        Assert.That(auth, Is.Null);
+    }
+
+    [Test]
+    public void sign_in_forces_secure_cookie_in_production_even_for_http_request()
+    {
+        var service = CreateSessionService("test-secret", environmentName: Environments.Production);
+        var context = CreateContext("/owner");
+
+        service.SignIn(context, "signed-token");
+
+        var cookie = context.Response.Headers.SetCookie.ToString();
+        Assert.That(cookie, Does.Contain("secure").IgnoreCase);
+        Assert.That(cookie, Does.Contain("httponly").IgnoreCase);
+        Assert.That(cookie, Does.Contain("samesite=lax").IgnoreCase);
+        Assert.That(cookie, Does.Contain("path=/").IgnoreCase);
+    }
+
+    [Test]
+    public void sign_in_allows_http_cookie_during_local_development()
+    {
+        var service = CreateSessionService("test-secret", environmentName: Environments.Development);
+        var context = CreateContext("/owner");
+
+        service.SignIn(context, "signed-token");
+
+        var cookie = context.Response.Headers.SetCookie.ToString();
+        Assert.That(cookie.Contains("secure", StringComparison.OrdinalIgnoreCase), Is.False);
+    }
+
+    [Test]
+    public void sign_out_deletes_cookie_with_matching_security_attributes()
+    {
+        var service = CreateSessionService("test-secret", environmentName: Environments.Production);
+        var context = CreateContext("/owner");
+
+        service.SignOut(context);
+
+        var cookie = context.Response.Headers.SetCookie.ToString();
+        Assert.That(cookie, Does.Contain("expires=").IgnoreCase);
+        Assert.That(cookie, Does.Contain("secure").IgnoreCase);
+        Assert.That(cookie, Does.Contain("samesite=lax").IgnoreCase);
+        Assert.That(cookie, Does.Contain("path=/").IgnoreCase);
     }
 
     [Test]
@@ -167,17 +244,24 @@ public sealed class OwnerPortalAuthTests
         Assert.That(nextCalled, Is.True);
     }
 
-    private static OwnerSessionService CreateSessionService(string secret)
+    private static OwnerSessionService CreateSessionService(
+        string secret,
+        string? previousSecret = null,
+        long sessionVersion = 1,
+        string environmentName = Environments.Development)
     {
         return new OwnerSessionService(
             Options.Create(new OwnerPortalOptions
             {
                 SigningSecret = secret,
+                PreviousSigningSecret = previousSecret,
                 SessionCookieName = "leadrelay_owner_session",
                 SessionTtlHours = 12,
                 PasswordResetTtlMinutes = 30
             }),
-            new InMemorySiteRepository());
+            new InMemorySiteRepository(),
+            new FakeSessionVersionStore(sessionVersion),
+            new TestWebHostEnvironment(environmentName));
     }
 
     private static DefaultHttpContext CreateContext(string url)
@@ -188,5 +272,10 @@ public sealed class OwnerPortalAuthTests
         context.Request.Path = uri.AbsolutePath;
         context.Request.QueryString = new QueryString(uri.Query);
         return context;
+    }
+
+    private sealed class FakeSessionVersionStore(long version) : IOwnerSessionVersionStore
+    {
+        public Task<long?> GetAsync(string siteId, CancellationToken ct) => Task.FromResult<long?>(version);
     }
 }

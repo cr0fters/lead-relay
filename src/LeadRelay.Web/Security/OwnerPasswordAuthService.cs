@@ -29,12 +29,12 @@ public sealed class OwnerPasswordAuthService(
         if (site is null) return null;
 
         var account = await db.OwnerAccounts.AsNoTracking().FirstOrDefaultAsync(x => x.SiteId == site.Id, ct);
-        if (account is null || string.IsNullOrWhiteSpace(account.PasswordHash)) return null;
+        if (account is null || string.IsNullOrWhiteSpace(account.PasswordHash) || account.SessionVersion < 1) return null;
 
         var result = _hasher.VerifyHashedPassword(account, account.PasswordHash, password);
         if (result == PasswordVerificationResult.Failed) return null;
 
-        return new OwnerAuthContext(site.Id, site.OwnerEmail);
+        return new OwnerAuthContext(site.Id, site.OwnerEmail, account.SessionVersion);
     }
 
     public async Task RequestPasswordResetAsync(string? email, Func<string, string> resetUrlFactory, string? userAgent, CancellationToken ct)
@@ -61,7 +61,15 @@ public sealed class OwnerPasswordAuthService(
         account.ResetTokenExpiresAtUtc = clock.UtcNow.AddMinutes(Math.Clamp(_options.PasswordResetTtlMinutes, 10, 1440));
         account.UpdatedAtUtc = clock.UtcNow;
 
-        await db.SaveChangesAsync(ct);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            db.Entry(account).State = EntityState.Detached;
+            return;
+        }
 
         var resetUrl = resetUrlFactory(rawToken);
         if (!string.IsNullOrWhiteSpace(_postmarkOptions.PasswordResetTemplateAlias) || _postmarkOptions.PasswordResetTemplateId.HasValue)
@@ -120,10 +128,19 @@ public sealed class OwnerPasswordAuthService(
         account.EmailVerifiedAtUtc ??= clock.UtcNow;
         account.EmailVerificationTokenHash = null;
         account.EmailVerificationTokenExpiresAtUtc = null;
+        account.SessionVersion = checked(account.SessionVersion + 1);
         account.UpdatedAtUtc = clock.UtcNow;
 
-        await db.SaveChangesAsync(ct);
-        return true;
+        try
+        {
+            await db.SaveChangesAsync(ct);
+            return true;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            db.Entry(account).State = EntityState.Detached;
+            return false;
+        }
     }
 
     private async Task<SiteRecord?> FindSiteByOwnerEmailAsync(string normalizedEmail, CancellationToken ct)

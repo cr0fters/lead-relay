@@ -53,6 +53,8 @@ Provide values via environment variables (double underscore maps to `:`):
 ConnectionStrings__LeadRelay=...
 AdminAuth__Token=...
 OwnerPortal__SigningSecret=...
+# Optional only during a signing-key rotation:
+OwnerPortal__PreviousSigningSecret=...
 OwnerPortal__EmailVerificationTtlHours=24
 OwnerPortal__EmailVerificationResendCooldownSeconds=60
 PublicBaseUrl=https://your-domain.com
@@ -70,6 +72,10 @@ ForwardedHeaders__Enabled=true
 ForwardedHeaders__KnownProxies__0=<YOUR_REVERSE_PROXY_IP>
 OpenAI__ApiKey=...
 ```
+
+To rotate the owner-session signing key without signing everyone out at once, move the existing key to `OwnerPortal__PreviousSigningSecret`, set a new high-entropy `OwnerPortal__SigningSecret`, and deploy both changes together. New sessions use only the current key. Remove the previous key after the configured owner session lifetime (12 hours by default). A successful password reset increments the account's session version and immediately invalidates its existing sessions regardless of key overlap.
+
+Normal logout expires the browser's owner cookie using the same path and security attributes with which it was issued. Owner tokens are stateless for the MVP, so if a copied session token may have been compromised, complete a password reset to revoke every existing owner session immediately.
 
 Leave forwarded headers disabled for direct hosting. When running behind a reverse proxy, enable them and add at least one proxy IP you operate or explicitly trust. The app fails startup if forwarding is enabled without a trusted proxy, and headers from every other source are ignored.
 
