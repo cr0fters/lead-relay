@@ -7,6 +7,12 @@ This file defines the default engineering standards for all contributors (human 
 - Applies to all new code.
 - Applies to modifications of existing code where practical.
 
+## Repository Work Files
+- `TASKS.md` is the source of truth for outstanding MVP work, priorities, dependencies, human actions, and exit criteria.
+- `WORKFLOW.md` defines how an autonomous backlog-progression run should select, execute, and stop a coherent milestone.
+- When the user says `Continue the MVP.`, read and follow `WORKFLOW.md` in addition to this file.
+- Specific instructions in the user's current prompt override the general autonomous workflow where they conflict. All durable safety, security, quality, and authorization rules in this file still apply unless the user explicitly changes them within their authority.
+
 ## Before Making Changes
 - Read this file, `TASKS.md`, and any documentation directly related to the requested area before editing.
 - Inspect `git status` first. Existing changes belong to the user and must be preserved unless the user explicitly asks to replace or revert them.
