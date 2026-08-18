@@ -14,6 +14,7 @@ Update this file when an autonomous MVP run discovers or completes a human actio
 
 ## Product and commercial decisions
 
+- [ ] Decide whether the production `/admin` surface will use dedicated operator authentication or be restricted to a trusted operator network; the shared-token login is not the intended launch control.
 - [ ] Choose the fixed monthly GBP launch price.
 - [ ] Define included lead, message, and AI usage plus the fair-use or hard-limit behavior.
 - [ ] Decide cancellation timing, refund policy, and whether displayed prices include tax.

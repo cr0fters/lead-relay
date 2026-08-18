@@ -54,7 +54,15 @@ public sealed class AdminLoginController(
         if (!returnUrl.StartsWith('/')) return "/admin";
         if (returnUrl.StartsWith("//", StringComparison.Ordinal)) return "/admin";
 
-        return returnUrl;
+        var separatorIndex = returnUrl.IndexOfAny(['?', '#']);
+        var path = separatorIndex >= 0 ? returnUrl[..separatorIndex] : returnUrl;
+        if (!path.Equals("/admin", StringComparison.OrdinalIgnoreCase) &&
+            !path.StartsWith("/admin/", StringComparison.OrdinalIgnoreCase))
+        {
+            return "/admin";
+        }
+
+        return path;
     }
 
     public sealed class AdminLoginModel

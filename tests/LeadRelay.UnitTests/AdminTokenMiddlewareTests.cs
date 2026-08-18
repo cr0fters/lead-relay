@@ -1,6 +1,5 @@
 using LeadRelay.Web.Security;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NUnit.Framework;
 
@@ -58,7 +57,8 @@ public sealed class AdminTokenMiddlewareTests
         await middleware.Invoke(context);
 
         Assert.That(nextCalled, Is.True);
-        Assert.That(context.Response.Headers.SetCookie.ToString(), Does.Contain("secure").IgnoreCase);
+        Assert.That(context.Response.Headers.SetCookie.ToString(), Is.Empty,
+            "Header authentication must not copy the shared token into a response cookie.");
     }
 
     [Test]
@@ -75,7 +75,7 @@ public sealed class AdminTokenMiddlewareTests
     }
 
     [Test]
-    public async Task admin_path_with_matching_query_token_is_authorized()
+    public async Task admin_path_with_matching_query_token_is_rejected_without_reflecting_it_into_redirect()
     {
         var nextCalled = false;
         var middleware = CreateMiddleware(_ => nextCalled = true);
@@ -83,7 +83,24 @@ public sealed class AdminTokenMiddlewareTests
 
         await middleware.Invoke(context);
 
-        Assert.That(nextCalled, Is.True);
+        Assert.That(nextCalled, Is.False);
+        Assert.That(context.Response.StatusCode, Is.EqualTo(StatusCodes.Status302Found));
+        Assert.That(context.Response.Headers.Location.ToString(), Is.EqualTo("/admin/login?returnUrl=%2Fadmin"));
+        Assert.That(context.Response.Headers.Location.ToString(), Does.Not.Contain("secret-token"));
+    }
+
+    [Test]
+    public async Task admin_api_query_token_is_rejected_without_redirect()
+    {
+        var nextCalled = false;
+        var middleware = CreateMiddleware(_ => nextCalled = true);
+        var context = CreateContext("/admin/api/sites/site_demo?adminToken=secret-token");
+
+        await middleware.Invoke(context);
+
+        Assert.That(nextCalled, Is.False);
+        Assert.That(context.Response.StatusCode, Is.EqualTo(StatusCodes.Status401Unauthorized));
+        Assert.That(context.Response.Headers.Location.ToString(), Is.Empty);
     }
 
     [Test]
@@ -132,8 +149,7 @@ public sealed class AdminTokenMiddlewareTests
                 onNext(context);
                 return Task.CompletedTask;
             },
-            Options.Create(options ?? new AdminAuthOptions { Token = "secret-token" }),
-            new TestWebHostEnvironment(Environments.Production));
+            Options.Create(options ?? new AdminAuthOptions { Token = "secret-token" }));
     }
 
     private static DefaultHttpContext CreateContext(string url)

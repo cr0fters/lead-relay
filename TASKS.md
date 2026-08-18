@@ -245,6 +245,8 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
   - [x] support a bounded current-plus-previous signing-key rotation window and document the deployment procedure
   - [ ] confirm the authoritative CI build, tests, and migration validation for this milestone
 - [ ] Remove admin-token query-string authentication before launch; use a dedicated admin identity or restrict the admin surface to trusted operators/network access.
+  - [x] reject query-string tokens, omit request queries from unauthenticated redirects, and avoid copying header/bearer tokens into cookies
+  - [ ] decide and implement either dedicated operator authentication or trusted-network access before launch
 - [ ] Add dependency/security scanning and secret scanning to CI.
 - [ ] Confirm log redaction for access tokens, reset tokens, message content, and customer personal data.
 - [ ] Add abuse protection for registration, password reset, expensive AI conversations, and outbound messaging, not only raw request counts.

@@ -43,6 +43,21 @@ public sealed class AdminLoginControllerTests
         Assert.That(cookie, Does.Contain("path=/").IgnoreCase);
     }
 
+    [Test]
+    public void login_strips_queries_from_return_url_before_redirecting()
+    {
+        var controller = CreateController();
+
+        var result = controller.LoginPost(new AdminLoginController.AdminLoginModel
+        {
+            Token = "secret-token",
+            ReturnUrl = "/admin/sites/site_demo?adminToken=must-not-survive"
+        });
+
+        Assert.That(result, Is.TypeOf<RedirectResult>());
+        Assert.That(((RedirectResult)result).Url, Is.EqualTo("/admin/sites/site_demo"));
+    }
+
     private static AdminLoginController CreateController()
     {
         return new AdminLoginController(

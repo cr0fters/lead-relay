@@ -196,7 +196,7 @@ All `/admin` endpoints are protected by a shared token configured under `AdminAu
 Set `AdminAuth:Token` via user-secrets (dev) or environment (non-dev).  
 For local testing:
 - Access `/admin` and enter the token in the login form.
-- You can still deep-link with `http://localhost:5180/admin?adminToken=your_token`.
+- Browser access uses the `POST /admin/login` form and its secure, HTTP-only session cookie. Admin tokens are deliberately rejected in query strings because URLs leak into history and logs.
 
 For API requests, send:
 - Header `X-Admin-Token: your_token`

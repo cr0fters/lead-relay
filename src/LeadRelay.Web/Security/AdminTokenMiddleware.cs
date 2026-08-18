@@ -6,8 +6,7 @@ namespace LeadRelay.Web.Security;
 
 public sealed class AdminTokenMiddleware(
     RequestDelegate next,
-    IOptions<AdminAuthOptions> options,
-    IWebHostEnvironment environment)
+    IOptions<AdminAuthOptions> options)
 {
     private readonly RequestDelegate _next = next;
     private readonly AdminAuthOptions _options = options.Value;
@@ -40,7 +39,6 @@ public sealed class AdminTokenMiddleware(
             return;
         }
 
-        PersistTokenCookie(context, requestToken!);
         await _next(context);
     }
 
@@ -56,15 +54,7 @@ public sealed class AdminTokenMiddleware(
         if (context.Request.Cookies.TryGetValue(_options.CookieName, out var cookieToken) && !string.IsNullOrWhiteSpace(cookieToken))
             return cookieToken.Trim();
 
-        if (context.Request.Query.TryGetValue(_options.QueryParameterName, out var queryToken) && !string.IsNullOrWhiteSpace(queryToken))
-            return queryToken.ToString().Trim();
-
         return null;
-    }
-
-    private void PersistTokenCookie(HttpContext context, string token)
-    {
-        context.Response.Cookies.Append(_options.CookieName, token, AuthCookieOptions.Create(context, environment));
     }
 
     private static bool TokenMatches(string expected, string? candidate)
@@ -85,7 +75,7 @@ public sealed class AdminTokenMiddleware(
     {
         if (!isApiRequest)
         {
-            var encoded = Uri.EscapeDataString(context.Request.Path + context.Request.QueryString);
+            var encoded = Uri.EscapeDataString(context.Request.Path);
             context.Response.Redirect($"/admin/login?returnUrl={encoded}");
             return Task.CompletedTask;
         }
