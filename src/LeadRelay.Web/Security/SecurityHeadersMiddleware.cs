@@ -16,11 +16,12 @@ public sealed class SecurityHeadersMiddleware(RequestDelegate next, IWebHostEnvi
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
         "upgrade-insecure-requests";
 
-    public Task InvokeAsync(HttpContext context)
+    public async Task InvokeAsync(HttpContext context)
     {
-        if (!environment.IsDevelopment())
+        var applySecurityHeaders = !environment.IsDevelopment();
+        var isHttps = context.Request.IsHttps;
+        if (applySecurityHeaders)
         {
-            var isHttps = context.Request.IsHttps;
             ApplyHeaders(context.Response, isHttps);
             context.Response.OnStarting(() =>
             {
@@ -29,7 +30,10 @@ public sealed class SecurityHeadersMiddleware(RequestDelegate next, IWebHostEnvi
             });
         }
 
-        return next(context);
+        await next(context);
+
+        if (applySecurityHeaders && !context.Response.HasStarted)
+            ApplyHeaders(context.Response, isHttps);
     }
 
     private static void ApplyHeaders(HttpResponse response, bool isHttps)
