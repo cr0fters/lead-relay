@@ -8,6 +8,7 @@ public interface ILeadRepository
     Task<IReadOnlyList<LeadSummary>> GetRecentAsync(int limit, CancellationToken ct);
     Task<IReadOnlyList<LeadSummary>> GetRecentBySiteAsync(string siteId, int limit, CancellationToken ct);
     Task<LeadPageResult> SearchBySiteAsync(string siteId, LeadSearchCriteria criteria, CancellationToken ct);
+    Task<IReadOnlyList<LeadExportRow>> GetExportBySiteAsync(string siteId, CancellationToken ct);
     Task<bool> UpdateProjectStageAsync(Guid leadId, string siteId, string stage, DateTimeOffset changedAtUtc, CancellationToken ct);
     Task<bool> UpdateProjectFollowUpAsync(
         Guid leadId,

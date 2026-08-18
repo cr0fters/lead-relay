@@ -157,6 +157,9 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
   - [ ] confirm the authoritative CI build, tests, and migration validation for this milestone
 - [ ] Add unread/new-lead indication so the inbox is operationally useful.
 - [ ] Add CSV export for leads and their core qualification fields.
+  - [x] export tenant-scoped contact, stage, follow-up, source channel, and qualification data from the inbox
+  - [x] protect spreadsheet consumers from CSV formula injection and exclude conversation transcripts
+  - [ ] confirm the authoritative CI build and tests for this milestone
 - [ ] Add safe single-lead deletion/anonymization and an account-level export/deletion workflow.
 - [ ] Clarify the source of each lead and whether a conversation is a test.
 - [ ] Prevent unsupported outbound WhatsApp free-form sends outside Meta's customer-service window; guide owners to approved templates where required.

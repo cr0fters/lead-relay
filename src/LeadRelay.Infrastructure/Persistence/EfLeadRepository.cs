@@ -208,6 +208,54 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
         return new LeadPageResult(items, totalCount, effectivePage, effectivePageSize);
     }
 
+    public async Task<IReadOnlyList<LeadExportRow>> GetExportBySiteAsync(string siteId, CancellationToken ct)
+    {
+        var normalizedSiteId = (siteId ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(normalizedSiteId)) return Array.Empty<LeadExportRow>();
+
+        var records = await (
+            from lead in db.Leads.AsNoTracking()
+            join customer in db.Customers.AsNoTracking()
+                on new { lead.SiteId, Id = lead.CustomerId }
+                equals new { customer.SiteId, customer.Id } into customerGroup
+            from customer in customerGroup.DefaultIfEmpty()
+            join project in db.Projects.AsNoTracking()
+                on new { lead.SiteId, Id = lead.ProjectId }
+                equals new { project.SiteId, project.Id }
+            where lead.SiteId == normalizedSiteId
+            orderby lead.CreatedAtUtc descending, lead.Id descending
+            select new
+            {
+                lead.Id,
+                lead.CreatedAtUtc,
+                lead.Channel,
+                Name = customer != null ? customer.Name : null,
+                Email = customer != null ? customer.Email : null,
+                Phone = customer != null ? customer.Phone : null,
+                ProjectStage = project.Status,
+                ProjectSummary = project.Summary,
+                project.OwnerNotes,
+                project.NextAction,
+                project.NextActionAtUtc,
+                project.Fields
+            }).ToListAsync(ct);
+
+        return records.Select(x => new LeadExportRow(
+                x.Id,
+                x.CreatedAtUtc,
+                x.Name,
+                x.Email,
+                x.Phone,
+                NormalizeChannel(x.Channel),
+                ProjectStatuses.Normalize(x.ProjectStage),
+                x.ProjectSummary,
+                x.OwnerNotes,
+                x.NextAction,
+                x.NextActionAtUtc,
+                new Dictionary<string, string>(x.Fields, StringComparer.OrdinalIgnoreCase)))
+            .ToList();
+    }
+
     public async Task<bool> UpdateProjectStageAsync(
         Guid leadId,
         string siteId,

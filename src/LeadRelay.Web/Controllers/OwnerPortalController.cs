@@ -3,10 +3,12 @@ using LeadRelay.Domain.Leads;
 using LeadRelay.Domain.Projects;
 using LeadRelay.Domain.Sites;
 using LeadRelay.Web.Fields;
+using LeadRelay.Web.Leads;
 using LeadRelay.Web.Security;
 using Microsoft.AspNetCore.Mvc;
 using System.Globalization;
 using System.Net.Mail;
+using System.Text;
 
 namespace LeadRelay.Web.Controllers;
 
@@ -72,6 +74,30 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
         };
 
         return View(model);
+    }
+
+    [HttpGet("/owner/leads/export.csv")]
+    [ResponseCache(Location = ResponseCacheLocation.None, NoStore = true)]
+    public async Task<IActionResult> Export(CancellationToken ct)
+    {
+        var auth = GetAuthContext();
+        if (auth is null) return Redirect("/owner/login");
+
+        var site = await sites.GetByIdAsync(auth.SiteId, ct);
+        if (site is null) return NotFound();
+
+        var rows = await leads.GetExportBySiteAsync(auth.SiteId, ct);
+        var csv = LeadCsvExporter.Export(rows, site.Fields);
+        var preamble = Encoding.UTF8.GetPreamble();
+        var body = Encoding.UTF8.GetBytes(csv);
+        var content = new byte[preamble.Length + body.Length];
+        Buffer.BlockCopy(preamble, 0, content, 0, preamble.Length);
+        Buffer.BlockCopy(body, 0, content, preamble.Length, body.Length);
+
+        return File(
+            content,
+            "text/csv; charset=utf-8",
+            $"leadrelay-leads-{DateTimeOffset.UtcNow:yyyyMMdd}.csv");
     }
 
     [HttpPost("/owner/leads/{id:guid}/stage")]

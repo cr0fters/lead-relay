@@ -8,6 +8,7 @@ using LeadRelay.Web.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NUnit.Framework;
+using System.Text;
 
 namespace LeadRelay.UnitTests;
 
@@ -303,6 +304,39 @@ public sealed class OwnerPortalReplyChannelTests
         Assert.That(model?.Error, Is.EqualTo("Add a next action before setting its due date."));
     }
 
+    [Test]
+    public async Task export_returns_utf8_csv_for_the_authenticated_site()
+    {
+        var siteId = InMemorySiteRepository.DefaultSiteId;
+        var repository = new FakeLeadRepository(BuildLead(siteId));
+        repository.ExportRows =
+        [
+            new LeadExportRow(
+                Guid.NewGuid(),
+                DateTimeOffset.UtcNow,
+                "Jane",
+                "jane@example.com",
+                null,
+                "whatsapp",
+                ProjectStatuses.New,
+                null,
+                null,
+                null,
+                null,
+                new Dictionary<string, string>())
+        ];
+        var controller = CreateController(repository, new InMemorySiteRepository(), siteId);
+
+        var result = await controller.Export(CancellationToken.None);
+
+        Assert.That(result, Is.TypeOf<FileContentResult>());
+        var file = (FileContentResult)result;
+        Assert.That(file.ContentType, Is.EqualTo("text/csv; charset=utf-8"));
+        Assert.That(file.FileContents.Take(3), Is.EqualTo(Encoding.UTF8.GetPreamble()));
+        Assert.That(Encoding.UTF8.GetString(file.FileContents), Does.Contain("jane@example.com"));
+        Assert.That(repository.ExportSiteId, Is.EqualTo(siteId));
+    }
+
     private static Lead BuildLead(string siteId)
     {
         return new Lead
@@ -334,6 +368,8 @@ public sealed class OwnerPortalReplyChannelTests
         private readonly Lead _lead;
         public Lead? SavedLead { get; private set; }
         public LeadSearchCriteria? LastSearchCriteria { get; private set; }
+        public IReadOnlyList<LeadExportRow> ExportRows { get; set; } = Array.Empty<LeadExportRow>();
+        public string? ExportSiteId { get; private set; }
 
         public FakeLeadRepository(Lead lead)
         {
@@ -356,6 +392,12 @@ public sealed class OwnerPortalReplyChannelTests
         {
             LastSearchCriteria = criteria;
             return Task.FromResult(new LeadPageResult(Array.Empty<LeadSummary>(), 0, criteria.Page, criteria.PageSize));
+        }
+
+        public Task<IReadOnlyList<LeadExportRow>> GetExportBySiteAsync(string siteId, CancellationToken ct)
+        {
+            ExportSiteId = siteId;
+            return Task.FromResult(ExportRows);
         }
 
         public Task<bool> UpdateProjectStageAsync(Guid leadId, string siteId, string stage, DateTimeOffset changedAtUtc, CancellationToken ct)

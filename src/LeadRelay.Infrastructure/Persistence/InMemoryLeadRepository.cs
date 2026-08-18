@@ -112,6 +112,34 @@ public sealed class InMemoryLeadRepository : ILeadRepository
         return Task.FromResult(new LeadPageResult(items, total, effectivePage, effectivePageSize));
     }
 
+    public Task<IReadOnlyList<LeadExportRow>> GetExportBySiteAsync(string siteId, CancellationToken ct)
+    {
+        var normalizedSiteId = (siteId ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(normalizedSiteId))
+            return Task.FromResult<IReadOnlyList<LeadExportRow>>(Array.Empty<LeadExportRow>());
+
+        var rows = Store.Values
+            .Where(x => string.Equals(x.SiteId, normalizedSiteId, StringComparison.Ordinal))
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .ThenByDescending(x => x.Id)
+            .Select(x => new LeadExportRow(
+                x.Id,
+                x.CreatedAtUtc,
+                x.Name,
+                x.Email,
+                x.Phone,
+                x.Channel,
+                ProjectStatuses.Normalize(x.ProjectStage),
+                x.ProjectSummary,
+                x.OwnerNotes,
+                x.NextAction,
+                x.NextActionAtUtc,
+                new Dictionary<string, string>(x.Fields, StringComparer.OrdinalIgnoreCase)))
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<LeadExportRow>>(rows);
+    }
+
     public Task<bool> UpdateProjectStageAsync(
         Guid leadId,
         string siteId,

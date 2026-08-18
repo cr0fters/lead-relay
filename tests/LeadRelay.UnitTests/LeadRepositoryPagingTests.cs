@@ -43,6 +43,14 @@ public sealed class LeadRepositoryPagingTests
             Email = "charlie@example.com"
         }, CancellationToken.None);
 
+        await repo.SaveAsync(new Lead
+        {
+            Id = Guid.NewGuid(),
+            SiteId = $"other_{Guid.NewGuid():N}",
+            CreatedAtUtc = now,
+            Name = "Other tenant"
+        }, CancellationToken.None);
+
         var page1 = await repo.SearchBySiteAsync(siteId, Criteria(page: 1, pageSize: 2), CancellationToken.None);
         var page2 = await repo.SearchBySiteAsync(siteId, Criteria(page: 2, pageSize: 2), CancellationToken.None);
         var filtered = await repo.SearchBySiteAsync(siteId, Criteria(query: "bob"), CancellationToken.None);
@@ -51,6 +59,7 @@ public sealed class LeadRepositoryPagingTests
             siteId,
             Criteria(createdFromUtc: now.AddMinutes(-2.5)),
             CancellationToken.None);
+        var exported = await repo.GetExportBySiteAsync(siteId, CancellationToken.None);
 
         Assert.That(page1.TotalCount, Is.EqualTo(3));
         Assert.That(page1.Items.Count, Is.EqualTo(2));
@@ -61,6 +70,8 @@ public sealed class LeadRepositoryPagingTests
         Assert.That(stageFiltered.TotalCount, Is.EqualTo(1));
         Assert.That(stageFiltered.Items[0].Name, Is.EqualTo("Alice"));
         Assert.That(dateFiltered.TotalCount, Is.EqualTo(2));
+        Assert.That(exported, Has.Count.EqualTo(3));
+        Assert.That(exported.Any(x => x.Name == "Other tenant"), Is.False);
     }
 
     private static LeadSearchCriteria Criteria(
