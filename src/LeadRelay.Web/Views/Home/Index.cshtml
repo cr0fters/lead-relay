@@ -1,7 +1,4 @@
-@{
-    Layout = "~/Views/Shared/_MarketingLayout.cshtml";
-    ViewData["Title"] = "LeadRelay | WhatsApp lead qualification with AI";
-}
+@{ Layout = "~/Views/Shared/_MarketingLayout.cshtml"; }
 
 @section Head {
 <style>
@@ -25,6 +22,8 @@
 
     .eyebrow {
         display: inline-flex;
+        align-items: center;
+        gap: 7px;
         padding: 6px 12px;
         border: 1px solid #b8e7db;
         background: #e9fbf5;
@@ -34,6 +33,11 @@
         font-weight: 700;
         letter-spacing: 0.02em;
         text-transform: uppercase;
+    }
+
+    .eyebrow img {
+        width: 17px;
+        height: 17px;
     }
 
     .hero h1 {
@@ -126,62 +130,10 @@
         max-width: 60ch;
     }
 
-    .team-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 14px;
-    }
-
-    .team-card {
-        background: #fff;
-        border: 1px solid #d5e9e2;
-        border-radius: 10px;
-        padding: 16px;
-        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
-    }
-
-    .team-card h3 {
-        margin: 0;
-        font-size: 1rem;
-        font-family: "Manrope", sans-serif;
-    }
-
-    .team-card p {
-        margin: 8px 0 0;
-        color: #526077;
-        font-size: 0.92rem;
-        line-height: 1.5;
-    }
-
-    .panel-row {
-        margin-top: 14px;
-        display: grid;
-        gap: 14px;
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .panel {
-        background: #fff;
-        border: 1px solid #d5e9e2;
-        border-radius: 10px;
-        padding: 16px;
-    }
-
-    .panel h3 {
-        margin: 0;
-        font-size: 1rem;
-        font-family: "Manrope", sans-serif;
-    }
-
-    .panel p {
-        margin: 8px 0 0;
-        color: #526077;
-    }
-
     .steps-wrap {
         display: grid;
         gap: 14px;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
     .step-card {
@@ -214,6 +166,128 @@
         margin: 0;
         color: #526077;
         line-height: 1.5;
+    }
+
+    .flow-demo {
+        min-height: 112px;
+        margin-top: 14px;
+        padding: 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 9px;
+        background: #f8fafc;
+        display: grid;
+        align-content: center;
+        gap: 7px;
+    }
+
+    .wa-button {
+        display: inline-flex;
+        align-items: center;
+        justify-self: center;
+        gap: 8px;
+        border-radius: 999px;
+        background: #25d366;
+        color: #052e1a;
+        padding: 9px 13px;
+        font-size: 0.78rem;
+        font-weight: 700;
+    }
+
+    .wa-button img {
+        width: 22px;
+        height: 22px;
+    }
+
+    .chat-bubble {
+        max-width: 88%;
+        border-radius: 9px 9px 9px 3px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        padding: 7px 9px;
+        font-size: 0.72rem;
+        color: #334155;
+    }
+
+    .chat-bubble.reply {
+        justify-self: end;
+        border-radius: 9px 9px 3px 9px;
+        background: #dcfce7;
+        border-color: #bbf7d0;
+    }
+
+    .inbox-row,
+    .timeline-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 7px 8px;
+        border-radius: 7px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        font-size: 0.7rem;
+        color: #334155;
+    }
+
+    .inbox-row strong,
+    .timeline-row strong { color: #0f172a; }
+
+    .new-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        flex: 0 0 8px;
+        margin-top: 3px;
+        border-radius: 999px;
+        background: #7c3aed;
+    }
+
+    .feature-grid,
+    .requirements-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .feature-card,
+    .requirement-card {
+        background: #fff;
+        border: 1px solid #d5e9e2;
+        border-radius: 10px;
+        padding: 16px;
+    }
+
+    .feature-card strong,
+    .requirement-card strong {
+        display: block;
+        font-family: "Manrope", sans-serif;
+    }
+
+    .feature-card p,
+    .requirement-card p {
+        margin: 8px 0 0;
+        color: #526077;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+
+    .feature-label {
+        display: inline-flex;
+        margin-bottom: 10px;
+        color: #047857;
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .requirements-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .brand-note {
+        margin: 14px auto 0;
+        max-width: 70ch;
+        color: #64748b;
+        font-size: 0.78rem;
+        text-align: center;
     }
 
     .cta-band {
@@ -396,8 +470,9 @@
     @@media (max-width: 980px) {
         .hero-stats { grid-template-columns: 1fr 1fr; row-gap: 18px; }
         .metric { border-right: none; }
-        .team-grid { grid-template-columns: 1fr 1fr; }
         .steps-wrap { grid-template-columns: 1fr; }
+        .feature-grid { grid-template-columns: 1fr 1fr; }
+        .requirements-grid { grid-template-columns: 1fr; }
         .crm-grid { grid-template-columns: 1fr; }
         .faq-grid { grid-template-columns: 1fr; }
         .security-grid { grid-template-columns: 1fr 1fr; }
@@ -407,8 +482,7 @@
         .landing { gap: 56px; }
         .hero { padding-top: 16px; }
         .hero-stats { grid-template-columns: 1fr; gap: 16px; }
-        .team-grid { grid-template-columns: 1fr; }
-        .panel-row { grid-template-columns: 1fr; }
+        .feature-grid { grid-template-columns: 1fr; }
         .security-grid { grid-template-columns: 1fr; }
         .cta-band { grid-template-columns: 1fr; }
         .full-bleed {
@@ -421,103 +495,125 @@
 
 <div class="landing">
     <section class="hero" id="product">
-        <span class="eyebrow">WhatsApp lead capture</span>
-        <h1>Turn site visitors into <span class="accent">qualified leads</span></h1>
+        <span class="eyebrow"><img src="/widget/whatsapp-green.svg" alt="" /> WhatsApp lead qualification + CRM</span>
+        <h1>Turn WhatsApp enquiries into <span class="accent">structured leads</span></h1>
         <p>
-            Add a click-to-chat WhatsApp button in minutes. AI handles the conversation,
-            asks your qualification questions, and passes warm leads into your CRM inbox.
+            Add a familiar WhatsApp button to your website. LeadRelay asks your qualification questions,
+            organizes each enquiry in a lightweight CRM, and gives you the context to follow up.
         </p>
         <div class="hero-cta">
-            <a class="btn btn-primary" href="/owner/register">Start free setup</a>
-            <a class="btn btn-secondary" href="/owner/login">Login</a>
+            <a class="btn btn-primary" href="/owner/register">Create your account</a>
+            <a class="btn btn-secondary" href="#how-it-works">See how it works</a>
+            <a class="btn btn-secondary" href="/owner/login">Sign in</a>
         </div>
 
         <div class="hero-stats">
-            <div class="metric"><strong>2 min</strong><span>Typical setup time</span></div>
-            <div class="metric"><strong>24/7</strong><span>AI qualification</span></div>
+            <div class="metric"><strong>1 click</strong><span>Visitor opens WhatsApp</span></div>
+            <div class="metric"><strong>Your fields</strong><span>Custom qualification</span></div>
             <div class="metric"><strong>1 inbox</strong><span>Leads and replies</span></div>
-            <div class="metric"><strong>0 code</strong><span>Install complexity</span></div>
+            <div class="metric"><strong>5 stages</strong><span>New through won or lost</span></div>
         </div>
     </section>
 
-    <section class="mint-band full-bleed" aria-label="AI qualification team overview">
+    <section class="mint-band full-bleed" aria-label="LeadRelay capabilities">
         <div class="section-head">
-            <h2>Meet your <span class="accent">AI qualification team</span></h2>
-            <p>Each specialist handles part of the lead journey so your team receives structured, reply-ready opportunities.</p>
+            <h2>One focused workflow from <span class="accent">click to close</span></h2>
+            <p>Concrete tools for capturing, understanding, organizing, and converting WhatsApp enquiries.</p>
         </div>
 
-        <div class="team-grid">
-            <article class="team-card">
-                <h3>Greeter</h3>
-                <p>Welcomes visitors, identifies intent, and routes each chat into the right qualification path.</p>
+        <div class="feature-grid">
+            <article class="feature-card">
+                <span class="feature-label">Capture</span>
+                <strong>Website click-to-WhatsApp</strong>
+                <p>A recognizable button opens a conversation with your connected WhatsApp business number.</p>
             </article>
-            <article class="team-card">
-                <h3>Qualifier</h3>
-                <p>Captures budget, timeline, service scope, and contact data using your custom questions.</p>
+            <article class="feature-card">
+                <span class="feature-label">Qualify</span>
+                <strong>Questions shaped by you</strong>
+                <p>Capture budget, timeline, scope, and the other details your business actually needs.</p>
             </article>
-            <article class="team-card">
-                <h3>Scheduler</h3>
-                <p>Prompts next steps and gathers availability so your sales follow-up starts with context.</p>
+            <article class="feature-card">
+                <span class="feature-label">Organize</span>
+                <strong>Structured CRM records</strong>
+                <p>See contact details, qualification answers, summaries, and conversation history together.</p>
             </article>
-        </div>
-
-        <div class="panel-row">
-            <article class="panel">
-                <h3>Trained on your business</h3>
-                <p>Use your business summary and field descriptions to shape how AI qualifies and responds.</p>
-            </article>
-            <article class="panel">
-                <h3>Works while your team is offline</h3>
-                <p>Capture and organize opportunities overnight, on weekends, and during busy hours.</p>
+            <article class="feature-card">
+                <span class="feature-label">Convert</span>
+                <strong>Human follow-up</strong>
+                <p>Take over, reply, add private notes and next actions, then track the lead through five stages.</p>
             </article>
         </div>
     </section>
 
     <section id="how-it-works">
         <div class="section-head">
-            <h2>Go live in <span class="accent">three steps</span></h2>
-            <p>No heavy implementation project. Launch quickly and iterate from your settings.</p>
+            <h2>See the complete <span class="accent">lead journey</span></h2>
+            <p>The WhatsApp entry point is only the beginning. LeadRelay turns the conversation into usable CRM work.</p>
         </div>
 
         <div class="steps-wrap">
             <article class="step-card">
                 <span class="step-index">1</span>
-                <h3>Add your button</h3>
-                <p>Drop in one website snippet and place your WhatsApp click-to-chat button.</p>
+                <h3>A visitor taps WhatsApp</h3>
+                <p>Your website snippet presents a familiar click-to-chat action.</p>
+                <div class="flow-demo">
+                    <span class="wa-button"><img src="/widget/whatsapp-white.svg" alt="" /> Chat on WhatsApp</span>
+                </div>
             </article>
             <article class="step-card">
                 <span class="step-index">2</span>
-                <h3>Connect your flow</h3>
-                <p>Set your lead fields and business summary so AI asks the right qualification questions.</p>
+                <h3>LeadRelay qualifies</h3>
+                <p>The conversation gathers the custom details you configured.</p>
+                <div class="flow-demo" aria-label="Qualification conversation preview">
+                    <span class="chat-bubble">What would you like help with?</span>
+                    <span class="chat-bubble reply">A kitchen renovation.</span>
+                    <span class="chat-bubble">What budget range are you considering?</span>
+                </div>
             </article>
             <article class="step-card">
                 <span class="step-index">3</span>
-                <h3>Start qualifying</h3>
-                <p>AI chats with visitors immediately and pushes organized leads into your CRM inbox.</p>
+                <h3>A structured lead appears</h3>
+                <p>The CRM highlights the new enquiry and sends the owner an email notification.</p>
+                <div class="flow-demo" aria-label="Lead inbox preview">
+                    <span class="inbox-row"><span><span class="new-dot"></span> Maya · Kitchen project</span><strong>New</strong></span>
+                    <span class="inbox-row"><span>Sam · Extension</span><strong>Qualified</strong></span>
+                </div>
+            </article>
+            <article class="step-card">
+                <span class="step-index">4</span>
+                <h3>You follow up and track it</h3>
+                <p>Review the timeline, reply, save notes and a next action, and update the outcome.</p>
+                <div class="flow-demo" aria-label="Lead detail timeline preview">
+                    <span class="timeline-row"><span>Qualification completed</span><strong>09:42</strong></span>
+                    <span class="timeline-row"><span>New → Qualified</span><strong>10:06</strong></span>
+                    <span class="timeline-row"><span>Next: consultation call</span><strong>Thu</strong></span>
+                </div>
             </article>
         </div>
+        <p class="brand-note">WhatsApp is a trademark of Meta Platforms, Inc. LeadRelay is an independent product and is not endorsed by or affiliated with Meta.</p>
     </section>
 
-    <section class="cta-band full-bleed" id="pricing">
+    <section class="cta-band full-bleed">
         <div>
-            <strong>Your next qualified lead is one click away</strong>
-            <p>Start free, connect your site, and scale when volume grows.</p>
+            <strong>Bring your website enquiries into one working inbox</strong>
+            <p>Create an account, configure your qualification fields, and connect your WhatsApp business setup.</p>
         </div>
-        <a class="btn btn-primary" href="/owner/register" style="background:#0f172a;">Start free</a>
+        <a class="btn btn-primary" href="/owner/register" style="background:#0f172a;">Start setup</a>
     </section>
 
     <section class="crm-band full-bleed">
         <div class="crm-grid">
             <div class="crm-copy">
-                <h2>Ask your CRM <span class="accent">anything</span></h2>
+                <h2>A lightweight CRM built for <span class="accent">WhatsApp leads</span></h2>
                 <p>
                     Every qualified chat lands in one place. Review lead details, continue the conversation,
                     and track outcomes without switching tools.
                 </p>
                 <ul class="crm-list">
                     <li>See qualification answers and chat history together</li>
-                    <li>Reply to leads from the same workspace</li>
-                    <li>Update fields and notes as deals progress</li>
+                    <li>Reply over available WhatsApp or email channels</li>
+                    <li>Search, filter, export, add notes, and plan the next action</li>
+                    <li>Move each opportunity from New to Qualified, Contacted, Won, or Lost</li>
                 </ul>
             </div>
 
@@ -538,7 +634,28 @@
                     <strong>Next action</strong>
                     <span>Book consultation call</span>
                 </div>
-                <a class="btn btn-secondary" href="/owner/login">Open CRM</a>
+                <a class="btn btn-secondary" href="/owner/login">Sign in to CRM</a>
+            </article>
+        </div>
+    </section>
+
+    <section id="what-you-need">
+        <div class="section-head">
+            <h2>What you need to <span class="accent">get set up</span></h2>
+            <p>LeadRelay removes CRM busywork, but it cannot remove the provider and website steps that make WhatsApp work.</p>
+        </div>
+        <div class="requirements-grid">
+            <article class="requirement-card">
+                <strong>A WhatsApp business setup</strong>
+                <p>You will connect a business number through Meta and complete any verification Meta requires.</p>
+            </article>
+            <article class="requirement-card">
+                <strong>Access to your website</strong>
+                <p>You or your site builder will add a small script snippet and configure the allowed domain.</p>
+            </article>
+            <article class="requirement-card">
+                <strong>Your qualification questions</strong>
+                <p>Tell LeadRelay what matters—such as service, scope, budget, location, and timeline.</p>
             </article>
         </div>
     </section>
@@ -557,11 +674,11 @@
                 </article>
                 <article class="faq-item">
                     <h3>Do I need engineering support to set this up?</h3>
-                    <p>No. The onboarding flow is self-serve and designed for non-technical teams.</p>
+                    <p>You need access to your Meta business setup and the ability to add a script snippet to your website. LeadRelay guides the product configuration, but those external steps may require your site administrator.</p>
                 </article>
                 <article class="faq-item">
-                    <h3>Can my team still reply manually?</h3>
-                    <p>Yes. AI qualifies the lead, then your team can take over from the integrated inbox.</p>
+                    <h3>Can I still reply manually?</h3>
+                    <p>Yes. LeadRelay qualifies the lead, then the account owner can pause automation and take over from the integrated inbox.</p>
                 </article>
                 <article class="faq-item">
                     <h3>Where can I review legal and data policies?</h3>
@@ -573,22 +690,22 @@
 
     <section class="mint-band full-bleed security" aria-label="Security details">
         <div class="section-head">
-            <h2>Your data, protected at every layer</h2>
-            <p>LeadRelay is built for secure lead handling from first message to closed deal.</p>
+            <h2>Clear controls around your lead data</h2>
+            <p>LeadRelay keeps the one-owner MVP focused on tenant-scoped access, practical data controls, and visible lead context.</p>
         </div>
 
         <div class="security-grid">
             <article class="security-card">
                 <h3>Access controls</h3>
-                <p>Team access is scoped per workspace account.</p>
+                <p>The MVP uses one owner account per workspace, with tenant-scoped lead access.</p>
             </article>
             <article class="security-card">
                 <h3>Data controls</h3>
-                <p>Edit, export, and remove lead data from your dashboard.</p>
+                <p>Edit lead details and export core CRM and qualification data from the inbox.</p>
             </article>
             <article class="security-card">
-                <h3>Audit visibility</h3>
-                <p>Track chat history and lead updates in one timeline.</p>
+                <h3>Activity context</h3>
+                <p>Review conversation history and CRM stage changes in one lead timeline.</p>
             </article>
             <article class="security-card">
                 <h3>Policy transparency</h3>

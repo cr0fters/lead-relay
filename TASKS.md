@@ -173,29 +173,31 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
 
 ## Priority 0: landing page and product communication
 
-- [ ] Reposition the hero as “WhatsApp lead qualification + lightweight CRM,” not merely a WhatsApp button.
-- [ ] Explain the complete value chain visually:
+- [x] Reposition the hero as “WhatsApp lead qualification + lightweight CRM,” not merely a WhatsApp button.
+- [x] Explain the complete value chain visually:
   - website visitor taps the familiar WhatsApp button
   - AI qualifies the enquiry using custom questions
   - a structured lead appears in the CRM inbox
   - the owner is notified, takes over, follows up, and tracks the outcome
-- [ ] Add real product screenshots or faithful UI mockups of the widget, qualification conversation, lead inbox, and lead detail timeline.
-- [ ] Use the existing WhatsApp artwork more deliberately.
+- [x] Add real product screenshots or faithful UI mockups of the widget, qualification conversation, lead inbox, and lead detail timeline.
+- [x] Use the existing WhatsApp artwork more deliberately.
   - add a recognizable WhatsApp icon in the hero workflow and installation step
   - retain LeadRelay branding for the CRM/product areas
   - follow WhatsApp/Meta brand guidelines and do not imply endorsement
-- [ ] Replace generic “AI team” language with concrete capabilities users can verify.
-- [ ] Add a concise feature grid grouped as Capture, Qualify, Organize, and Convert.
+- [x] Replace generic “AI team” language with concrete capabilities users can verify.
+- [x] Add a concise feature grid grouped as Capture, Qualify, Organize, and Convert.
 - [ ] Add a real pricing section tied to the single Stripe plan, trial terms, inclusions, cancellation, and any usage limits.
-- [ ] Add a “What you need” section explaining the website snippet, Meta/WhatsApp business prerequisites, and expected setup effort honestly.
-- [ ] Add stronger repeated calls to action: Start trial, See how it works, and Sign in.
-- [ ] Replace or remove claims that the product cannot currently substantiate:
+- [x] Add a “What you need” section explaining the website snippet, Meta/WhatsApp business prerequisites, and expected setup effort honestly.
+- [ ] Add stronger repeated calls to action.
+  - [x] repeat honest Create account, Start setup, See how it works, and Sign in actions
+  - [ ] change the primary action to Start trial only after Stripe Checkout is implemented
+- [x] Replace or remove claims that the product cannot currently substantiate:
   - “2 min typical setup” until measured
   - “0 code install” while a script snippet is required
   - “Ask your CRM anything” because no CRM query interface exists
   - dashboard export/removal until those controls exist
   - team access/audit claims while the product supports one owner and no audit log
-- [ ] Update the page title, meta description, Open Graph image, canonical URL, sitemap, and robots configuration.
+- [x] Update the page title, meta description, Open Graph image, canonical URL, sitemap, and robots configuration.
 - [ ] Add privacy-conscious conversion analytics only after deciding the consent/cookie approach.
 - [ ] Run mobile, accessibility, performance, and cross-browser checks on the final page.
 

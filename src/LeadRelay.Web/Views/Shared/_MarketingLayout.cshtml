@@ -1,9 +1,29 @@
+@{
+    var pageTitle = ViewData["Title"] as string ?? "LeadRelay";
+    var pageDescription = ViewData["Description"] as string ?? "LeadRelay helps businesses capture and manage qualified WhatsApp leads.";
+    var canonicalUrl = ViewData["CanonicalUrl"] as string;
+    var openGraphImage = ViewData["OpenGraphImage"] as string;
+}
 <!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>@(ViewData["Title"] ?? "LeadRelay")</title>
+    <title>@pageTitle</title>
+    <meta name="description" content="@pageDescription" />
+    @if (canonicalUrl is not null)
+    {
+        <link rel="canonical" href="@canonicalUrl" />
+        <meta property="og:url" content="@canonicalUrl" />
+    }
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="LeadRelay" />
+    <meta property="og:title" content="@pageTitle" />
+    <meta property="og:description" content="@pageDescription" />
+    @if (openGraphImage is not null)
+    {
+        <meta property="og:image" content="@openGraphImage" />
+    }
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
@@ -240,12 +260,12 @@
         <nav class="nav-links">
             <a href="/#product">Product</a>
             <a href="/#how-it-works">How it works</a>
-            <a href="/#pricing">Pricing</a>
+            <a href="/#what-you-need">What you need</a>
             <a href="/#faq">FAQ</a>
         </nav>
 
         <div class="nav-cta">
-            <a class="btn btn-secondary" href="/owner/login">Login</a>
+            <a class="btn btn-secondary" href="/owner/login">Sign in</a>
             <a class="btn btn-primary" href="/owner/register">Create account</a>
         </div>
     </header>
@@ -270,7 +290,7 @@
             <nav class="footer-links">
                 <a href="/#product">Overview</a>
                 <a href="/#how-it-works">How it works</a>
-                <a href="/#pricing">Pricing</a>
+                <a href="/#what-you-need">What you need</a>
                 <a href="/#faq">FAQ</a>
             </nav>
         </div>
@@ -279,7 +299,7 @@
             <h3>Account</h3>
             <nav class="footer-links">
                 <a href="/owner/register">Create account</a>
-                <a href="/owner/login">Login</a>
+                <a href="/owner/login">Sign in</a>
                 <a href="/owner/request-password-reset">Reset password</a>
             </nav>
         </div>

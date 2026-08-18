@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /debug
+Disallow: /owner
+
+Sitemap: https://leadrelay.dev/sitemap.xml
