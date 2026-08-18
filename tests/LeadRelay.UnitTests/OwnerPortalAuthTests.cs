@@ -248,7 +248,7 @@ public sealed class OwnerPortalAuthTests
         string secret,
         string? previousSecret = null,
         long sessionVersion = 1,
-        string environmentName = Environments.Development)
+        string environmentName = "Development")
     {
         return new OwnerSessionService(
             Options.Create(new OwnerPortalOptions
