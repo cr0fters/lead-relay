@@ -9,6 +9,7 @@ This file defines the default engineering standards for all contributors (human 
 
 ## Repository Work Files
 - `TASKS.md` is the source of truth for outstanding MVP work, priorities, dependencies, human actions, and exit criteria.
+- `MANUAL_ACTIONS.md` is the concise checklist of decisions, accounts, credentials, legal review, and live-service setup that require the owner. Keep it synchronized with material human blockers discovered or completed during repository work; never put secret values in it.
 - `WORKFLOW.md` defines how an autonomous backlog-progression run should select, execute, and stop a coherent milestone.
 - When the user says `Continue the MVP.`, read and follow `WORKFLOW.md` in addition to this file. That phrase explicitly authorizes the bounded milestone commit-and-push loop defined there, including reviewed commits and non-force pushes directly to `main`; it does not authorize deployments or live-provider mutations.
 - Specific instructions in the user's current prompt override the general autonomous workflow where they conflict. All durable safety, security, quality, and authorization rules in this file still apply unless the user explicitly changes them within their authority.

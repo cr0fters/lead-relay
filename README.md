@@ -1,5 +1,11 @@
 # LeadRelay
 
+## Production version check
+
+`GET /.well-known/leadrelay-version` returns the safe application version and Railway-provided commit SHA for the currently running deployment. The endpoint is deliberately not linked from the public site, sends a `noindex` robots header, and disables response caching.
+
+Enable **Wait for CI** on the production Railway service's GitHub deployment trigger. With that setting enabled, compare the endpoint's `commitSha` with the commit pushed to `main`: a match demonstrates that GitHub Actions passed, Railway deployed that commit, and the new process is serving requests. Without **Wait for CI**, the endpoint proves deployment only—not CI success.
+
 Drop-in “Chat via WhatsApp” widget + server-side lead capture. Includes a simple POC chat flow and a debug page to simulate WhatsApp messages locally.
 
 ## Run

@@ -64,7 +64,7 @@ After a milestone passes the required review and permitted local checks:
 1. Confirm that the working tree contains only the milestone's intended changes and that local `main` is based on the current `origin/main`.
 2. Commit the coherent milestone with a terse, accurate message and push it directly to `main`. Never force-push or rewrite shared history.
 3. Monitor the resulting GitHub Actions run. If CI fails because of the milestone, diagnose, fix, review, commit, and push the correction before selecting more work. If CI cannot be inspected, report that limitation and do not claim it passed.
-4. Add newly identified product decisions, credentials, legal review, provider setup, and other human actions to a cumulative run list. Keep their `TASKS.md` items incomplete.
+4. Add newly identified product decisions, credentials, legal review, provider setup, and other human actions to the cumulative run list in `MANUAL_ACTIONS.md`. Keep their `TASKS.md` items incomplete and never record secret values.
 5. Re-read the relevant backlog and choose the next safe coherent milestone. Continue the loop while useful progress remains possible and the stopping rules are not met.
 
 Keep commits milestone-sized even when one autonomous run completes several milestones. Do not combine unrelated product areas into one commit merely because they were handled in the same run.

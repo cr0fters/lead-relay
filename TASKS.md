@@ -230,6 +230,9 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
 
 ## Priority 0: operating the service
 
+- [ ] Gate and verify production deployments.
+  - [x] expose the deployed Railway commit SHA at the unlinked, non-indexed `/.well-known/leadrelay-version` endpoint
+  - [ ] enable Railway **Wait for CI** so a deployed SHA implies the GitHub Actions checks passed
 - [ ] Configure a real production domain, DNS, TLS, sender email domain, and support/privacy/legal mailboxes.
 - [ ] Verify the Postmark sending domain and test verification, password reset, lead notification, and billing emails end to end.
 - [ ] Configure Railway/environment secrets and document ownership/rotation for each.
