@@ -62,6 +62,7 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
             Page = result.Page,
             PageSize = result.PageSize,
             TotalCount = result.TotalCount,
+            NewCount = result.NewCount,
             Leads = result.Items.Select(x => new OwnerLeadListItem
             {
                 Id = x.Id,
@@ -69,7 +70,8 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
                 Phone = x.Phone,
                 Email = x.Email,
                 CreatedAtUtc = x.CreatedAtUtc,
-                ProjectStage = ProjectStatuses.Normalize(x.ProjectStage)
+                ProjectStage = ProjectStatuses.Normalize(x.ProjectStage),
+                IsNew = x.IsNew
             }).ToList()
         };
 
@@ -210,6 +212,11 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
 
         var lead = await leads.GetByIdForSiteAsync(id, auth.SiteId, ct);
         if (lead is null) return NotFound();
+
+        var viewedAtUtc = DateTimeOffset.UtcNow;
+        var markedViewed = await leads.MarkViewedAsync(id, auth.SiteId, viewedAtUtc, ct);
+        if (!markedViewed) return NotFound();
+        lead.OwnerViewedAtUtc ??= viewedAtUtc;
 
         var site = await sites.GetByIdAsync(auth.SiteId, ct);
         return View(ToDetailModel(auth, lead, site));
@@ -705,6 +712,7 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 20;
         public int TotalCount { get; set; }
+        public int NewCount { get; set; }
         public int TotalPages => TotalCount == 0 ? 1 : (int)Math.Ceiling((double)TotalCount / PageSize);
         public int StartItem => TotalCount == 0 ? 0 : ((Page - 1) * PageSize) + 1;
         public int EndItem => Math.Min(TotalCount, Page * PageSize);
@@ -721,6 +729,7 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
         public string? Phone { get; set; }
         public DateTimeOffset CreatedAtUtc { get; set; }
         public string ProjectStage { get; set; } = ProjectStatuses.New;
+        public bool IsNew { get; set; }
     }
 
     public sealed class OwnerLeadDetailModel

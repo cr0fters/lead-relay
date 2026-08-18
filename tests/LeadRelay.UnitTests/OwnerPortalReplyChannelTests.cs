@@ -280,6 +280,22 @@ public sealed class OwnerPortalReplyChannelTests
     }
 
     [Test]
+    public async Task opening_a_lead_marks_it_viewed_for_the_authenticated_site()
+    {
+        var siteId = InMemorySiteRepository.DefaultSiteId;
+        var lead = BuildLead(siteId);
+        var repository = new FakeLeadRepository(lead);
+        var controller = CreateController(repository, new InMemorySiteRepository(), siteId);
+
+        var result = await controller.Lead(lead.Id, CancellationToken.None);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        Assert.That(repository.ViewedLeadId, Is.EqualTo(lead.Id));
+        Assert.That(repository.ViewedSiteId, Is.EqualTo(siteId));
+        Assert.That(repository.ViewedAtUtc, Is.Not.Null);
+    }
+
+    [Test]
     public async Task update_follow_up_saves_trimmed_notes_action_and_utc_due_date()
     {
         var siteId = InMemorySiteRepository.DefaultSiteId;
@@ -388,6 +404,9 @@ public sealed class OwnerPortalReplyChannelTests
         public LeadSearchCriteria? LastSearchCriteria { get; private set; }
         public IReadOnlyList<LeadExportRow> ExportRows { get; set; } = Array.Empty<LeadExportRow>();
         public string? ExportSiteId { get; private set; }
+        public Guid? ViewedLeadId { get; private set; }
+        public string? ViewedSiteId { get; private set; }
+        public DateTimeOffset? ViewedAtUtc { get; private set; }
 
         public FakeLeadRepository(Lead lead)
         {
@@ -409,7 +428,7 @@ public sealed class OwnerPortalReplyChannelTests
         public Task<LeadPageResult> SearchBySiteAsync(string siteId, LeadSearchCriteria criteria, CancellationToken ct)
         {
             LastSearchCriteria = criteria;
-            return Task.FromResult(new LeadPageResult(Array.Empty<LeadSummary>(), 0, criteria.Page, criteria.PageSize));
+            return Task.FromResult(new LeadPageResult(Array.Empty<LeadSummary>(), 0, 0, criteria.Page, criteria.PageSize));
         }
 
         public Task<IReadOnlyList<LeadExportRow>> GetExportBySiteAsync(string siteId, CancellationToken ct)
@@ -447,6 +466,18 @@ public sealed class OwnerPortalReplyChannelTests
             _lead.OwnerNotes = ownerNotes;
             _lead.NextAction = nextAction;
             _lead.NextActionAtUtc = nextAction is null ? null : nextActionAtUtc;
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> MarkViewedAsync(Guid leadId, string siteId, DateTimeOffset viewedAtUtc, CancellationToken ct)
+        {
+            if (_lead.Id != leadId || _lead.SiteId != siteId)
+                return Task.FromResult(false);
+
+            _lead.OwnerViewedAtUtc ??= viewedAtUtc;
+            ViewedLeadId = leadId;
+            ViewedSiteId = siteId;
+            ViewedAtUtc = viewedAtUtc;
             return Task.FromResult(true);
         }
 

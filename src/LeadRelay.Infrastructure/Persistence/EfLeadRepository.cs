@@ -77,6 +77,7 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
                 lead.Id,
                 lead.SiteId,
                 lead.CreatedAtUtc,
+                IsNew = lead.OwnerViewedAtUtc == null,
                 Name = customer != null ? customer.Name : null,
                 Phone = customer != null ? customer.Phone : null,
                 Email = customer != null ? customer.Email : null,
@@ -92,7 +93,8 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
                 x.Phone,
                 x.Email,
                 x.CreatedAtUtc,
-                x.ProjectStage))
+                x.ProjectStage,
+                x.IsNew))
             .ToListAsync(ct);
     }
 
@@ -118,6 +120,7 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
                 lead.Id,
                 lead.SiteId,
                 lead.CreatedAtUtc,
+                IsNew = lead.OwnerViewedAtUtc == null,
                 Name = customer != null ? customer.Name : null,
                 Phone = customer != null ? customer.Phone : null,
                 Email = customer != null ? customer.Email : null,
@@ -133,7 +136,8 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
                 x.Phone,
                 x.Email,
                 x.CreatedAtUtc,
-                x.ProjectStage))
+                x.ProjectStage,
+                x.IsNew))
             .ToListAsync(ct);
     }
 
@@ -141,7 +145,7 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
     {
         var normalizedSiteId = (siteId ?? "").Trim();
         if (string.IsNullOrWhiteSpace(normalizedSiteId))
-            return new LeadPageResult(Array.Empty<LeadSummary>(), 0, 1, Math.Clamp(criteria.PageSize, 1, 100));
+            return new LeadPageResult(Array.Empty<LeadSummary>(), 0, 0, 1, Math.Clamp(criteria.PageSize, 1, 100));
 
         var normalizedQuery = (criteria.Query ?? "").Trim();
         var normalizedStage = ProjectStatuses.IsOwnerStage(criteria.ProjectStage)
@@ -165,6 +169,7 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
                 lead.Id,
                 lead.SiteId,
                 lead.CreatedAtUtc,
+                IsNew = lead.OwnerViewedAtUtc == null,
                 Name = customer != null ? customer.Name : null,
                 Email = customer != null ? customer.Email : null,
                 Phone = customer != null ? customer.Phone : null,
@@ -190,6 +195,7 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
             baseQuery = baseQuery.Where(x => x.CreatedAtUtc < criteria.CreatedBeforeUtc.Value);
 
         var totalCount = await baseQuery.CountAsync(ct);
+        var newCount = await baseQuery.CountAsync(x => x.IsNew, ct);
         var items = await baseQuery
             .OrderByDescending(x => x.CreatedAtUtc)
             .ThenByDescending(x => x.Id)
@@ -202,10 +208,11 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
                 x.Phone,
                 x.Email,
                 x.CreatedAtUtc,
-                x.ProjectStage))
+                x.ProjectStage,
+                x.IsNew))
             .ToListAsync(ct);
 
-        return new LeadPageResult(items, totalCount, effectivePage, effectivePageSize);
+        return new LeadPageResult(items, totalCount, newCount, effectivePage, effectivePageSize);
     }
 
     public async Task<IReadOnlyList<LeadExportRow>> GetExportBySiteAsync(string siteId, CancellationToken ct)
@@ -333,6 +340,28 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
         return Map(record, customer, project);
     }
 
+    public async Task<bool> MarkViewedAsync(
+        Guid leadId,
+        string siteId,
+        DateTimeOffset viewedAtUtc,
+        CancellationToken ct)
+    {
+        var normalizedSiteId = (siteId ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(normalizedSiteId)) return false;
+
+        var record = await db.Leads
+            .FirstOrDefaultAsync(x => x.Id == leadId && x.SiteId == normalizedSiteId, ct);
+        if (record is null) return false;
+
+        if (record.OwnerViewedAtUtc is null)
+        {
+            record.OwnerViewedAtUtc = viewedAtUtc;
+            await db.SaveChangesAsync(ct);
+        }
+
+        return true;
+    }
+
     public async Task<Lead?> GetByIdForSiteAsync(Guid id, string siteId, CancellationToken ct)
     {
         var normalizedSiteId = (siteId ?? "").Trim();
@@ -354,6 +383,7 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
             Id = record.Id,
             SiteId = record.SiteId,
             CreatedAtUtc = record.CreatedAtUtc,
+            OwnerViewedAtUtc = record.OwnerViewedAtUtc,
             CustomerId = record.CustomerId,
             ProjectId = record.ProjectId,
             Channel = NormalizeChannel(record.Channel),

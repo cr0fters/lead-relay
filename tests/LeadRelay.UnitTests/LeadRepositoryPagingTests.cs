@@ -22,7 +22,8 @@ public sealed class LeadRepositoryPagingTests
             CreatedAtUtc = now.AddMinutes(-3),
             Name = "Alice",
             Email = "alice@example.com",
-            ProjectStage = ProjectStatuses.Qualified
+            ProjectStage = ProjectStatuses.Qualified,
+            OwnerViewedAtUtc = now.AddMinutes(-2)
         }, CancellationToken.None);
 
         await repo.SaveAsync(new Lead
@@ -62,7 +63,9 @@ public sealed class LeadRepositoryPagingTests
         var exported = await repo.GetExportBySiteAsync(siteId, CancellationToken.None);
 
         Assert.That(page1.TotalCount, Is.EqualTo(3));
+        Assert.That(page1.NewCount, Is.EqualTo(2));
         Assert.That(page1.Items.Count, Is.EqualTo(2));
+        Assert.That(page1.Items[0].IsNew, Is.True);
         Assert.That(page2.Items.Count, Is.EqualTo(1));
 
         Assert.That(filtered.TotalCount, Is.EqualTo(1));

@@ -7,6 +7,7 @@ public sealed class Lead
     public required Guid Id { get; init; }
     public required string SiteId { get; init; }
     public required DateTimeOffset CreatedAtUtc { get; init; }
+    public DateTimeOffset? OwnerViewedAtUtc { get; set; }
     public Guid CustomerId { get; set; }
     public Guid ProjectId { get; set; }
     public string Channel { get; set; } = "api";

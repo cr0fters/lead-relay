@@ -220,6 +220,37 @@ public sealed class EfLeadRepositoryIdentityTests
         Assert.That(clearedLead?.NextActionAtUtc, Is.Null);
     }
 
+    [Test]
+    public async Task viewed_state_is_tenant_scoped_and_preserves_the_first_view_time()
+    {
+        await using var db = CreateDb();
+        var repository = new EfLeadRepository(db);
+        var siteId = "site_demo";
+        var otherSiteId = "site_other";
+        var leadId = Guid.NewGuid();
+        var firstViewedAt = new DateTimeOffset(2026, 8, 18, 14, 0, 0, TimeSpan.Zero);
+
+        db.Leads.Add(new LeadRecord
+        {
+            Id = leadId,
+            SiteId = siteId,
+            CreatedAtUtc = firstViewedAt.AddMinutes(-5),
+            Status = LeadStatuses.Open
+        });
+        await db.SaveChangesAsync();
+
+        var crossTenant = await repository.MarkViewedAsync(leadId, otherSiteId, firstViewedAt, CancellationToken.None);
+        var first = await repository.MarkViewedAsync(leadId, siteId, firstViewedAt, CancellationToken.None);
+        var repeated = await repository.MarkViewedAsync(leadId, siteId, firstViewedAt.AddHours(1), CancellationToken.None);
+
+        Assert.That(crossTenant, Is.False);
+        Assert.That(first, Is.True);
+        Assert.That(repeated, Is.True);
+        db.ChangeTracker.Clear();
+        var lead = await db.Leads.SingleAsync(x => x.Id == leadId);
+        Assert.That(lead.OwnerViewedAtUtc, Is.EqualTo(firstViewedAt));
+    }
+
     private static LeadRelayDbContext CreateDb()
     {
         var options = new DbContextOptionsBuilder<LeadRelayDbContext>()

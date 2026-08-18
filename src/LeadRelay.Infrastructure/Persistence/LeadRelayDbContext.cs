@@ -61,6 +61,7 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
             entity.Property(x => x.Id).HasColumnName("Id");
             entity.Property(x => x.SiteId).HasColumnName("SiteId").HasMaxLength(255).IsRequired();
             entity.Property(x => x.CreatedAtUtc).HasColumnName("CreatedAtUtc");
+            entity.Property(x => x.OwnerViewedAtUtc).HasColumnName("OwnerViewedAtUtc");
             entity.Property(x => x.CustomerId).HasColumnName("CustomerId").IsRequired();
             entity.Property(x => x.ProjectId).HasColumnName("ProjectId").IsRequired();
             entity.Property(x => x.Channel).HasColumnName("Channel").HasMaxLength(32).IsRequired();
@@ -80,6 +81,7 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
             entity.HasIndex(x => new { x.SiteId, x.CustomerId });
             entity.HasIndex(x => new { x.SiteId, x.ProjectId });
             entity.HasIndex(x => new { x.SiteId, x.CreatedAtUtc, x.Id });
+            entity.HasIndex(x => new { x.SiteId, x.OwnerViewedAtUtc });
             entity.HasIndex(x => new { x.SiteId, x.Id }).IsUnique();
 
             entity.HasOne<CustomerRecord>()

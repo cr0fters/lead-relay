@@ -18,6 +18,7 @@ public interface ILeadRepository
         DateTimeOffset? nextActionAtUtc,
         DateTimeOffset updatedAtUtc,
         CancellationToken ct);
+    Task<bool> MarkViewedAsync(Guid leadId, string siteId, DateTimeOffset viewedAtUtc, CancellationToken ct);
     Task<Lead?> GetByIdAsync(Guid id, CancellationToken ct);
     Task<Lead?> GetByIdForSiteAsync(Guid id, string siteId, CancellationToken ct);
 }

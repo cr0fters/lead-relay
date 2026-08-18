@@ -34,11 +34,16 @@
         </div>
     </header>
 
-    <section class="mb-3 grid gap-2 sm:grid-cols-3">
+    <section class="mb-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         <article class="rounded-lg border border-sky-200 bg-sky-50 p-3 shadow-panel">
             <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Total in view</p>
             <p class="mt-1 font-display text-3xl font-semibold text-slate-900">@Model.TotalCount</p>
             <p class="mt-2 text-sm text-slate-600">Page @Model.Page of @Model.TotalPages</p>
+        </article>
+        <article class="rounded-lg border border-violet-200 bg-violet-50 p-3 shadow-panel">
+            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-violet-700">New leads</p>
+            <p class="mt-1 font-display text-3xl font-semibold text-slate-900">@Model.NewCount</p>
+            <p class="mt-2 text-sm text-violet-700">Not opened yet</p>
         </article>
         <article class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 shadow-panel">
             <p class="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Stage filter</p>
@@ -162,9 +167,15 @@
                             "contacted" => "border border-sky-200 bg-sky-50 text-sky-700",
                             _ => "border border-amber-200 bg-amber-50 text-amber-700"
                         };
-                        <tr class="hover:bg-slate-50">
+                        <tr class="@(lead.IsNew ? "bg-violet-50/50" : "") hover:bg-slate-50">
                             <td class="whitespace-nowrap px-4 py-3 text-sm text-slate-700">@lead.CreatedAtUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm") UTC</td>
-                            <td class="px-4 py-3 text-sm font-medium text-slate-900">@(string.IsNullOrWhiteSpace(lead.Name) ? "-" : lead.Name)</td>
+                            <td class="px-4 py-3 text-sm font-medium text-slate-900">
+                                <span>@(string.IsNullOrWhiteSpace(lead.Name) ? "-" : lead.Name)</span>
+                                @if (lead.IsNew)
+                                {
+                                    <span class="ml-2 inline-flex rounded-full border border-violet-200 bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-violet-700">New</span>
+                                }
+                            </td>
                             <td class="hidden px-4 py-3 text-sm text-slate-700 lg:table-cell">@(string.IsNullOrWhiteSpace(lead.Email) ? "-" : lead.Email)</td>
                             <td class="hidden px-4 py-3 text-sm text-slate-700 lg:table-cell">@(string.IsNullOrWhiteSpace(lead.Phone) ? "-" : lead.Phone)</td>
                             <td class="px-4 py-3 text-sm">

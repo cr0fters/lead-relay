@@ -156,6 +156,10 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
   - [x] let owners view, edit, clear, and validate follow-up details from lead detail
   - [ ] confirm the authoritative CI build, tests, and migration validation for this milestone
 - [ ] Add unread/new-lead indication so the inbox is operationally useful.
+  - [x] persist a tenant-scoped first-view timestamp without resetting it on later opens
+  - [x] show new-lead badges and a filtered new count until the owner opens a lead
+  - [x] treat pre-existing leads as already viewed during migration so launch does not create false alerts
+  - [ ] confirm the authoritative CI build, tests, and migration validation for this milestone
 - [ ] Add CSV export for leads and their core qualification fields.
   - [x] export tenant-scoped contact, stage, follow-up, source channel, and qualification data from the inbox
   - [x] protect spreadsheet consumers from CSV formula injection and exclude conversation transcripts

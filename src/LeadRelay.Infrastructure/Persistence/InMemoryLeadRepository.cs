@@ -11,7 +11,14 @@ public sealed class InMemoryLeadRepository : ILeadRepository
 
     public Task SaveAsync(Lead lead, CancellationToken ct)
     {
-        Store[lead.Id] = lead;
+        Store.AddOrUpdate(
+            lead.Id,
+            lead,
+            (_, existing) =>
+            {
+                lead.OwnerViewedAtUtc ??= existing.OwnerViewedAtUtc;
+                return lead;
+            });
         return Task.CompletedTask;
     }
 
@@ -28,7 +35,8 @@ public sealed class InMemoryLeadRepository : ILeadRepository
                 x.Phone,
                 x.Email,
                 x.CreatedAtUtc,
-                ProjectStatuses.Normalize(x.ProjectStage)))
+                ProjectStatuses.Normalize(x.ProjectStage),
+                x.OwnerViewedAtUtc is null))
             .ToList();
 
         return Task.FromResult<IReadOnlyList<LeadSummary>>(items);
@@ -52,7 +60,8 @@ public sealed class InMemoryLeadRepository : ILeadRepository
                 x.Phone,
                 x.Email,
                 x.CreatedAtUtc,
-                ProjectStatuses.Normalize(x.ProjectStage)))
+                ProjectStatuses.Normalize(x.ProjectStage),
+                x.OwnerViewedAtUtc is null))
             .ToList();
 
         return Task.FromResult<IReadOnlyList<LeadSummary>>(items);
@@ -69,7 +78,7 @@ public sealed class InMemoryLeadRepository : ILeadRepository
         var effectivePage = Math.Max(1, criteria.Page);
 
         if (string.IsNullOrWhiteSpace(normalizedSiteId))
-            return Task.FromResult(new LeadPageResult(Array.Empty<LeadSummary>(), 0, effectivePage, effectivePageSize));
+            return Task.FromResult(new LeadPageResult(Array.Empty<LeadSummary>(), 0, 0, effectivePage, effectivePageSize));
 
         var filtered = Store.Values
             .Where(x => string.Equals(x.SiteId, normalizedSiteId, StringComparison.Ordinal));
@@ -96,6 +105,7 @@ public sealed class InMemoryLeadRepository : ILeadRepository
             .ThenByDescending(x => x.Id)
             .ToList();
         var total = ordered.Count;
+        var newCount = ordered.Count(x => x.OwnerViewedAtUtc is null);
         var items = ordered
             .Skip((effectivePage - 1) * effectivePageSize)
             .Take(effectivePageSize)
@@ -106,10 +116,11 @@ public sealed class InMemoryLeadRepository : ILeadRepository
                 x.Phone,
                 x.Email,
                 x.CreatedAtUtc,
-                ProjectStatuses.Normalize(x.ProjectStage)))
+                ProjectStatuses.Normalize(x.ProjectStage),
+                x.OwnerViewedAtUtc is null))
             .ToList();
 
-        return Task.FromResult(new LeadPageResult(items, total, effectivePage, effectivePageSize));
+        return Task.FromResult(new LeadPageResult(items, total, newCount, effectivePage, effectivePageSize));
     }
 
     public Task<IReadOnlyList<LeadExportRow>> GetExportBySiteAsync(string siteId, CancellationToken ct)
@@ -194,6 +205,17 @@ public sealed class InMemoryLeadRepository : ILeadRepository
     {
         Store.TryGetValue(id, out var lead);
         return Task.FromResult<Lead?>(lead);
+    }
+
+    public Task<bool> MarkViewedAsync(Guid leadId, string siteId, DateTimeOffset viewedAtUtc, CancellationToken ct)
+    {
+        var normalizedSiteId = (siteId ?? "").Trim();
+        if (!Store.TryGetValue(leadId, out var lead) ||
+            !string.Equals(lead.SiteId, normalizedSiteId, StringComparison.Ordinal))
+            return Task.FromResult(false);
+
+        lead.OwnerViewedAtUtc ??= viewedAtUtc;
+        return Task.FromResult(true);
     }
 
     public Task<Lead?> GetByIdForSiteAsync(Guid id, string siteId, CancellationToken ct)

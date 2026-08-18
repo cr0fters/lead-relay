@@ -7,4 +7,5 @@ public sealed record LeadSummary(
     string? Phone,
     string? Email,
     DateTimeOffset CreatedAtUtc,
-    string ProjectStage);
+    string ProjectStage,
+    bool IsNew);
