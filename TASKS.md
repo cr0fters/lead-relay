@@ -53,18 +53,19 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
   - encrypt retained credentials and support reconnect/re-authorize
   - preserve the manual credential form as an admin-only recovery tool, not the normal owner journey
 - [ ] Decide and document who pays Meta's WhatsApp messaging charges and how the customer's WABA payment method/credit relationship is established during onboarding.
-- [ ] Make the onboarding checklist describe customer outcomes rather than Meta internals:
+- [x] Make the onboarding checklist describe customer outcomes rather than Meta internals:
   - account verified
   - WhatsApp connected and tested
   - website widget installed and tested
   - subscription/trial active
   - first real lead captured
-- [ ] Add a safe widget installation test.
+- [x] Add a safe widget installation test.
   - verify the configured domain can load the bootstrap script
   - show a live preview of the existing click-to-WhatsApp widget
   - guide the owner through a real test message
   - distinguish test conversations/leads from real leads and analytics
   - provide copyable platform-specific instructions for common site builders
+  - authoritative CI build, tests, frontend asset verification, and migration validation passed
 - [x] Let owners manage all onboarding configuration without the admin area.
   - business name and summary
   - greeting/intro message
