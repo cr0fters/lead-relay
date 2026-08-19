@@ -81,6 +81,8 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
   - invalid/expired credential
   - widget blocked by domain allow-list
 - [ ] Verify and upgrade the configured Meta Graph API version/endpoints before launch; remove duplicated hard-coded version strings and document the provider-version upgrade cadence.
+  - [x] Centralize repository endpoint construction on the validated `v23.0` configuration, retain explicit legacy overrides only for compatibility, document the quarterly review/smoke-test process, and pass authoritative CI.
+  - [ ] Confirm Railway has no stale endpoint/version override and complete production inbound/outbound smoke tests.
 - [ ] Send lifecycle emails for email verification, onboarding abandoned, trial started, first lead, and trial ending.
 
 ## Priority 0: Stripe Billing
