@@ -142,12 +142,14 @@ dotnet ef database update --project src/LeadRelay.Infrastructure --startup-proje
 - `GET /owner` — lead inbox
 - `GET /owner/onboarding` — guided WhatsApp + widget onboarding and progress checklist
 - `GET /owner/leads/{id}` — lead detail view
-- `POST /owner/leads/{id}/reply` — send WhatsApp reply to lead
+- `POST /owner/leads/{id}/reply` — send an email or an in-window WhatsApp reply to a lead
 - `GET /debug/whatsapp` — local UI to simulate chat flow
 - `POST /debug/whatsapp/send` — simulate incoming message (form-encoded)
 - `GET /debug/whatsapp/leads` — recent leads for debug UI
 - `GET /v1/webhooks/whatsapp` — Meta webhook verification
 - `POST /v1/webhooks/whatsapp` — WhatsApp webhook receiver
+
+Owner WhatsApp replies follow [Meta's rolling 24-hour customer-service window](https://whatsappbusiness.com/policy/), measured from the latest persisted inbound customer message. LeadRelay blocks free-form sends after the window closes and explains that the customer must message again or an approved template is required; approved-template sending is not yet available in LeadRelay.
 
 ## Widget embed
 Use this script on a customer site (update `siteId`):

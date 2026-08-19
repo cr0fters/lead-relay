@@ -32,7 +32,11 @@ public sealed class OwnerPortalReplyChannelTests
 
         var repository = new FakeLeadRepository(lead);
         var dispatcher = new RecordingDispatcher();
-        var controller = new OwnerPortalController(repository, dispatcher, new LeadRelay.Infrastructure.Persistence.InMemorySiteRepository())
+        var controller = new OwnerPortalController(
+            repository,
+            dispatcher,
+            new LeadRelay.Infrastructure.Persistence.InMemorySiteRepository(),
+            new FixedClock(DateTimeOffset.UtcNow))
         {
             ControllerContext = new ControllerContext
             {
@@ -77,6 +81,70 @@ public sealed class OwnerPortalReplyChannelTests
     }
 
     [Test]
+    public async Task whatsapp_reply_is_blocked_outside_the_customer_service_window()
+    {
+        var now = new DateTimeOffset(2026, 8, 19, 12, 0, 0, TimeSpan.Zero);
+        var siteId = InMemorySiteRepository.DefaultSiteId;
+        var lead = new Lead
+        {
+            Id = Guid.NewGuid(),
+            SiteId = siteId,
+            CreatedAtUtc = now.AddDays(-2),
+            Phone = "447000000000",
+            Channel = "whatsapp",
+            CustomerId = Guid.NewGuid(),
+            ProjectId = Guid.NewGuid(),
+            Conversation =
+            {
+                new LeadConversationTurn("user", "Old enquiry", now.AddHours(-24))
+            }
+        };
+        var repository = new FakeLeadRepository(lead);
+        var dispatcher = new RecordingDispatcher();
+        var controller = CreateController(repository, new InMemorySiteRepository(), siteId, new FixedClock(now), dispatcher);
+
+        var result = await controller.Reply(lead.Id, "Following up", "whatsapp", CancellationToken.None);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        Assert.That(dispatcher.Channel, Is.Null);
+        Assert.That(repository.SavedLead, Is.Null);
+        var model = ((ViewResult)result).Model as OwnerPortalController.OwnerLeadDetailModel;
+        Assert.That(model?.Error, Does.Contain("24-hour WhatsApp customer-service window"));
+        Assert.That(model?.IsWhatsAppWindowOpen, Is.False);
+    }
+
+    [Test]
+    public async Task whatsapp_reply_is_sent_within_the_customer_service_window()
+    {
+        var now = new DateTimeOffset(2026, 8, 19, 12, 0, 0, TimeSpan.Zero);
+        var siteId = InMemorySiteRepository.DefaultSiteId;
+        var lead = new Lead
+        {
+            Id = Guid.NewGuid(),
+            SiteId = siteId,
+            CreatedAtUtc = now.AddHours(-2),
+            Phone = "447000000000",
+            Channel = "whatsapp",
+            CustomerId = Guid.NewGuid(),
+            ProjectId = Guid.NewGuid(),
+            Conversation =
+            {
+                new LeadConversationTurn("user", "Recent enquiry", now.AddHours(-23))
+            }
+        };
+        var repository = new FakeLeadRepository(lead);
+        var dispatcher = new RecordingDispatcher();
+        var controller = CreateController(repository, new InMemorySiteRepository(), siteId, new FixedClock(now), dispatcher);
+
+        var result = await controller.Reply(lead.Id, "Following up", "whatsapp", CancellationToken.None);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        Assert.That(dispatcher.Channel, Is.EqualTo("whatsapp"));
+        Assert.That(repository.SavedLead, Is.Not.Null);
+        Assert.That(repository.SavedLead!.Conversation[^1].AtUtc, Is.EqualTo(now));
+    }
+
+    [Test]
     public async Task update_contact_saves_email_and_phone()
     {
         var siteId = InMemorySiteRepository.DefaultSiteId;
@@ -93,7 +161,11 @@ public sealed class OwnerPortalReplyChannelTests
         };
 
         var repository = new FakeLeadRepository(lead);
-        var controller = new OwnerPortalController(repository, new RecordingDispatcher(), new LeadRelay.Infrastructure.Persistence.InMemorySiteRepository())
+        var controller = new OwnerPortalController(
+            repository,
+            new RecordingDispatcher(),
+            new LeadRelay.Infrastructure.Persistence.InMemorySiteRepository(),
+            new FixedClock(DateTimeOffset.UtcNow))
         {
             ControllerContext = new ControllerContext
             {
@@ -385,9 +457,18 @@ public sealed class OwnerPortalReplyChannelTests
         };
     }
 
-    private static OwnerPortalController CreateController(FakeLeadRepository repository, ISiteRepository siteRepository, string siteId)
+    private static OwnerPortalController CreateController(
+        FakeLeadRepository repository,
+        ISiteRepository siteRepository,
+        string siteId,
+        IClock? clock = null,
+        IMessageDispatcher? dispatcher = null)
     {
-        var controller = new OwnerPortalController(repository, new RecordingDispatcher(), siteRepository)
+        var controller = new OwnerPortalController(
+            repository,
+            dispatcher ?? new RecordingDispatcher(),
+            siteRepository,
+            clock ?? new FixedClock(DateTimeOffset.UtcNow))
         {
             ControllerContext = new ControllerContext
             {
@@ -502,5 +583,10 @@ public sealed class OwnerPortalReplyChannelTests
             SiteId = siteId;
             return Task.FromResult(new MessageDispatchResult(true));
         }
+    }
+
+    private sealed class FixedClock(DateTimeOffset now) : IClock
+    {
+        public DateTimeOffset UtcNow => now;
     }
 }

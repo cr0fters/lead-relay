@@ -5,6 +5,7 @@ using LeadRelay.Domain.Sites;
 using LeadRelay.Web.Fields;
 using LeadRelay.Web.Leads;
 using LeadRelay.Web.Security;
+using LeadRelay.Web.WhatsApp;
 using Microsoft.AspNetCore.Mvc;
 using System.Globalization;
 using System.Net.Mail;
@@ -12,7 +13,11 @@ using System.Text;
 
 namespace LeadRelay.Web.Controllers;
 
-public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatcher messages, ISiteRepository sites) : Controller
+public sealed class OwnerPortalController(
+    ILeadRepository leads,
+    IMessageDispatcher messages,
+    ISiteRepository sites,
+    IClock clock) : Controller
 {
     [HttpGet("/owner")]
     public async Task<IActionResult> Index(
@@ -301,6 +306,14 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
             return View("Lead", model);
         }
 
+        if (string.Equals(channel, "whatsapp", StringComparison.OrdinalIgnoreCase) &&
+            !WhatsAppCustomerServiceWindow.Evaluate(lead.Conversation, clock.UtcNow).IsOpen)
+        {
+            model.Error = "The 24-hour WhatsApp customer-service window has closed. Ask the customer to message again or reply by email. An approved WhatsApp template is required otherwise, and LeadRelay template sending is not available yet.";
+            model.ReplyChannel = channel;
+            return View("Lead", model);
+        }
+
         var dispatch = await messages.SendTextAsync(channel, recipient, text, auth.SiteId, ct);
         if (!dispatch.Sent)
         {
@@ -309,7 +322,7 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
             return View("Lead", model);
         }
 
-        lead.Conversation.Add(new LeadConversationTurn("owner", text, DateTimeOffset.UtcNow));
+        lead.Conversation.Add(new LeadConversationTurn("owner", text, clock.UtcNow));
         await leads.SaveAsync(lead, ct);
 
         var updatedModel = ToDetailModel(auth, lead, site);
@@ -433,10 +446,17 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
             : null;
     }
 
-    private static OwnerLeadDetailModel ToDetailModel(OwnerAuthContext auth, Lead lead, Site? site)
+    private OwnerLeadDetailModel ToDetailModel(OwnerAuthContext auth, Lead lead, Site? site)
     {
         var inferred = InferChannel(lead);
         var defaultChannel = NormalizeReplyChannel(inferred, lead);
+        var whatsAppWindow = WhatsAppCustomerServiceWindow.Evaluate(lead.Conversation, clock.UtcNow);
+        if (string.Equals(defaultChannel, "whatsapp", StringComparison.OrdinalIgnoreCase) &&
+            !whatsAppWindow.IsOpen &&
+            !string.IsNullOrWhiteSpace(lead.Email))
+        {
+            defaultChannel = "email";
+        }
 
         return new OwnerLeadDetailModel
         {
@@ -465,6 +485,8 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
             ReplyChannel = defaultChannel,
             CanReplyViaWhatsApp = !string.IsNullOrWhiteSpace(lead.Phone),
             CanReplyViaEmail = !string.IsNullOrWhiteSpace(lead.Email),
+            IsWhatsAppWindowOpen = whatsAppWindow.IsOpen,
+            WhatsAppWindowEndsAtUtc = whatsAppWindow.ClosesAtUtc,
             IsPaused = lead.IsBotPaused
         };
     }
@@ -764,6 +786,9 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
         public string ReplyChannel { get; set; } = "whatsapp";
         public bool CanReplyViaWhatsApp { get; set; }
         public bool CanReplyViaEmail { get; set; }
+        public bool IsWhatsAppWindowOpen { get; set; }
+        public DateTimeOffset? WhatsAppWindowEndsAtUtc { get; set; }
+        public bool CanSendReply => (CanReplyViaWhatsApp && IsWhatsAppWindowOpen) || CanReplyViaEmail;
         public bool IsPaused { get; set; }
     }
 
