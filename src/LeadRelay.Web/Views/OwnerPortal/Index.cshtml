@@ -151,6 +151,7 @@
                         <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Name</th>
                         <th class="hidden px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 lg:table-cell">Email</th>
                         <th class="hidden px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 lg:table-cell">Phone</th>
+                        <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Source</th>
                         <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Stage</th>
                         <th class="px-4 py-3"></th>
                     </tr>
@@ -167,6 +168,13 @@
                             "contacted" => "border border-sky-200 bg-sky-50 text-sky-700",
                             _ => "border border-amber-200 bg-amber-50 text-amber-700"
                         };
+                        var sourceLabel = lead.Channel.ToLowerInvariant() switch
+                        {
+                            "whatsapp" => "WhatsApp",
+                            "api" => "API",
+                            "email" => "Email",
+                            _ => string.IsNullOrWhiteSpace(lead.Channel) ? "Unknown" : lead.Channel
+                        };
                         <tr class="@(lead.IsNew ? "bg-violet-50/50" : "") hover:bg-slate-50">
                             <td class="whitespace-nowrap px-4 py-3 text-sm text-slate-700">@lead.CreatedAtUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm") UTC</td>
                             <td class="px-4 py-3 text-sm font-medium text-slate-900">
@@ -178,6 +186,13 @@
                             </td>
                             <td class="hidden px-4 py-3 text-sm text-slate-700 lg:table-cell">@(string.IsNullOrWhiteSpace(lead.Email) ? "-" : lead.Email)</td>
                             <td class="hidden px-4 py-3 text-sm text-slate-700 lg:table-cell">@(string.IsNullOrWhiteSpace(lead.Phone) ? "-" : lead.Phone)</td>
+                            <td class="px-4 py-3 text-sm">
+                                <span class="font-medium text-slate-700">@sourceLabel</span>
+                                @if (lead.IsTest)
+                                {
+                                    <span class="ml-1 inline-flex rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-sky-700">Test</span>
+                                }
+                            </td>
                             <td class="px-4 py-3 text-sm">
                                 <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] @stageClass">@stageLabel</span>
                             </td>

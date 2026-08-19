@@ -1,6 +1,6 @@
 # LeadRelay MVP and launch plan
 
-Last reviewed: 2026-08-18
+Last reviewed: 2026-08-19
 
 ## Product definition
 
@@ -146,30 +146,34 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
 - [x] AI-generated project summary and configurable qualification fields.
 - [x] Owner replies over available email/WhatsApp channels.
 - [x] Per-lead automation pause/takeover control.
-- [ ] Replace the current mostly inferred status display with owner-controlled CRM stages.
+- [x] Replace the current mostly inferred status display with owner-controlled CRM stages.
   - [x] use the MVP stages `new`, `qualified`, `contacted`, `won`, and `lost`
   - [x] add stage changes to the activity timeline
   - [x] filter/search by stage and date
-  - [ ] confirm the authoritative CI build, tests, and migration validation for this milestone
-- [ ] Add owner notes and a next-action/reminder field to each lead.
+  - [x] confirm the authoritative CI build, tests, and migration validation for this milestone
+- [x] Add owner notes and a next-action/reminder field to each lead.
   - [x] persist tenant-scoped private notes, next action, and optional UTC due time
   - [x] let owners view, edit, clear, and validate follow-up details from lead detail
-  - [ ] confirm the authoritative CI build, tests, and migration validation for this milestone
-- [ ] Add unread/new-lead indication so the inbox is operationally useful.
+  - [x] confirm the authoritative CI build, tests, and migration validation for this milestone
+- [x] Add unread/new-lead indication so the inbox is operationally useful.
   - [x] persist a tenant-scoped first-view timestamp without resetting it on later opens
   - [x] show new-lead badges and a filtered new count until the owner opens a lead
   - [x] treat pre-existing leads as already viewed during migration so launch does not create false alerts
-  - [ ] confirm the authoritative CI build, tests, and migration validation for this milestone
-- [ ] Add CSV export for leads and their core qualification fields.
+  - [x] confirm the authoritative CI build, tests, and migration validation for this milestone
+- [x] Add CSV export for leads and their core qualification fields.
   - [x] export tenant-scoped contact, stage, follow-up, source channel, and qualification data from the inbox
   - [x] protect spreadsheet consumers from CSV formula injection and exclude conversation transcripts
-  - [ ] confirm the authoritative CI build and tests for this milestone
+  - [x] confirm the authoritative CI build and tests for this milestone
 - [ ] Add safe single-lead deletion/anonymization and an account-level export/deletion workflow.
 - [ ] Clarify the source of each lead and whether a conversation is a test.
+  - [x] show a normalized source and real/test label in the inbox, lead detail, notification email, and CSV export
+  - [x] automatically classify conversations from the configured WhatsApp setup-test recipient and preserve that classification across the conversation
+  - [x] exclude setup-test conversations from first-real-lead onboarding progress
+  - [ ] confirm the authoritative CI build, tests, and migration validation for this milestone
 - [ ] Prevent unsupported outbound WhatsApp free-form sends outside Meta's customer-service window; guide owners to approved templates where required.
-- [ ] Add a minimal empty-state experience that links a new owner back to onboarding and widget installation.
+- [x] Add a minimal empty-state experience that links a new owner back to onboarding and widget installation.
   - [x] distinguish first-run and filtered-empty inbox states and link first-run owners to setup
-  - [ ] confirm the authoritative CI build and tests for this milestone
+  - [x] confirm the authoritative CI build and tests for this milestone
 
 ## Priority 0: landing page and product communication
 
@@ -234,16 +238,16 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
   - [x] enforce HSTS on HTTPS plus CSP, frame, content-type, referrer, and browser-permission policies outside development
   - [x] allow only the currently required Google Fonts origins after serving application scripts and styles locally
   - [ ] migrate inline scripts/styles and Alpine expressions to a nonce/CSP-safe approach before removing CSP `unsafe-inline`/`unsafe-eval`
-  - [ ] confirm the authoritative CI build and tests for this milestone
-- [ ] Remove production reliance on unversioned CDN assets (`tailwindcss.com`, Alpine `3.x.x`, and Lucide `latest`); bundle or pin reviewed assets with integrity controls.
+  - [x] confirm the authoritative CI build and tests for this milestone
+- [x] Remove production reliance on unversioned CDN assets (`tailwindcss.com`, Alpine `3.x.x`, and Lucide `latest`); bundle or pin reviewed assets with integrity controls.
   - [x] pin Tailwind CSS, Alpine, and Lucide in the npm lockfile and serve their generated assets locally
   - [x] verify generated asset reproducibility in CI and document versions and licenses
-  - [ ] confirm the authoritative CI frontend asset check, build, and tests for this milestone
-- [ ] Force secure cookies in production and review session invalidation, signing-key rotation, and logout behavior.
+  - [x] confirm the authoritative CI frontend asset check, build, and tests for this milestone
+- [x] Force secure cookies in production and review session invalidation, signing-key rotation, and logout behavior.
   - [x] force owner, admin, antiforgery, and temporary-data cookies to use HTTPS in production and delete auth cookies with matching attributes
   - [x] revoke existing owner sessions after password reset using a persisted per-account session version
   - [x] support a bounded current-plus-previous signing-key rotation window and document the deployment procedure
-  - [ ] confirm the authoritative CI build, tests, and migration validation for this milestone
+  - [x] confirm the authoritative CI build, tests, and migration validation for this milestone
 - [ ] Remove admin-token query-string authentication before launch; use a dedicated admin identity or restrict the admin surface to trusted operators/network access.
   - [x] reject query-string tokens, omit request queries from unauthenticated redirects, and avoid copying header/bearer tokens into cookies
   - [ ] decide and implement either dedicated operator authentication or trusted-network access before launch
@@ -254,9 +258,9 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
 
 ## Priority 0: operating the service
 
-- [ ] Gate and verify production deployments.
+- [x] Gate and verify production deployments.
   - [x] expose the deployed Railway commit SHA at the unlinked, non-indexed `/.well-known/leadrelay-version` endpoint
-  - [ ] enable Railway **Wait for CI** so a deployed SHA implies the GitHub Actions checks passed
+  - [x] enable Railway **Wait for CI** so a deployed SHA implies the GitHub Actions checks passed
 - [ ] Configure a real production domain, DNS, TLS, sender email domain, and support/privacy/legal mailboxes.
 - [ ] Verify the Postmark sending domain and test verification, password reset, lead notification, and billing emails end to end.
 - [ ] Configure Railway/environment secrets and document ownership/rotation for each.

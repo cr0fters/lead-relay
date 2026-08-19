@@ -64,7 +64,6 @@ public sealed class WhatsAppWebhookController(
         if (!webhookRateLimiter.TryAcquire(site.Id, waId))
             return StatusCode(StatusCodes.Status429TooManyRequests);
 
-        await onboarding.MarkInboundReceivedAsync(site.Id, ct);
         var receiptStarted = await webhookGuard.TryBeginProcessingAsync(site.Id, messageId, ct);
         if (!receiptStarted)
             return Ok(new { ok = true, duplicate = true });
@@ -72,6 +71,7 @@ public sealed class WhatsAppWebhookController(
         var sideEffectsStarted = false;
         try
         {
+            var isTest = await onboarding.RecordInboundAsync(site.Id, waId, ct);
             var reply = await conversations.HandleMessageAsync(site, waId, text, contactName, null, ct);
             var captured = await leadCapture.CaptureAsync(
                 site,
@@ -87,6 +87,7 @@ public sealed class WhatsAppWebhookController(
                     LeadId: reply.LeadId,
                     LeadCreatedAtUtc: reply.LeadCreatedAtUtc,
                     NotifyOwner: false,
+                    IsTest: isTest,
                     ProjectSummary: reply.ProjectSummary),
                 ct);
 

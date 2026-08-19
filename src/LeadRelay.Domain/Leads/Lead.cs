@@ -11,6 +11,7 @@ public sealed class Lead
     public Guid CustomerId { get; set; }
     public Guid ProjectId { get; set; }
     public string Channel { get; set; } = "api";
+    public bool IsTest { get; set; }
     public string Status { get; set; } = LeadStatuses.Open;
     public bool IsBotPaused { get; set; }
     public string ProjectStage { get; set; } = ProjectStatuses.New;

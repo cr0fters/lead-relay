@@ -41,6 +41,7 @@ public sealed class DebugController(
                 LeadId: reply.LeadId,
                 LeadCreatedAtUtc: reply.LeadCreatedAtUtc,
                 NotifyOwner: reply.LeadJustCreated,
+                IsTest: true,
                 ProjectSummary: reply.ProjectSummary),
             ct);
 

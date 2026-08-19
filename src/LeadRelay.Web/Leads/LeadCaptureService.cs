@@ -27,6 +27,7 @@ public sealed class LeadCaptureService(ILeadRepository leads, IEmailSender email
             SiteId = site.Id,
             CreatedAtUtc = input.LeadCreatedAtUtc ?? now,
             Channel = NormalizeChannel(input.Channel),
+            IsTest = existingLead?.IsTest == true || input.IsTest,
             Status = LeadStatuses.Open,
             IsBotPaused = existingLead?.IsBotPaused ?? false
         };
@@ -98,8 +99,9 @@ public sealed class LeadCaptureService(ILeadRepository leads, IEmailSender email
         CancellationToken ct)
     {
         var fieldsBlock = string.Join("\n", fields.Select(kv => $"{kv.Key}: {kv.Value}"));
-        var body = $"New lead for {site.Name}\n\nChannel: {lead.Channel}\nFields:\n{fieldsBlock}\n";
-        return emailSender.SendAsync(site.OwnerEmail, $"New lead ({site.Name})", body, ct);
+        var leadType = lead.IsTest ? "Test lead" : "New lead";
+        var body = $"{leadType} for {site.Name}\n\nSource: {lead.Channel}\nType: {(lead.IsTest ? "Test" : "Real")}\nFields:\n{fieldsBlock}\n";
+        return emailSender.SendAsync(site.OwnerEmail, $"{leadType} ({site.Name})", body, ct);
     }
 
     private async Task<CustomerRecord> ResolveOrCreateCustomerAsync(

@@ -352,6 +352,7 @@ public sealed class OwnerPortalReplyChannelTests
                 "jane@example.com",
                 null,
                 "whatsapp",
+                false,
                 ProjectStatuses.New,
                 null,
                 null,

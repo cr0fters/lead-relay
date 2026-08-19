@@ -16,13 +16,16 @@ public sealed class EfLeadRepositoryIdentityTests
         var repository = new EfLeadRepository(db);
         var siteId = "site_demo";
 
+        var testLeadId = Guid.NewGuid();
         await repository.SaveAsync(new Lead
         {
-            Id = Guid.NewGuid(),
+            Id = testLeadId,
             SiteId = siteId,
             CreatedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-1),
             Phone = "447000000000",
-            Email = "same@example.com"
+            Email = "same@example.com",
+            Channel = "whatsapp",
+            IsTest = true
         }, CancellationToken.None);
 
         await repository.SaveAsync(new Lead
@@ -36,6 +39,9 @@ public sealed class EfLeadRepositoryIdentityTests
 
         var count = await db.Leads.CountAsync();
         Assert.That(count, Is.EqualTo(2));
+        var testLead = await repository.GetByIdForSiteAsync(testLeadId, siteId, CancellationToken.None);
+        Assert.That(testLead?.Channel, Is.EqualTo("whatsapp"));
+        Assert.That(testLead?.IsTest, Is.True);
     }
 
     [Test]

@@ -38,6 +38,7 @@ public sealed class AdminLeadIntakeController(
                 LeadId: existingLead?.Id,
                 LeadCreatedAtUtc: existingLead?.CreatedAtUtc,
                 NotifyOwner: request.NotifyOwner,
+                IsTest: request.IsTest,
                 ExplicitName: request.Name,
                 ExplicitEmail: request.Email,
                 ExplicitPhone: request.Phone),
@@ -86,6 +87,7 @@ public sealed class AdminLeadIntakeController(
         public Dictionary<string, string>? Fields { get; init; }
         public List<ConversationTurnRequest>? Conversation { get; init; }
         public bool NotifyOwner { get; init; }
+        public bool IsTest { get; init; }
     }
 
     public sealed class ConversationTurnRequest

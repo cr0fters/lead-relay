@@ -71,7 +71,9 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
                 Email = x.Email,
                 CreatedAtUtc = x.CreatedAtUtc,
                 ProjectStage = ProjectStatuses.Normalize(x.ProjectStage),
-                IsNew = x.IsNew
+                IsNew = x.IsNew,
+                Channel = x.Channel,
+                IsTest = x.IsTest
             }).ToList()
         };
 
@@ -445,6 +447,7 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
             Email = lead.Email,
             Phone = lead.Phone,
             Channel = lead.Channel,
+            IsTest = lead.IsTest,
             ProjectStage = ProjectStatuses.Normalize(lead.ProjectStage),
             StageOptions = ProjectStatuses.OwnerStages
                 .Select(x => new OwnerStageOptionModel { Value = x, Label = GetStageLabel(x) })
@@ -730,6 +733,8 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
         public DateTimeOffset CreatedAtUtc { get; set; }
         public string ProjectStage { get; set; } = ProjectStatuses.New;
         public bool IsNew { get; set; }
+        public string Channel { get; set; } = "api";
+        public bool IsTest { get; set; }
     }
 
     public sealed class OwnerLeadDetailModel
@@ -741,6 +746,7 @@ public sealed class OwnerPortalController(ILeadRepository leads, IMessageDispatc
         public string? Email { get; set; }
         public string? Phone { get; set; }
         public string Channel { get; set; } = "api";
+        public bool IsTest { get; set; }
         public string ProjectStage { get; set; } = ProjectStatuses.New;
         public IReadOnlyList<OwnerStageOptionModel> StageOptions { get; set; } = Array.Empty<OwnerStageOptionModel>();
         public DateTimeOffset CreatedAtUtc { get; set; }

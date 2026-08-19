@@ -65,6 +65,7 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
             entity.Property(x => x.CustomerId).HasColumnName("CustomerId").IsRequired();
             entity.Property(x => x.ProjectId).HasColumnName("ProjectId").IsRequired();
             entity.Property(x => x.Channel).HasColumnName("Channel").HasMaxLength(32).IsRequired();
+            entity.Property(x => x.IsTest).HasColumnName("IsTest").IsRequired();
             entity.Property(x => x.Status).HasColumnName("Status").HasMaxLength(32).IsRequired();
             entity.Property(x => x.IsBotPaused).HasColumnName("IsBotPaused").IsRequired();
 
@@ -211,6 +212,7 @@ public sealed class LeadRelayDbContext(DbContextOptions<LeadRelayDbContext> opti
             entity.Property(x => x.LastValidatedAtUtc).HasColumnName("LastValidatedAtUtc");
             entity.Property(x => x.LastInboundAtUtc).HasColumnName("LastInboundAtUtc");
             entity.Property(x => x.LastOutboundTestAtUtc).HasColumnName("LastOutboundTestAtUtc");
+            entity.Property(x => x.LastOutboundTestRecipient).HasColumnName("LastOutboundTestRecipient").HasMaxLength(20);
             entity.Property(x => x.LastError).HasColumnName("LastError").HasMaxLength(1000);
             entity.Property(x => x.UpdatedAtUtc).HasColumnName("UpdatedAtUtc");
             entity.HasIndex(x => x.PhoneNumberId).IsUnique();

@@ -27,6 +27,8 @@ public sealed class LeadCsvExporterTests
         var lines = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
         Assert.That(lines, Has.Length.EqualTo(2));
+        Assert.That(lines[0], Does.Contain("\"Source\",\"Lead type\""));
+        Assert.That(lines[1], Does.Contain("\"whatsapp\",\"Test\""));
         Assert.That(lines[0], Does.EndWith("\"Budget\",\"legacy_field\""));
         Assert.That(lines[1], Does.EndWith("\"£25,000\",\"Legacy answer\""));
         Assert.That(lines[1], Does.Not.Contain("conversation"));
@@ -55,6 +57,7 @@ public sealed class LeadCsvExporterTests
             "jane@example.com",
             "447000000000",
             "whatsapp",
+            true,
             "qualified",
             "Kitchen renovation",
             "Prefers email",

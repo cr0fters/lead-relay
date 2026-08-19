@@ -80,16 +80,25 @@ public sealed class WhatsAppOnboardingServiceTests
         Assert.That(summary.IsWebhookSubscribed, Is.True);
         Assert.That(summary.IsWebhookVerified, Is.False);
 
-        await service.MarkInboundReceivedAsync("site_a", CancellationToken.None);
-        summary = await service.GetSummaryAsync("site_a", CancellationToken.None);
-        Assert.That(summary.IsWebhookVerified, Is.True);
-
         var tested = await service.SendTestAsync("site_a", "+44 7111 111111", CancellationToken.None);
 
         Assert.That(tested.Succeeded, Is.True, tested.Error);
         record = await db.WhatsAppConnections.AsNoTracking().SingleAsync();
         Assert.That(record.LastOutboundTestAtUtc, Is.EqualTo(now));
+        Assert.That(record.LastOutboundTestRecipient, Is.EqualTo("447111111111"));
         Assert.That(sendHandler.AuthorizationParameter, Is.EqualTo("secret-token"));
+
+        var isTest = await service.RecordInboundAsync("site_a", "447111111111", CancellationToken.None);
+
+        Assert.That(isTest, Is.True);
+        summary = await service.GetSummaryAsync("site_a", CancellationToken.None);
+        Assert.That(summary.IsWebhookVerified, Is.True);
+        record = await db.WhatsAppConnections.AsNoTracking().SingleAsync();
+        Assert.That(record.LastOutboundTestRecipient, Is.EqualTo("447111111111"));
+
+        var laterInboundIsTest = await service.RecordInboundAsync("site_a", "447111111111", CancellationToken.None);
+        Assert.That(laterInboundIsTest, Is.True,
+            "The configured setup recipient remains test-only so retries and later test conversations cannot become real leads.");
     }
 
     [Test]
@@ -196,6 +205,7 @@ public sealed class WhatsAppOnboardingServiceTests
             Status = WhatsAppConnectionStatuses.ActionRequired,
             LastInboundAtUtc = DateTimeOffset.UtcNow.AddDays(-1),
             LastOutboundTestAtUtc = DateTimeOffset.UtcNow.AddDays(-1),
+            LastOutboundTestRecipient = "447000000999",
             UpdatedAtUtc = DateTimeOffset.UtcNow.AddDays(-1)
         };
         db.Sites.Add(new SiteRecord
@@ -245,6 +255,7 @@ public sealed class WhatsAppOnboardingServiceTests
         var updated = await db.WhatsAppConnections.AsNoTracking().SingleAsync();
         Assert.That(updated.LastInboundAtUtc, Is.Null);
         Assert.That(updated.LastOutboundTestAtUtc, Is.Null);
+        Assert.That(updated.LastOutboundTestRecipient, Is.Null);
     }
 
     private static LeadRelayDbContext CreateDb()

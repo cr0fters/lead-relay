@@ -178,6 +178,60 @@ public sealed class LeadCaptureCustomerProjectTests
         Assert.That(second.Lead!.IsBotPaused, Is.True);
     }
 
+    [Test]
+    public async Task test_attribution_is_preserved_for_the_whole_conversation()
+    {
+        await using var db = CreateDb();
+        var repository = new InMemoryLeadRepository();
+        var service = new LeadCaptureService(repository, new NoOpEmailSender(), db);
+        var site = BuildSite();
+
+        var first = await service.CaptureAsync(
+            site,
+            new LeadCaptureInput(
+                Channel: "whatsapp",
+                ExternalContactId: "447000000555",
+                ContactName: "Setup tester",
+                FallbackMessage: "Testing setup",
+                Fields: new Dictionary<string, string>(),
+                Conversation: new[] { new LeadCaptureTurn("user", "Testing setup", DateTimeOffset.UtcNow) },
+                IsTest: false),
+            CancellationToken.None);
+
+        var updated = await service.CaptureAsync(
+            site,
+            new LeadCaptureInput(
+                Channel: "whatsapp",
+                ExternalContactId: "447000000555",
+                ContactName: "Setup tester",
+                FallbackMessage: "Second message",
+                Fields: new Dictionary<string, string>(),
+                Conversation: new[] { new LeadCaptureTurn("user", "Second message", DateTimeOffset.UtcNow) },
+                LeadId: first.Lead!.Id,
+                LeadCreatedAtUtc: first.Lead.CreatedAtUtc,
+                IsTest: true),
+            CancellationToken.None);
+
+        Assert.That(first.Lead.IsTest, Is.False);
+        Assert.That(updated.Lead!.IsTest, Is.True);
+
+        var preserved = await service.CaptureAsync(
+            site,
+            new LeadCaptureInput(
+                Channel: "whatsapp",
+                ExternalContactId: "447000000555",
+                ContactName: "Setup tester",
+                FallbackMessage: "Another test message",
+                Fields: new Dictionary<string, string>(),
+                Conversation: new[] { new LeadCaptureTurn("user", "Another test message", DateTimeOffset.UtcNow) },
+                LeadId: updated.Lead.Id,
+                LeadCreatedAtUtc: updated.Lead.CreatedAtUtc,
+                IsTest: false),
+            CancellationToken.None);
+
+        Assert.That(preserved.Lead!.IsTest, Is.True);
+    }
+
     private static LeadRelayDbContext CreateDb()
     {
         var options = new DbContextOptionsBuilder<LeadRelayDbContext>()

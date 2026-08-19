@@ -109,7 +109,7 @@ public sealed class OwnerOnboardingController(
         var site = await sites.GetByIdAsync(auth.SiteId, ct) ?? throw new InvalidOperationException("Owner site not found.");
         var connection = await onboarding.GetSummaryAsync(auth.SiteId, ct);
         var hasWhatsAppLead = await db.Leads.AsNoTracking()
-            .AnyAsync(x => x.SiteId == auth.SiteId && x.Channel == "whatsapp", ct);
+            .AnyAsync(x => x.SiteId == auth.SiteId && x.Channel == "whatsapp" && !x.IsTest, ct);
         var publicBaseUrl = (configuration["PublicBaseUrl"] ?? "").TrimEnd('/');
         var widgetUrl = string.IsNullOrWhiteSpace(publicBaseUrl)
             ? $"{Request.Scheme}://{Request.Host}"

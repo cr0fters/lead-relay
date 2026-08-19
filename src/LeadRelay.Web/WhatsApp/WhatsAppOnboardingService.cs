@@ -111,6 +111,7 @@ public sealed class WhatsAppOnboardingService(
         connection.WebhookSubscribedAtUtc = now;
         connection.LastValidatedAtUtc = now;
         connection.LastOutboundTestAtUtc = null;
+        connection.LastOutboundTestRecipient = null;
         if (senderIdentityChanged)
             connection.LastInboundAtUtc = null;
         connection.LastError = null;
@@ -160,19 +161,24 @@ public sealed class WhatsAppOnboardingService(
 
         connection.Status = WhatsAppConnectionStatuses.Connected;
         connection.LastOutboundTestAtUtc = clock.UtcNow;
+        connection.LastOutboundTestRecipient = normalizedRecipient;
         connection.LastError = null;
         connection.UpdatedAtUtc = clock.UtcNow;
         await db.SaveChangesAsync(ct);
         return new WhatsAppConnectionResult(true);
     }
 
-    public async Task MarkInboundReceivedAsync(string siteId, CancellationToken ct)
+    public async Task<bool> RecordInboundAsync(string siteId, string? sender, CancellationToken ct)
     {
         var connection = await db.WhatsAppConnections.FirstOrDefaultAsync(x => x.SiteId == siteId, ct);
-        if (connection is null) return;
+        if (connection is null) return false;
+        var normalizedSender = NormalizePhone(sender);
+        var isTest = normalizedSender is not null &&
+            string.Equals(connection.LastOutboundTestRecipient, normalizedSender, StringComparison.Ordinal);
         connection.LastInboundAtUtc = clock.UtcNow;
         connection.UpdatedAtUtc = clock.UtcNow;
         await db.SaveChangesAsync(ct);
+        return isTest;
     }
 
     public async Task DisconnectAsync(string siteId, CancellationToken ct)

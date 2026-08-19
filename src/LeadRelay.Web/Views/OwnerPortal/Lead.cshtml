@@ -5,6 +5,13 @@
     ViewData["Title"] = leadDisplayName;
     var hasActivity = Model.Activity.Count > 0;
     var hasFields = Model.FieldDefinitions.Count > 0;
+    var sourceLabel = Model.Channel.ToLowerInvariant() switch
+    {
+        "whatsapp" => "WhatsApp",
+        "api" => "API",
+        "email" => "Email",
+        _ => string.IsNullOrWhiteSpace(Model.Channel) ? "Unknown" : Model.Channel
+    };
 }
 
 <div class="w-full px-4 py-5 sm:px-6 xl:px-8" x-data="leadWorkspace(@(Model.IsPaused ? "true" : "false"))">
@@ -40,8 +47,8 @@
                     </form>
                 </article>
                 <article class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Channel</p>
-                    <p class="mt-1 text-sm font-semibold text-slate-900">@Model.Channel</p>
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Source</p>
+                    <p class="mt-1 text-sm font-semibold text-slate-900">@sourceLabel @(Model.IsTest ? "setup test" : "lead")</p>
                 </article>
                 <article class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                     <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Messages</p>
@@ -67,6 +74,14 @@
             </div>
         </div>
     </header>
+
+    @if (Model.IsTest)
+    {
+        <div class="mb-3 flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+            <i data-lucide="flask-conical" class="mt-0.5 h-4 w-4 shrink-0"></i>
+            <p><span class="font-semibold">Test conversation.</span> This lead came from the WhatsApp setup test and does not count as your first real lead.</p>
+        </div>
+    }
 
     <section class="mb-3 rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 via-sky-50 to-white px-4 py-4 shadow-panel sm:px-5">
         <div class="flex flex-wrap items-start gap-3">

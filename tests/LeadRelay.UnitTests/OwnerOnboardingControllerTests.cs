@@ -59,6 +59,13 @@ public sealed class OwnerOnboardingControllerTests
 
         var lead = await db.Leads.SingleAsync();
         lead.Channel = "whatsapp";
+        lead.IsTest = true;
+        await db.SaveChangesAsync();
+
+        var testResult = (ViewResult)await controller.Index(CancellationToken.None);
+        Assert.That(((OwnerOnboardingController.OwnerOnboardingModel)testResult.Model!).HasFirstLead, Is.False);
+
+        lead.IsTest = false;
         await db.SaveChangesAsync();
 
         var whatsAppResult = (ViewResult)await controller.Index(CancellationToken.None);

@@ -21,6 +21,7 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
         record.CustomerId = lead.CustomerId;
         record.ProjectId = lead.ProjectId;
         record.Channel = NormalizeChannel(lead.Channel);
+        record.IsTest = lead.IsTest;
         record.Status = NormalizeStatus(lead.Status);
         record.IsBotPaused = lead.IsBotPaused;
         record.Utm = lead.Utm;
@@ -78,6 +79,8 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
                 lead.SiteId,
                 lead.CreatedAtUtc,
                 IsNew = lead.OwnerViewedAtUtc == null,
+                lead.Channel,
+                lead.IsTest,
                 Name = customer != null ? customer.Name : null,
                 Phone = customer != null ? customer.Phone : null,
                 Email = customer != null ? customer.Email : null,
@@ -94,7 +97,9 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
                 x.Email,
                 x.CreatedAtUtc,
                 x.ProjectStage,
-                x.IsNew))
+                x.IsNew,
+                x.Channel,
+                x.IsTest))
             .ToListAsync(ct);
     }
 
@@ -121,6 +126,8 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
                 lead.SiteId,
                 lead.CreatedAtUtc,
                 IsNew = lead.OwnerViewedAtUtc == null,
+                lead.Channel,
+                lead.IsTest,
                 Name = customer != null ? customer.Name : null,
                 Phone = customer != null ? customer.Phone : null,
                 Email = customer != null ? customer.Email : null,
@@ -137,7 +144,9 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
                 x.Email,
                 x.CreatedAtUtc,
                 x.ProjectStage,
-                x.IsNew))
+                x.IsNew,
+                x.Channel,
+                x.IsTest))
             .ToListAsync(ct);
     }
 
@@ -170,6 +179,8 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
                 lead.SiteId,
                 lead.CreatedAtUtc,
                 IsNew = lead.OwnerViewedAtUtc == null,
+                lead.Channel,
+                lead.IsTest,
                 Name = customer != null ? customer.Name : null,
                 Email = customer != null ? customer.Email : null,
                 Phone = customer != null ? customer.Phone : null,
@@ -209,7 +220,9 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
                 x.Email,
                 x.CreatedAtUtc,
                 x.ProjectStage,
-                x.IsNew))
+                x.IsNew,
+                x.Channel,
+                x.IsTest))
             .ToListAsync(ct);
 
         return new LeadPageResult(items, totalCount, newCount, effectivePage, effectivePageSize);
@@ -236,6 +249,7 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
                 lead.Id,
                 lead.CreatedAtUtc,
                 lead.Channel,
+                lead.IsTest,
                 Name = customer != null ? customer.Name : null,
                 Email = customer != null ? customer.Email : null,
                 Phone = customer != null ? customer.Phone : null,
@@ -254,6 +268,7 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
                 x.Email,
                 x.Phone,
                 NormalizeChannel(x.Channel),
+                x.IsTest,
                 ProjectStatuses.Normalize(x.ProjectStage),
                 x.ProjectSummary,
                 x.OwnerNotes,
@@ -387,6 +402,7 @@ public sealed class EfLeadRepository(LeadRelayDbContext db) : ILeadRepository
             CustomerId = record.CustomerId,
             ProjectId = record.ProjectId,
             Channel = NormalizeChannel(record.Channel),
+            IsTest = record.IsTest,
             Status = NormalizeStatus(record.Status),
             IsBotPaused = record.IsBotPaused,
             ProjectStage = ProjectStatuses.Normalize(project?.Status),

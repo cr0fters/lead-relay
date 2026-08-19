@@ -7,6 +7,7 @@ public sealed record LeadExportRow(
     string? Email,
     string? Phone,
     string Channel,
+    bool IsTest,
     string ProjectStage,
     string? ProjectSummary,
     string? OwnerNotes,

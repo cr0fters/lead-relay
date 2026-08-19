@@ -8,4 +8,6 @@ public sealed record LeadSummary(
     string? Email,
     DateTimeOffset CreatedAtUtc,
     string ProjectStage,
-    bool IsNew);
+    bool IsNew,
+    string Channel,
+    bool IsTest);

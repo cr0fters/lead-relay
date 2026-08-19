@@ -12,6 +12,7 @@ public sealed class WhatsAppConnectionRecord
     public DateTimeOffset? LastValidatedAtUtc { get; set; }
     public DateTimeOffset? LastInboundAtUtc { get; set; }
     public DateTimeOffset? LastOutboundTestAtUtc { get; set; }
+    public string? LastOutboundTestRecipient { get; set; }
     public string? LastError { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }
 }

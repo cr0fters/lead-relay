@@ -36,7 +36,9 @@ public sealed class InMemoryLeadRepository : ILeadRepository
                 x.Email,
                 x.CreatedAtUtc,
                 ProjectStatuses.Normalize(x.ProjectStage),
-                x.OwnerViewedAtUtc is null))
+                x.OwnerViewedAtUtc is null,
+                x.Channel,
+                x.IsTest))
             .ToList();
 
         return Task.FromResult<IReadOnlyList<LeadSummary>>(items);
@@ -61,7 +63,9 @@ public sealed class InMemoryLeadRepository : ILeadRepository
                 x.Email,
                 x.CreatedAtUtc,
                 ProjectStatuses.Normalize(x.ProjectStage),
-                x.OwnerViewedAtUtc is null))
+                x.OwnerViewedAtUtc is null,
+                x.Channel,
+                x.IsTest))
             .ToList();
 
         return Task.FromResult<IReadOnlyList<LeadSummary>>(items);
@@ -117,7 +121,9 @@ public sealed class InMemoryLeadRepository : ILeadRepository
                 x.Email,
                 x.CreatedAtUtc,
                 ProjectStatuses.Normalize(x.ProjectStage),
-                x.OwnerViewedAtUtc is null))
+                x.OwnerViewedAtUtc is null,
+                x.Channel,
+                x.IsTest))
             .ToList();
 
         return Task.FromResult(new LeadPageResult(items, total, newCount, effectivePage, effectivePageSize));
@@ -140,6 +146,7 @@ public sealed class InMemoryLeadRepository : ILeadRepository
                 x.Email,
                 x.Phone,
                 x.Channel,
+                x.IsTest,
                 ProjectStatuses.Normalize(x.ProjectStage),
                 x.ProjectSummary,
                 x.OwnerNotes,

@@ -10,6 +10,7 @@ public sealed record LeadCaptureInput(
     Guid? LeadId = null,
     DateTimeOffset? LeadCreatedAtUtc = null,
     bool NotifyOwner = false,
+    bool IsTest = false,
     string? ProjectSummary = null,
     string? ExplicitName = null,
     string? ExplicitEmail = null,

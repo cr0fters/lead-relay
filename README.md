@@ -224,8 +224,9 @@ Admin site edit pages include the login URL (`/owner/login`) to share as the can
 ## Channel-agnostic lead intake
 Leads can now be ingested through an API independent of WhatsApp:
 - `POST /admin/api/leads/intake`
-- includes `siteId`, optional `channel` (defaults to `api`), contact details, fields, and optional conversation turns
+- includes `siteId`, optional `channel` (defaults to `api`), optional `isTest`, contact details, fields, and optional conversation turns
 - uses the same lead capture pipeline as WhatsApp/debug flows
+- preserves test attribution across later updates to the same lead; the setup flow also marks conversations from the configured WhatsApp test recipient automatically
 - current outbound channels supported by dispatcher: `whatsapp`, `email`
 
 ## Conversation configuration (per site)
