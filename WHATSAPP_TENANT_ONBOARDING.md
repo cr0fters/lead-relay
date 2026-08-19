@@ -33,6 +33,9 @@ Use this runbook to onboard each tenant WhatsApp account into LeadRelay.
 - [ ] `WhatsApp__VerifyToken` is set.
 - [ ] `WhatsApp__GraphApiBaseUrl=https://graph.facebook.com` is set.
 - [ ] `WhatsApp__GraphApiVersion=v23.0` is set and has passed the documented Meta sandbox smoke tests.
+- [ ] `WhatsApp__EmbeddedSignupEnabled=true`, `WhatsApp__MetaAppId`, `WhatsApp__EmbeddedSignupConfigurationId`, and `WhatsApp__EmbeddedSignupVersion=v4` are set.
+- [ ] The v4 Tech Provider configuration enables the WhatsApp Business App onboarding/coexistence flow.
+- [ ] The production domain is allowed in Facebook Login for Business's OAuth redirect and JavaScript SDK settings.
 - [ ] Webhook callback URL points to `https://<your-domain>/v1/webhooks/whatsapp`.
 - [ ] Webhook verification succeeds in Meta.
 - [ ] Alerting exists for webhook and outbound send failures.
@@ -41,10 +44,10 @@ Use this runbook to onboard each tenant WhatsApp account into LeadRelay.
 
 ## Self-serve tenant onboarding
 Authenticated owners now use `/owner/onboarding` to:
-1. enter WABA ID, phone number ID, display number, and access token
-2. validate the phone number against Meta
-3. subscribe the LeadRelay app to the WABA
-4. store the access token encrypted at rest
+1. launch Meta Embedded Signup v4 and choose the WhatsApp Business App coexistence flow
+2. authorize an eligible existing WhatsApp Business App number without pasting identifiers or access tokens
+3. let LeadRelay exchange the one-time code server-side, discover and validate the selected number, and subscribe the WABA
+4. store the returned access token encrypted at rest
 5. send a test message
 6. send an inbound message so LeadRelay can verify signed webhook delivery
 7. configure an allowed website domain and copy the widget snippet
@@ -65,7 +68,7 @@ The workspace header distinguishes setup, action-required, awaiting-webhook-veri
 - [ ] Register phone number if needed (`POST /{PHONE_NUMBER_ID}/register` with PIN).
 
 2. Secrets and config
-- [ ] Complete `/owner/onboarding` so the tenant token is encrypted and stored dynamically.
+- [ ] Complete the Meta coexistence flow in `/owner/onboarding` so the tenant token is exchanged server-side, encrypted, and stored dynamically.
 - [ ] For operator-managed legacy tenants only, store sender credentials under `WhatsApp__Senders__<PHONE_NUMBER_ID>__...`.
 - [ ] Do not set a sender-specific `MessagesEndpoint` unless a deliberate legacy/operator override is required; the app normally builds it from the global Graph API configuration.
 

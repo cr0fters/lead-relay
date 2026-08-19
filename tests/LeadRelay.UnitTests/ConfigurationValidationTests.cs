@@ -50,6 +50,47 @@ public sealed class ConfigurationValidationTests
         Assert.That(exception!.Message, Does.Contain("WhatsApp:GraphApiBaseUrl"));
     }
 
+    [Test]
+    public void production_configuration_requires_meta_ids_when_embedded_signup_is_enabled()
+    {
+        var builder = CreateProductionBuilder("https://leadrelay.test");
+        builder.Configuration["WhatsApp:EmbeddedSignupEnabled"] = "true";
+
+        var exception = Assert.Throws<InvalidOperationException>(() => builder.ValidateRequiredSecrets());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception!.Message, Does.Contain("WhatsApp:MetaAppId"));
+            Assert.That(exception.Message, Does.Contain("WhatsApp:EmbeddedSignupConfigurationId"));
+        });
+    }
+
+    [Test]
+    public void production_configuration_accepts_complete_v4_embedded_signup_configuration()
+    {
+        var builder = CreateProductionBuilder("https://leadrelay.test");
+        builder.Configuration["WhatsApp:EmbeddedSignupEnabled"] = "true";
+        builder.Configuration["WhatsApp:MetaAppId"] = "123456";
+        builder.Configuration["WhatsApp:EmbeddedSignupConfigurationId"] = "987654";
+        builder.Configuration["WhatsApp:EmbeddedSignupVersion"] = "v4";
+
+        Assert.DoesNotThrow(() => builder.ValidateRequiredSecrets());
+    }
+
+    [Test]
+    public void production_configuration_rejects_non_v4_embedded_signup_configuration()
+    {
+        var builder = CreateProductionBuilder("https://leadrelay.test");
+        builder.Configuration["WhatsApp:EmbeddedSignupEnabled"] = "true";
+        builder.Configuration["WhatsApp:MetaAppId"] = "123456";
+        builder.Configuration["WhatsApp:EmbeddedSignupConfigurationId"] = "987654";
+        builder.Configuration["WhatsApp:EmbeddedSignupVersion"] = "v3";
+
+        var exception = Assert.Throws<InvalidOperationException>(() => builder.ValidateRequiredSecrets());
+
+        Assert.That(exception!.Message, Does.Contain("WhatsApp:EmbeddedSignupVersion=v4"));
+    }
+
     private static WebApplicationBuilder CreateProductionBuilder(string publicBaseUrl)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions

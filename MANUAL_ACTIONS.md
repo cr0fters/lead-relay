@@ -16,7 +16,7 @@ Update this file when an autonomous MVP run discovers or completes a human actio
 
 ## Product and commercial decisions
 
-- [ ] Choose the default Meta Embedded Signup path: dedicated Cloud API number only, or WhatsApp Business App coexistence for customers who want to keep using an existing app number. This determines the authorization flow, eligibility checks, recovery UX, and support scope.
+- [x] Use WhatsApp Business App coexistence as the default Meta Embedded Signup path so customers can keep using an eligible existing app number.
 - [ ] Decide whether the production `/admin` surface will use dedicated operator authentication or be restricted to a trusted operator network; the shared-token login is not the intended launch control.
 - [ ] Choose the fixed monthly GBP launch price.
 - [ ] Define included lead, message, and AI usage plus the fair-use or hard-limit behavior.
@@ -37,6 +37,7 @@ Update this file when an autonomous MVP run discovers or completes a human actio
 
 - [x] Register/configure the Meta app and LeadRelay's required tech-provider or solution integration.
 - [x] Complete Meta business verification, App Review, and Advanced Access for only the required permissions.
+- [ ] Add the Meta app ID and v4 Tech Provider configuration ID to Railway, enable Embedded Signup, and confirm `leadrelay.dev` is allowed in Facebook Login for Business's OAuth and JavaScript SDK settings. Keep the identifiers in deployment configuration; never record the app secret or access tokens in this file.
 - [ ] Confirm the production WABA webhook, payment/credit relationship, and reconnect process end to end.
 - [ ] Confirm Railway has no stale `WhatsApp__MessagesEndpoint` or sender-specific endpoint override, set/verify `WhatsApp__GraphApiVersion=v23.0`, run production inbound/outbound smoke tests, and assign an owner for the quarterly version review.
 

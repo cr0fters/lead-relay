@@ -64,6 +64,10 @@ WhatsApp__AppSecret=...
 WhatsApp__CredentialEncryptionKey=...
 WhatsApp__GraphApiBaseUrl=https://graph.facebook.com
 WhatsApp__GraphApiVersion=v23.0
+WhatsApp__EmbeddedSignupEnabled=true
+WhatsApp__MetaAppId=<META_APP_ID>
+WhatsApp__EmbeddedSignupConfigurationId=<V4_TECH_PROVIDER_CONFIGURATION_ID>
+WhatsApp__EmbeddedSignupVersion=v4
 WhatsApp__RequireSignatureValidation=true
 WhatsApp__IdempotencyProcessingLeaseMinutes=30
 WhatsApp__ProcessedReceiptRetentionDays=30
@@ -171,6 +175,10 @@ The Graph API base URL and version are configured once and all onboarding and me
     "AccessToken": "set_via_user_secrets_or_env",
     "GraphApiBaseUrl": "https://graph.facebook.com",
     "GraphApiVersion": "v23.0",
+    "EmbeddedSignupEnabled": true,
+    "MetaAppId": "set_via_environment",
+    "EmbeddedSignupConfigurationId": "set_via_environment",
+    "EmbeddedSignupVersion": "v4",
     "Senders": {
       "<PHONE_NUMBER_ID>": {
         "AccessToken": "optional_per_sender_token"
@@ -182,10 +190,14 @@ The Graph API base URL and version are configured once and all onboarding and me
 
 `WhatsApp:MessagesEndpoint` and sender-specific `MessagesEndpoint` values remain supported only as legacy/operator overrides. New configuration should omit them so a Graph API version upgrade is made in one place.
 
+Owner onboarding uses Meta Embedded Signup v4 with the `whatsapp_business_app_onboarding` feature type. This is the coexistence flow: an eligible customer can keep using their WhatsApp Business App while authorizing LeadRelay's Cloud API integration. The browser receives only Meta's one-time authorization code and selected account identifiers; LeadRelay exchanges the code server-side, verifies the number belongs to the returned WABA and is a Business App number, subscribes the WABA, and encrypts the returned credential before storage. It does not call the Cloud API number-registration endpoint for coexistence connections.
+
+`MetaAppId` and `EmbeddedSignupConfigurationId` are browser-visible identifiers, while `AppSecret` and stored access tokens must remain secret. Meta's OAuth exchange requires the app secret in the request query, so the dedicated onboarding HTTP client has framework request logging disabled to prevent the URI from being logged.
+
 Review Meta's supported Graph API versions at least quarterly and before each production release. Upgrade `WhatsApp:GraphApiVersion` only after exercising account connection, WABA subscription, inbound webhook routing, and outbound messaging in a non-production environment; then repeat those smoke tests after deployment.
 
 For multi-tenant routing:
-- owners can connect WhatsApp from `/owner/onboarding`; tokens are encrypted before database storage
+- owners connect an eligible existing WhatsApp Business App number from `/owner/onboarding` through Meta Embedded Signup; tokens are encrypted before database storage
 - the onboarding flow validates the phone number, subscribes the app to the WABA, and stores the sender identifiers
 - `WhatsAppConnections` is the source of truth for self-serve sender identifiers; legacy fields on `Sites` are synchronized for backward compatibility and operator-managed tenants
 - admin/API configuration and `WhatsApp:Senders` remain available as a legacy/operator fallback

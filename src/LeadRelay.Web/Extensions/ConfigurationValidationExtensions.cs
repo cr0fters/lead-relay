@@ -30,6 +30,15 @@ public static class ConfigurationValidationExtensions
             missing.Add("WhatsApp:GraphApiBaseUrl (must be an absolute HTTPS origin without path, query, or fragment)");
         if (!IsValidGraphApiVersion(builder.Configuration["WhatsApp:GraphApiVersion"]))
             missing.Add("WhatsApp:GraphApiVersion (must use the form v23.0)");
+        if (builder.Configuration.GetValue<bool>("WhatsApp:EmbeddedSignupEnabled"))
+        {
+            if (!IsValidMetaIdentifier(builder.Configuration["WhatsApp:MetaAppId"]))
+                missing.Add("WhatsApp:MetaAppId (must be the numeric Meta app ID)");
+            if (!IsValidMetaIdentifier(builder.Configuration["WhatsApp:EmbeddedSignupConfigurationId"]))
+                missing.Add("WhatsApp:EmbeddedSignupConfigurationId (must be the numeric Meta configuration ID)");
+            if (!string.Equals(builder.Configuration["WhatsApp:EmbeddedSignupVersion"]?.Trim(), "v4", StringComparison.Ordinal))
+                missing.Add("WhatsApp:EmbeddedSignupVersion=v4");
+        }
         if (!IsValidEncryptionKey(builder.Configuration["WhatsApp:CredentialEncryptionKey"]) &&
             !missing.Contains("WhatsApp:CredentialEncryptionKey", StringComparer.Ordinal))
         {
@@ -97,5 +106,11 @@ public static class ConfigurationValidationExtensions
         if (candidate.Length < 4 || candidate[0] != 'v') return false;
         var parts = candidate[1..].Split('.');
         return parts.Length == 2 && parts.All(x => x.Length > 0 && x.All(char.IsDigit));
+    }
+
+    private static bool IsValidMetaIdentifier(string? value)
+    {
+        var candidate = value?.Trim();
+        return !string.IsNullOrEmpty(candidate) && candidate.Length <= 64 && candidate.All(char.IsDigit);
     }
 }

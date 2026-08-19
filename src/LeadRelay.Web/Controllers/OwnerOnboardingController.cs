@@ -6,6 +6,7 @@ using LeadRelay.Web.WhatsApp;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace LeadRelay.Web.Controllers;
 
@@ -13,8 +14,11 @@ public sealed class OwnerOnboardingController(
     ISiteRepository sites,
     LeadRelayDbContext db,
     WhatsAppOnboardingService onboarding,
-    IConfiguration configuration) : Controller
+    IConfiguration configuration,
+    IOptions<WhatsAppOptions> whatsAppOptions) : Controller
 {
+    private readonly WhatsAppOptions _whatsAppOptions = whatsAppOptions.Value;
+
     [HttpGet("/owner/onboarding")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
@@ -26,26 +30,25 @@ public sealed class OwnerOnboardingController(
         return View(model);
     }
 
-    [HttpPost("/owner/onboarding/whatsapp/connect")]
+    [HttpPost("/owner/onboarding/whatsapp/embedded-signup/complete")]
     [ValidateAntiForgeryToken]
     [EnableRateLimiting("auth")]
     [RequestFormLimits(ValueLengthLimit = 8192)]
-    public async Task<IActionResult> ConnectWhatsApp(
+    public async Task<IActionResult> CompleteEmbeddedSignup(
+        [FromForm] string? authorizationCode,
         [FromForm] string? wabaId,
         [FromForm] string? phoneNumberId,
-        [FromForm] string? displayPhoneNumber,
-        [FromForm] string? accessToken,
         CancellationToken ct)
     {
         var auth = GetAuthContext();
         if (auth is null) return Redirect("/owner/login");
 
-        var result = await onboarding.ConnectAsync(
+        var result = await onboarding.ConnectEmbeddedSignupAsync(
             auth.SiteId,
-            new WhatsAppConnectRequest(wabaId, phoneNumberId, displayPhoneNumber, accessToken),
+            new WhatsAppEmbeddedSignupRequest(authorizationCode, wabaId, phoneNumberId),
             ct);
         if (result.Succeeded)
-            TempData["Onboarding.Success"] = "WhatsApp connected and the Meta app subscription was accepted. Send an inbound message to verify webhook delivery.";
+            TempData["Onboarding.Success"] = "WhatsApp Business App connected through Meta. Send an inbound message to verify webhook delivery.";
         else
             TempData["Onboarding.Error"] = result.Error ?? "Unable to connect WhatsApp.";
         return RedirectToAction(nameof(Index));
@@ -140,6 +143,11 @@ public sealed class OwnerOnboardingController(
             WidgetInstalledDomain = account?.WidgetInstalledDomain,
             IsWidgetInstalled = isWidgetInstalled,
             HasFirstLead = hasWhatsAppLead,
+            IsEmbeddedSignupAvailable = _whatsAppOptions.IsEmbeddedSignupConfigured,
+            MetaAppId = _whatsAppOptions.MetaAppId?.Trim(),
+            EmbeddedSignupConfigurationId = _whatsAppOptions.EmbeddedSignupConfigurationId?.Trim(),
+            EmbeddedSignupVersion = _whatsAppOptions.EmbeddedSignupVersion?.Trim() ?? "v4",
+            GraphApiVersion = _whatsAppOptions.GraphApiVersion?.Trim() ?? "v23.0",
             WidgetSnippet = $"<script src=\"{widgetUrl}/widget/bootstrap.js?siteId={site.Id}\"></script>",
             WhatsAppPreviewUrl = string.IsNullOrWhiteSpace(whatsAppDigits)
                 ? null
@@ -177,6 +185,11 @@ public sealed class OwnerOnboardingController(
         public string? WidgetInstalledDomain { get; set; }
         public bool IsWidgetInstalled { get; set; }
         public bool HasFirstLead { get; set; }
+        public bool IsEmbeddedSignupAvailable { get; set; }
+        public string? MetaAppId { get; set; }
+        public string? EmbeddedSignupConfigurationId { get; set; }
+        public string EmbeddedSignupVersion { get; set; } = "v4";
+        public string GraphApiVersion { get; set; } = "v23.0";
         public string WidgetSnippet { get; set; } = "";
         public string? WhatsAppPreviewUrl { get; set; }
         public string? Error { get; set; }

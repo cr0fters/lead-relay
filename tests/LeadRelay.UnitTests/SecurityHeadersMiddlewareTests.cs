@@ -49,6 +49,33 @@ public sealed class SecurityHeadersMiddlewareTests
     }
 
     [Test]
+    public async Task embedded_signup_dependencies_are_allowed_only_on_owner_onboarding()
+    {
+        var onboardingContext = new DefaultHttpContext();
+        onboardingContext.Request.Scheme = "https";
+        onboardingContext.Request.Path = "/owner/onboarding";
+        var middleware = new SecurityHeadersMiddleware(_ => Task.CompletedTask, new TestEnvironment(Environments.Production));
+
+        await middleware.InvokeAsync(onboardingContext);
+        await onboardingContext.Response.StartAsync();
+
+        var onboardingPolicy = onboardingContext.Response.Headers["Content-Security-Policy"].ToString();
+        Assert.Multiple(() =>
+        {
+            Assert.That(onboardingPolicy, Does.Contain("https://connect.facebook.net"));
+            Assert.That(onboardingPolicy, Does.Contain("frame-src https://www.facebook.com https://web.facebook.com https://staticxx.facebook.com"));
+        });
+
+        var workspaceContext = new DefaultHttpContext();
+        workspaceContext.Request.Scheme = "https";
+        workspaceContext.Request.Path = "/owner";
+        await middleware.InvokeAsync(workspaceContext);
+        await workspaceContext.Response.StartAsync();
+
+        Assert.That(workspaceContext.Response.Headers["Content-Security-Policy"].ToString(), Does.Not.Contain("facebook"));
+    }
+
+    [Test]
     public async Task headers_are_applied_after_downstream_response_headers_are_cleared()
     {
         var context = new DefaultHttpContext();

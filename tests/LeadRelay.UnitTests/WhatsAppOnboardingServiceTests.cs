@@ -14,6 +14,137 @@ namespace LeadRelay.UnitTests;
 public sealed class WhatsAppOnboardingServiceTests
 {
     [Test]
+    public async Task embedded_signup_exchanges_code_discovers_coexistence_phone_and_stores_encrypted_token()
+    {
+        using var db = CreateDb();
+        db.Sites.Add(new SiteRecord
+        {
+            Id = "site_a",
+            Name = "Site A",
+            OwnerEmail = "owner@example.com",
+            WhatsAppNumber = ""
+        });
+        await db.SaveChangesAsync();
+        var site = new Site { Id = "site_a", Name = "Site A", OwnerEmail = "owner@example.com", WhatsAppNumber = "" };
+        var sites = new MutableSiteRepository(site);
+        var settings = Options.Create(new WhatsAppOptions
+        {
+            CredentialEncryptionKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)),
+            EmbeddedSignupEnabled = true,
+            MetaAppId = "123456",
+            EmbeddedSignupConfigurationId = "987654",
+            EmbeddedSignupVersion = "v4",
+            AppSecret = "app-secret"
+        });
+        var protector = new WhatsAppCredentialProtector(settings);
+        var handler = new EmbeddedSignupHandler();
+        var client = new WhatsAppClient(
+            new HttpClient(new SuccessHandler()), settings, sites, db, protector,
+            NullLogger<WhatsAppClient>.Instance);
+        var now = new DateTimeOffset(2026, 8, 19, 15, 0, 0, TimeSpan.Zero);
+        var service = new WhatsAppOnboardingService(
+            new HttpClient(handler), db, sites, protector, client, new FixedClock(now), settings,
+            NullLogger<WhatsAppOnboardingService>.Instance);
+
+        var result = await service.ConnectEmbeddedSignupAsync(
+            "site_a",
+            new WhatsAppEmbeddedSignupRequest("one-time-code", "555555", null),
+            CancellationToken.None);
+
+        Assert.That(result.Succeeded, Is.True, result.Error);
+        var connection = await db.WhatsAppConnections.AsNoTracking().SingleAsync();
+        Assert.Multiple(() =>
+        {
+            Assert.That(connection.WabaId, Is.EqualTo("555555"));
+            Assert.That(connection.PhoneNumberId, Is.EqualTo("777777"));
+            Assert.That(connection.DisplayPhoneNumber, Is.EqualTo("447000000000"));
+            Assert.That(connection.WebhookSubscribedAtUtc, Is.EqualTo(now));
+            Assert.That(connection.AccessTokenCiphertext, Does.Not.Contain("embedded-token"));
+            Assert.That(sites.Site.WhatsAppPhoneNumberId, Is.EqualTo("777777"));
+            Assert.That(handler.Requests.Count, Is.EqualTo(4));
+            Assert.That(handler.Requests[0].RequestUri!.AbsolutePath, Does.EndWith("/oauth/access_token"));
+            Assert.That(handler.Requests[0].RequestUri!.Query, Does.Contain("client_id=123456"));
+            Assert.That(handler.Requests[0].Headers.Authorization, Is.Null);
+            Assert.That(handler.Requests.Skip(1).All(x => x.Headers.Authorization?.Parameter == "embedded-token"), Is.True);
+            Assert.That(handler.Requests[1].RequestUri!.AbsolutePath, Does.EndWith("/555555/phone_numbers"));
+            Assert.That(handler.Requests[2].RequestUri!.AbsolutePath, Does.EndWith("/777777"));
+            Assert.That(handler.Requests[3].RequestUri!.AbsolutePath, Does.EndWith("/555555/subscribed_apps"));
+            Assert.That(handler.Requests.Any(x => x.RequestUri!.AbsolutePath.EndsWith("/register", StringComparison.Ordinal)), Is.False);
+        });
+        Assert.That(protector.TryUnprotect("site_a", connection.AccessTokenCiphertext, out var token), Is.True);
+        Assert.That(token, Is.EqualTo("embedded-token"));
+    }
+
+    [Test]
+    public async Task embedded_signup_rejects_a_number_that_is_not_on_the_business_app()
+    {
+        using var db = CreateDb();
+        db.Sites.Add(new SiteRecord { Id = "site_a", Name = "A", OwnerEmail = "a@example.com", WhatsAppNumber = "" });
+        await db.SaveChangesAsync();
+        var site = new Site { Id = "site_a", Name = "A", OwnerEmail = "a@example.com", WhatsAppNumber = "" };
+        var sites = new MutableSiteRepository(site);
+        var settings = CreateEmbeddedSignupSettings();
+        var protector = new WhatsAppCredentialProtector(settings);
+        var handler = new EmbeddedSignupHandler(isOnBusinessApp: false);
+        var client = new WhatsAppClient(
+            new HttpClient(new SuccessHandler()), settings, sites, db, protector,
+            NullLogger<WhatsAppClient>.Instance);
+        var service = new WhatsAppOnboardingService(
+            new HttpClient(handler), db, sites, protector, client, new FixedClock(DateTimeOffset.UtcNow), settings,
+            NullLogger<WhatsAppOnboardingService>.Instance);
+
+        var result = await service.ConnectEmbeddedSignupAsync(
+            "site_a",
+            new WhatsAppEmbeddedSignupRequest("one-time-code", "555555", "777777"),
+            CancellationToken.None);
+
+        Assert.That(result.Succeeded, Is.False);
+        Assert.That(result.Error, Does.Contain("not eligible"));
+        Assert.That(await db.WhatsAppConnections.AnyAsync(), Is.False);
+        Assert.That(handler.Requests.Count, Is.EqualTo(3), "The WABA must not be subscribed after coexistence validation fails.");
+    }
+
+    [Test]
+    public async Task embedded_signup_cannot_claim_a_phone_connected_to_another_tenant()
+    {
+        using var db = CreateDb();
+        db.Sites.AddRange(
+            new SiteRecord { Id = "site_a", Name = "A", OwnerEmail = "a@example.com", WhatsAppNumber = "" },
+            new SiteRecord { Id = "site_b", Name = "B", OwnerEmail = "b@example.com", WhatsAppNumber = "447000000000" });
+        db.WhatsAppConnections.Add(new WhatsAppConnectionRecord
+        {
+            SiteId = "site_b",
+            WabaId = "444444",
+            PhoneNumberId = "777777",
+            DisplayPhoneNumber = "447000000000",
+            AccessTokenCiphertext = "ciphertext",
+            UpdatedAtUtc = DateTimeOffset.UtcNow
+        });
+        await db.SaveChangesAsync();
+        var site = new Site { Id = "site_a", Name = "A", OwnerEmail = "a@example.com", WhatsAppNumber = "" };
+        var sites = new MutableSiteRepository(site);
+        var settings = CreateEmbeddedSignupSettings();
+        var protector = new WhatsAppCredentialProtector(settings);
+        var handler = new EmbeddedSignupHandler();
+        var client = new WhatsAppClient(
+            new HttpClient(new SuccessHandler()), settings, sites, db, protector,
+            NullLogger<WhatsAppClient>.Instance);
+        var service = new WhatsAppOnboardingService(
+            new HttpClient(handler), db, sites, protector, client, new FixedClock(DateTimeOffset.UtcNow), settings,
+            NullLogger<WhatsAppOnboardingService>.Instance);
+
+        var result = await service.ConnectEmbeddedSignupAsync(
+            "site_a",
+            new WhatsAppEmbeddedSignupRequest("one-time-code", "555555", "777777"),
+            CancellationToken.None);
+
+        Assert.That(result.Succeeded, Is.False);
+        Assert.That(result.Error, Does.Contain("another account"));
+        Assert.That(handler.Requests.Count, Is.EqualTo(3), "A conflicting phone must not be subscribed to the current tenant.");
+        Assert.That(await db.WhatsAppConnections.CountAsync(), Is.EqualTo(1));
+    }
+
+    [Test]
     public async Task connect_validates_subscribes_and_stores_encrypted_credentials()
     {
         using var db = CreateDb();
@@ -264,6 +395,39 @@ public sealed class WhatsAppOnboardingServiceTests
             .UseInMemoryDatabase($"whatsapp-onboarding-{Guid.NewGuid():N}")
             .Options;
         return new LeadRelayDbContext(options);
+    }
+
+    private static IOptions<WhatsAppOptions> CreateEmbeddedSignupSettings()
+        => Options.Create(new WhatsAppOptions
+        {
+            CredentialEncryptionKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)),
+            EmbeddedSignupEnabled = true,
+            MetaAppId = "123456",
+            EmbeddedSignupConfigurationId = "987654",
+            EmbeddedSignupVersion = "v4",
+            AppSecret = "app-secret"
+        });
+
+    private sealed class EmbeddedSignupHandler(bool isOnBusinessApp = true) : HttpMessageHandler
+    {
+        public List<HttpRequestMessage> Requests { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Requests.Add(request);
+            var path = request.RequestUri!.AbsolutePath;
+            var body = path.EndsWith("/oauth/access_token", StringComparison.Ordinal)
+                ? "{\"access_token\":\"embedded-token\",\"token_type\":\"bearer\"}"
+                : path.EndsWith("/phone_numbers", StringComparison.Ordinal)
+                    ? "{\"data\":[{\"id\":\"777777\"}]}"
+                    : path.EndsWith("/777777", StringComparison.Ordinal)
+                        ? $"{{\"id\":\"777777\",\"display_phone_number\":\"+44 7000 000000\",\"is_on_biz_app\":{isOnBusinessApp.ToString().ToLowerInvariant()}}}"
+                        : "{\"success\":true}";
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(body)
+            });
+        }
     }
 
     private sealed class GraphHandler(

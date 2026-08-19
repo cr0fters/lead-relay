@@ -86,9 +86,42 @@ public sealed class OwnerOnboardingControllerTests
         Assert.That(((OwnerOnboardingController.OwnerOnboardingModel)whatsAppResult.Model!).HasFirstLead, Is.True);
     }
 
-    private static OwnerOnboardingController CreateController(LeadRelayDbContext db, MutableSiteRepository sites)
+    [Test]
+    public async Task onboarding_exposes_only_public_embedded_signup_configuration_when_fully_enabled()
     {
+        using var db = CreateDb();
+        var site = CreateSite([]);
+        db.Sites.Add(ToRecord(site));
+        await db.SaveChangesAsync();
         var settings = Options.Create(new WhatsAppOptions
+        {
+            CredentialEncryptionKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)),
+            AppSecret = "must-not-be-exposed",
+            EmbeddedSignupEnabled = true,
+            MetaAppId = "123456",
+            EmbeddedSignupConfigurationId = "987654",
+            EmbeddedSignupVersion = "v4"
+        });
+        var controller = CreateController(db, new MutableSiteRepository(site), settings);
+
+        var result = (ViewResult)await controller.Index(CancellationToken.None);
+        var model = (OwnerOnboardingController.OwnerOnboardingModel)result.Model!;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(model.IsEmbeddedSignupAvailable, Is.True);
+            Assert.That(model.MetaAppId, Is.EqualTo("123456"));
+            Assert.That(model.EmbeddedSignupConfigurationId, Is.EqualTo("987654"));
+            Assert.That(model.GetType().GetProperties().Select(x => x.Name), Does.Not.Contain("AppSecret"));
+        });
+    }
+
+    private static OwnerOnboardingController CreateController(
+        LeadRelayDbContext db,
+        MutableSiteRepository sites,
+        IOptions<WhatsAppOptions>? configuredSettings = null)
+    {
+        var settings = configuredSettings ?? Options.Create(new WhatsAppOptions
         {
             CredentialEncryptionKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
         });
@@ -108,7 +141,8 @@ public sealed class OwnerOnboardingControllerTests
             sites,
             db,
             onboarding,
-            new ConfigurationBuilder().AddInMemoryCollection().Build());
+            new ConfigurationBuilder().AddInMemoryCollection().Build(),
+            settings);
         var context = new DefaultHttpContext();
         context.Items[OwnerAuthMiddleware.ContextKey] = new OwnerAuthContext(sites.Site.Id, sites.Site.OwnerEmail);
         context.Request.Scheme = "https";

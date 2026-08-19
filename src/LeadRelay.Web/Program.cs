@@ -111,7 +111,11 @@ builder.Services.AddSingleton<WhatsAppWebhookRateLimiter>();
 builder.Services.AddScoped<WhatsAppSiteResolver>();
 builder.Services.AddScoped<WhatsAppCredentialProtector>();
 builder.Services.AddHttpClient<WhatsAppClient>();
-builder.Services.AddHttpClient<WhatsAppOnboardingService>();
+// Meta's OAuth exchange requires the app secret in its query string. Remove the
+// framework HTTP loggers so neither that secret nor the one-time code is logged.
+builder.Services.AddHttpClient<WhatsAppOnboardingService>(client =>
+    client.Timeout = TimeSpan.FromSeconds(20))
+    .RemoveAllLoggers();
 builder.Services.AddHttpClient<OpenAIClient>();
 
 

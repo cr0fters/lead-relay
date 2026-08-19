@@ -6,6 +6,13 @@
     var hasDomain = Model.AllowedDomains.Count > 0;
 }
 
+@section HeadScripts {
+    @if (Model.IsEmbeddedSignupAvailable)
+    {
+        <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
+    }
+}
+
 <div class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
     <header class="mb-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-panel">
         <div class="flex flex-wrap items-start justify-between gap-4">
@@ -80,23 +87,45 @@
                 {
                     <dl class="mt-4 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
                         <div><dt class="text-slate-500">Display number</dt><dd class="font-semibold text-slate-900">@Model.Connection.DisplayPhoneNumber</dd></div>
-                        <div><dt class="text-slate-500">Phone number ID</dt><dd class="font-semibold text-slate-900">@Model.Connection.PhoneNumberId</dd></div>
-                        <div><dt class="text-slate-500">WABA ID</dt><dd class="font-semibold text-slate-900">@Model.Connection.WabaId</dd></div>
                         <div><dt class="text-slate-500">Last validated</dt><dd class="font-semibold text-slate-900">@(Model.Connection.LastValidatedAtUtc?.UtcDateTime.ToString("yyyy-MM-dd HH:mm 'UTC'") ?? "Not available")</dd></div>
                         <div><dt class="text-slate-500">App subscription</dt><dd class="font-semibold text-slate-900">@(Model.Connection.IsWebhookSubscribed ? "Accepted by Meta" : "Not confirmed")</dd></div>
                         <div><dt class="text-slate-500">Webhook delivery</dt><dd class="font-semibold @(Model.Connection.IsWebhookVerified ? "text-emerald-700" : "text-amber-700")">@(Model.Connection.IsWebhookVerified ? "Verified by inbound message" : "Awaiting inbound message")</dd></div>
                     </dl>
                 }
+                else if (Model.IsEmbeddedSignupAvailable)
+                {
+                    <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                        <p class="font-semibold text-emerald-950">Keep using your WhatsApp Business App</p>
+                        <p class="mt-1 text-sm text-emerald-900">Meta will guide you through connecting an eligible existing Business App number to LeadRelay. You will sign in with Meta and approve the connection; LeadRelay never asks you to paste an access token.</p>
+                        <button id="connectWhatsAppButton" type="button" class="mt-4 inline-flex items-center justify-center gap-2 rounded-lg bg-[#1877F2] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#166fe5] disabled:cursor-wait disabled:opacity-60">
+                            Connect with Meta
+                            <i data-lucide="external-link" class="h-4 w-4"></i>
+                        </button>
+                        <p id="embeddedSignupStatus" class="mt-3 text-sm text-emerald-900" role="status" aria-live="polite"></p>
+                    </div>
+                }
                 else
                 {
-                    <p class="mt-3 text-sm text-slate-600">Enter the identifiers from your Meta WhatsApp setup. LeadRelay validates the phone number and subscribes the app before storing the access token encrypted.</p>
-                    <form method="post" action="/owner/onboarding/whatsapp/connect" class="mt-4 grid gap-3 sm:grid-cols-2" data-ajax="off">
+                    <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                        WhatsApp connection is temporarily unavailable while the Meta Embedded Signup configuration is completed. You can continue reviewing your settings and return here later.
+                    </div>
+                }
+
+                @if (Model.IsEmbeddedSignupAvailable)
+                {
+                    <form id="embeddedSignupForm"
+                          method="post"
+                          action="/owner/onboarding/whatsapp/embedded-signup/complete"
+                          class="hidden"
+                          data-ajax="off"
+                          data-app-id="@Model.MetaAppId"
+                          data-configuration-id="@Model.EmbeddedSignupConfigurationId"
+                          data-signup-version="@Model.EmbeddedSignupVersion"
+                          data-graph-version="@Model.GraphApiVersion">
                         @Html.AntiForgeryToken()
-                        <div><label class="mb-1 block text-sm font-semibold text-slate-700">WABA ID</label><input name="wabaId" required inputmode="numeric" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
-                        <div><label class="mb-1 block text-sm font-semibold text-slate-700">Phone number ID</label><input name="phoneNumberId" required inputmode="numeric" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
-                        <div><label class="mb-1 block text-sm font-semibold text-slate-700">Display phone number</label><input name="displayPhoneNumber" inputmode="tel" placeholder="447000000000" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
-                        <div><label class="mb-1 block text-sm font-semibold text-slate-700">Access token</label><input name="accessToken" required type="password" autocomplete="off" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
-                        <button type="submit" class="sm:col-span-2 inline-flex justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">Validate and connect</button>
+                        <input type="hidden" name="authorizationCode" />
+                        <input type="hidden" name="wabaId" />
+                        <input type="hidden" name="phoneNumberId" />
                     </form>
                 }
 
@@ -118,6 +147,14 @@
                             <button class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100" type="submit">Disconnect</button>
                         </form>
                     </div>
+                    @if (Model.IsEmbeddedSignupAvailable)
+                    {
+                        <button id="connectWhatsAppButton" type="button" class="mt-3 inline-flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-100 disabled:cursor-wait disabled:opacity-60">
+                            Reconnect with Meta
+                            <i data-lucide="refresh-cw" class="h-4 w-4"></i>
+                        </button>
+                        <p id="embeddedSignupStatus" class="mt-2 text-sm text-slate-600" role="status" aria-live="polite"></p>
+                    }
                     <p class="mt-2 text-xs text-slate-500">The recipient must be eligible to receive a free-form message. Reply from that number to verify inbound capture; its conversations are labelled as tests and do not count as your first real lead. If the outbound test is rejected, message the business number first and retry.</p>
                 }
             </section>
@@ -199,3 +236,123 @@
         </main>
     </div>
 </div>
+
+@section PageScripts {
+    @if (Model.IsEmbeddedSignupAvailable)
+    {
+        <script>
+            (function () {
+                "use strict";
+
+                const form = document.getElementById("embeddedSignupForm");
+                const button = document.getElementById("connectWhatsAppButton");
+                const status = document.getElementById("embeddedSignupStatus");
+                if (!form || !button || !status) return;
+
+                let authorizationCode = null;
+                let session = null;
+                let submitted = false;
+
+                function setStatus(message, isError) {
+                    status.textContent = message;
+                    status.classList.toggle("text-rose-700", Boolean(isError));
+                }
+
+                function isTrustedMetaOrigin(origin) {
+                    try {
+                        const url = new URL(origin);
+                        return url.protocol === "https:" &&
+                            (url.hostname === "facebook.com" || url.hostname.endsWith(".facebook.com"));
+                    } catch {
+                        return false;
+                    }
+                }
+
+                function submitWhenComplete() {
+                    const wabaId = session && session.data && session.data.waba_id;
+                    if (submitted || !authorizationCode || !wabaId) return;
+                    submitted = true;
+                    form.querySelector('[name="authorizationCode"]').value = authorizationCode;
+                    form.querySelector('[name="wabaId"]').value = String(wabaId);
+                    form.querySelector('[name="phoneNumberId"]').value = session.data.phone_number_id
+                        ? String(session.data.phone_number_id)
+                        : "";
+                    setStatus("Finishing your secure WhatsApp connection…", false);
+                    form.submit();
+                }
+
+                window.addEventListener("message", function (event) {
+                    if (!isTrustedMetaOrigin(event.origin)) return;
+                    let payload = event.data;
+                    if (typeof payload === "string") {
+                        try {
+                            payload = JSON.parse(payload);
+                        } catch {
+                            return;
+                        }
+                    }
+                    if (!payload || payload.type !== "WA_EMBEDDED_SIGNUP") return;
+
+                    if (payload.event === "CANCEL") {
+                        button.disabled = false;
+                        setStatus("WhatsApp setup was cancelled. You can restart it when ready.", false);
+                    } else if (payload.event === "ERROR") {
+                        button.disabled = false;
+                        setStatus("Meta could not complete WhatsApp setup. Please try again.", true);
+                    } else if (payload.data && payload.data.waba_id && !payload.data.current_step) {
+                        session = payload;
+                        submitWhenComplete();
+                    }
+                });
+
+                function initializeFacebook() {
+                    if (!window.FB) return false;
+                    window.FB.init({
+                        appId: form.dataset.appId,
+                        autoLogAppEvents: false,
+                        cookie: false,
+                        xfbml: false,
+                        version: form.dataset.graphVersion
+                    });
+                    return true;
+                }
+
+                window.fbAsyncInit = initializeFacebook;
+                if (window.FB) initializeFacebook();
+
+                button.addEventListener("click", function () {
+                    if (!initializeFacebook()) {
+                        setStatus("Meta is still loading. Please wait a moment and try again.", true);
+                        return;
+                    }
+
+                    authorizationCode = null;
+                    session = null;
+                    submitted = false;
+                    button.disabled = true;
+                    setStatus("Continue in the secure Meta window…", false);
+
+                    window.FB.login(function (response) {
+                        const code = response && response.authResponse && response.authResponse.code;
+                        if (!code) {
+                            button.disabled = false;
+                            setStatus("WhatsApp setup was not authorized. You can try again.", false);
+                            return;
+                        }
+                        authorizationCode = String(code);
+                        submitWhenComplete();
+                    }, {
+                        config_id: form.dataset.configurationId,
+                        response_type: "code",
+                        override_default_response_type: true,
+                        extras: {
+                            sessionInfoVersion: "3",
+                            version: form.dataset.signupVersion,
+                            featureType: "whatsapp_business_app_onboarding"
+                        }
+                    });
+                });
+            }());
+        </script>
+    }
+}

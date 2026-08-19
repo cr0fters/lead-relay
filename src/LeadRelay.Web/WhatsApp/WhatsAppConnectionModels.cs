@@ -12,6 +12,11 @@ public sealed record WhatsAppConnectRequest(
     string? DisplayPhoneNumber,
     string? AccessToken);
 
+public sealed record WhatsAppEmbeddedSignupRequest(
+    string? AuthorizationCode,
+    string? WabaId,
+    string? PhoneNumberId);
+
 public sealed record WhatsAppConnectionResult(bool Succeeded, string? Error = null);
 
 public sealed record WhatsAppConnectionSummary(
