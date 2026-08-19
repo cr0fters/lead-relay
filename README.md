@@ -77,7 +77,9 @@ To rotate the owner-session signing key without signing everyone out at once, mo
 
 Normal logout expires the browser's owner cookie using the same path and security attributes with which it was issued. Owner tokens are stateless for the MVP, so if a copied session token may have been compromised, complete a password reset to revoke every existing owner session immediately.
 
-Leave forwarded headers disabled for direct hosting. When running behind a reverse proxy, enable them and add at least one proxy IP you operate or explicitly trust. The app fails startup if forwarding is enabled without a trusted proxy, and headers from every other source are ignored.
+Railway deployments automatically recognize Railway's exact `X-Forwarded-Proto: https` signal so secure cookies, antiforgery, HSTS, and generated HTTPS URLs work behind its TLS-terminating proxy. This Railway-specific handling only upgrades the request scheme; it does not trust forwarded host or client-IP values.
+
+Leave the general forwarded-header configuration disabled for direct hosting. Behind any other reverse proxy, enable it and add at least one proxy IP you operate or explicitly trust. The app fails startup if general forwarding is enabled without a trusted proxy, and headers from every other source are ignored.
 
 ## CI/CD (GitHub tests + Railway deploy)
 This repo includes `.github/workflows/ci-cd.yml` to:

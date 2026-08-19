@@ -115,6 +115,11 @@ builder.Services.AddHttpClient<OpenAIClient>();
 
 var app = builder.Build();
 
+// Railway terminates public TLS before forwarding traffic to Kestrel. Only
+// upgrade the scheme from Railway's exact HTTPS signal; do not trust forwarded
+// host or client-IP values without an explicitly configured proxy allow-list.
+app.UseMiddleware<RailwayForwardedHttpsMiddleware>();
+
 if (builder.Configuration.GetValue<bool>("ForwardedHeaders:Enabled"))
 {
     var configuredProxies = builder.Configuration
