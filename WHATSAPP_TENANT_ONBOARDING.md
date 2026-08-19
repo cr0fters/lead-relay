@@ -31,7 +31,8 @@ Use this runbook to onboard each tenant WhatsApp account into LeadRelay.
 
 ## Global preflight (once per environment)
 - [ ] `WhatsApp__VerifyToken` is set.
-- [ ] `WhatsApp__MessagesEndpoint=https://graph.facebook.com/v20.0/{phone_number_id}/messages` is set.
+- [ ] `WhatsApp__GraphApiBaseUrl=https://graph.facebook.com` is set.
+- [ ] `WhatsApp__GraphApiVersion=v23.0` is set and has passed the documented Meta sandbox smoke tests.
 - [ ] Webhook callback URL points to `https://<your-domain>/v1/webhooks/whatsapp`.
 - [ ] Webhook verification succeeds in Meta.
 - [ ] Alerting exists for webhook and outbound send failures.
@@ -66,6 +67,7 @@ The workspace header distinguishes setup, action-required, awaiting-webhook-veri
 2. Secrets and config
 - [ ] Complete `/owner/onboarding` so the tenant token is encrypted and stored dynamically.
 - [ ] For operator-managed legacy tenants only, store sender credentials under `WhatsApp__Senders__<PHONE_NUMBER_ID>__...`.
+- [ ] Do not set a sender-specific `MessagesEndpoint` unless a deliberate legacy/operator override is required; the app normally builds it from the global Graph API configuration.
 
 3. LeadRelay config
 - [ ] Confirm the owner onboarding page shows WhatsApp connected.
@@ -89,6 +91,6 @@ The workspace header distinguishes setup, action-required, awaiting-webhook-veri
   - Check webhook payload includes `metadata.phone_number_id`.
 - Outbound send fails:
   - Check `WhatsApp__Senders__<PHONE_NUMBER_ID>__AccessToken`.
-  - Check sender-specific endpoint is valid.
+  - Check the global Graph API version and base URL; if a legacy sender-specific endpoint override exists, check that it is current.
 - Webhook verify fails:
   - Check `WhatsApp__VerifyToken` matches Meta webhook config.

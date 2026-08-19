@@ -37,8 +37,7 @@ public sealed class WhatsAppOnboardingServiceTests
         var key = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
         var settings = Options.Create(new WhatsAppOptions
         {
-            CredentialEncryptionKey = key,
-            MessagesEndpoint = "https://graph.facebook.com/v20.0/{phone_number_id}/messages"
+            CredentialEncryptionKey = key
         });
         var protector = new WhatsAppCredentialProtector(settings);
         var graphHandler = new GraphHandler();
@@ -76,6 +75,7 @@ public sealed class WhatsAppOnboardingServiceTests
         Assert.That(sites.Site.WhatsAppPhoneNumberId, Is.EqualTo("123456"));
         Assert.That(sites.Site.WhatsAppNumber, Is.EqualTo("447000000000"));
         Assert.That(graphHandler.Requests.Count, Is.EqualTo(2));
+        Assert.That(graphHandler.Requests.All(x => x.RequestUri!.AbsolutePath.StartsWith("/v23.0/", StringComparison.Ordinal)), Is.True);
         var summary = await service.GetSummaryAsync("site_a", CancellationToken.None);
         Assert.That(summary.IsWebhookSubscribed, Is.True);
         Assert.That(summary.IsWebhookVerified, Is.False);

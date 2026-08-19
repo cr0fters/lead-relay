@@ -24,7 +24,8 @@ public sealed class WhatsAppClient(
             : await db.WhatsAppConnections.AsNoTracking().FirstOrDefaultAsync(x => x.SiteId == siteId.Trim(), ct);
         var senderConfig = ResolveSenderConfig(opts, senderPhoneNumberId);
 
-        var endpoint = ResolveEndpoint(senderConfig.MessagesEndpoint, opts.MessagesEndpoint, senderPhoneNumberId);
+        var endpoint = ResolveEndpoint(senderConfig.MessagesEndpoint, opts.MessagesEndpoint, senderPhoneNumberId)
+            ?? WhatsAppGraphApiEndpoints.BuildMessages(opts, senderPhoneNumberId);
         if (string.IsNullOrWhiteSpace(endpoint))
         {
             logger.LogWarning("WhatsApp send skipped: no MessagesEndpoint resolved for site {SiteId}.", siteId ?? "<none>");

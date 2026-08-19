@@ -12,7 +12,7 @@ Update this file when an autonomous MVP run discovers or completes a human actio
 - [x] Check the latest GitHub Actions runs for `main` and confirm the build, tests, and migration validation pass.
 - [ ] Replace the placeholder legal business name, address, company details, and contact email used by the terms and privacy pages.
 - [ ] Create and activate the LeadRelay Stripe account and enable MFA.
-- [ ] Start Meta business verification and the WhatsApp Embedded Signup/App Review process; these approvals can take time.
+- [x] Complete Meta business verification and the WhatsApp Embedded Signup/App Review setup.
 
 ## Product and commercial decisions
 
@@ -34,10 +34,10 @@ Update this file when an autonomous MVP run discovers or completes a human actio
 
 ## Meta and WhatsApp setup
 
-- [ ] Register/configure the Meta app and LeadRelay's required tech-provider or solution integration.
-- [ ] Complete Meta business verification, App Review, and Advanced Access for only the required permissions.
+- [x] Register/configure the Meta app and LeadRelay's required tech-provider or solution integration.
+- [x] Complete Meta business verification, App Review, and Advanced Access for only the required permissions.
 - [ ] Confirm the production WABA webhook, payment/credit relationship, and reconnect process end to end.
-- [ ] Review the configured Graph API version and establish an owner and cadence for upgrades.
+- [ ] Confirm Railway has no stale `WhatsApp__MessagesEndpoint` or sender-specific endpoint override, set/verify `WhatsApp__GraphApiVersion=v23.0`, run production inbound/outbound smoke tests, and assign an owner for the quarterly version review.
 
 ## Legal, privacy, and trust
 

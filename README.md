@@ -25,6 +25,8 @@ Required outside Development:
 - `WhatsApp:VerifyToken`
 - `WhatsApp:AppSecret`
 - `WhatsApp:CredentialEncryptionKey` (base64-encoded 32-byte key)
+- `WhatsApp:GraphApiBaseUrl` (normally `https://graph.facebook.com`)
+- `WhatsApp:GraphApiVersion` (currently `v23.0`)
 - `WhatsApp:RequireSignatureValidation=true`
 
 The app fails fast on startup in non-Development if these are missing.
@@ -41,7 +43,6 @@ Optional local settings (only if using these integrations):
 ```bash
 dotnet user-secrets set "WhatsApp:VerifyToken" "dev_verify_token" --project src/LeadRelay.Web
 dotnet user-secrets set "WhatsApp:AccessToken" "<meta_cloud_api_access_token>" --project src/LeadRelay.Web
-dotnet user-secrets set "WhatsApp:MessagesEndpoint" "https://graph.facebook.com/v20.0/<PHONE_NUMBER_ID>/messages" --project src/LeadRelay.Web
 dotnet user-secrets set "WhatsApp:AppSecret" "<meta_app_secret>" --project src/LeadRelay.Web
 dotnet user-secrets set "WhatsApp:CredentialEncryptionKey" "<openssl_rand_base64_32_output>" --project src/LeadRelay.Web
 dotnet user-secrets set "OpenAI:ApiKey" "<openai_api_key>" --project src/LeadRelay.Web
@@ -61,13 +62,13 @@ PublicBaseUrl=https://your-domain.com
 WhatsApp__VerifyToken=...
 WhatsApp__AppSecret=...
 WhatsApp__CredentialEncryptionKey=...
+WhatsApp__GraphApiBaseUrl=https://graph.facebook.com
+WhatsApp__GraphApiVersion=v23.0
 WhatsApp__RequireSignatureValidation=true
 WhatsApp__IdempotencyProcessingLeaseMinutes=30
 WhatsApp__ProcessedReceiptRetentionDays=30
 WhatsApp__AccessToken=...
-WhatsApp__MessagesEndpoint=...
 WhatsApp__Senders__<PHONE_NUMBER_ID>__AccessToken=...
-WhatsApp__Senders__<PHONE_NUMBER_ID>__MessagesEndpoint=https://graph.facebook.com/v20.0/<PHONE_NUMBER_ID>/messages
 ForwardedHeaders__Enabled=true
 ForwardedHeaders__KnownProxies__0=<YOUR_REVERSE_PROXY_IP>
 OpenAI__ApiKey=...
@@ -161,23 +162,27 @@ Use this script on a customer site (update `siteId`):
 Each site has `AllowedDomains` and the bootstrap endpoint checks `Referer`/`Origin`.  
 Base domains allow subdomains (e.g. `example.com` allows `foo.example.com`).
 
-## WhatsApp setup (placeholders)
-Set these in `src/LeadRelay.Web/appsettings.json`:
+## WhatsApp setup
+The Graph API base URL and version are configured once and all onboarding and message endpoints are generated from them:
 ```json
 {
   "WhatsApp": {
     "VerifyToken": "set_via_user_secrets_or_env",
     "AccessToken": "set_via_user_secrets_or_env",
-    "MessagesEndpoint": "https://graph.facebook.com/v20.0/{phone_number_id}/messages",
+    "GraphApiBaseUrl": "https://graph.facebook.com",
+    "GraphApiVersion": "v23.0",
     "Senders": {
       "<PHONE_NUMBER_ID>": {
-        "AccessToken": "optional_per_sender_token",
-        "MessagesEndpoint": "https://graph.facebook.com/v20.0/<PHONE_NUMBER_ID>/messages"
+        "AccessToken": "optional_per_sender_token"
       }
     }
   }
 }
 ```
+
+`WhatsApp:MessagesEndpoint` and sender-specific `MessagesEndpoint` values remain supported only as legacy/operator overrides. New configuration should omit them so a Graph API version upgrade is made in one place.
+
+Review Meta's supported Graph API versions at least quarterly and before each production release. Upgrade `WhatsApp:GraphApiVersion` only after exercising account connection, WABA subscription, inbound webhook routing, and outbound messaging in a non-production environment; then repeat those smoke tests after deployment.
 
 For multi-tenant routing:
 - owners can connect WhatsApp from `/owner/onboarding`; tokens are encrypted before database storage

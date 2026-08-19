@@ -12,6 +12,41 @@ namespace LeadRelay.UnitTests;
 
 public sealed class WhatsAppClientTenantRoutingTests
 {
+    private const string LegacyMessagesEndpoint = "https://graph.facebook.com/v20.0/{phone_number_id}/messages";
+
+    [Test]
+    public async Task send_builds_default_endpoint_from_central_graph_api_configuration()
+    {
+        var handler = new RecordingHandler();
+        var options = Options.Create(new WhatsAppOptions
+        {
+            AccessToken = "global_token",
+            GraphApiBaseUrl = "https://graph.example.test/",
+            GraphApiVersion = "v23.0"
+        });
+        var sites = new FixedSiteRepository(new Site
+        {
+            Id = "site_a",
+            Name = "Site A",
+            OwnerEmail = "owner@example.com",
+            WhatsAppNumber = "447000000000",
+            WhatsAppPhoneNumberId = "phone-3"
+        });
+        using var db = CreateDb();
+        var client = new WhatsAppClient(
+            new HttpClient(handler),
+            options,
+            sites,
+            db,
+            new WhatsAppCredentialProtector(options),
+            NullLogger<WhatsAppClient>.Instance);
+
+        var sent = await client.SendTextAsync("447111111111", "hello", "site_a", CancellationToken.None);
+
+        Assert.That(sent, Is.True);
+        Assert.That(handler.Requests[0].RequestUri?.ToString(), Is.EqualTo("https://graph.example.test/v23.0/phone-3/messages"));
+    }
+
     [Test]
     public async Task send_uses_sender_specific_configuration_when_site_has_phone_number_id()
     {
@@ -24,7 +59,7 @@ public sealed class WhatsAppClientTenantRoutingTests
                 ["phone-1"] = new()
                 {
                     AccessToken = "sender_token",
-                    MessagesEndpoint = "https://graph.facebook.com/v20.0/phone-1/messages"
+                    MessagesEndpoint = LegacyMessagesEndpoint
                 }
             }
         });
@@ -56,7 +91,7 @@ public sealed class WhatsAppClientTenantRoutingTests
         var options = Options.Create(new WhatsAppOptions
         {
             AccessToken = "global_token",
-            MessagesEndpoint = "https://graph.facebook.com/v20.0/{phone_number_id}/messages"
+            MessagesEndpoint = LegacyMessagesEndpoint
         });
         var sites = new FixedSiteRepository(new Site
         {

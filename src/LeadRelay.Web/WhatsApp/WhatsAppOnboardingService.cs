@@ -192,7 +192,7 @@ public sealed class WhatsAppOnboardingService(
             {
                 try
                 {
-                    var endpoint = BuildGraphEndpoint($"{connection.WabaId}/subscribed_apps");
+                    var endpoint = WhatsAppGraphApiEndpoints.Build(_options, $"{connection.WabaId}/subscribed_apps");
                     using var request = CreateRequest(HttpMethod.Delete, endpoint, accessToken);
                     using var response = await http.SendAsync(request, ct);
                     if (!response.IsSuccessStatusCode)
@@ -222,7 +222,7 @@ public sealed class WhatsAppOnboardingService(
         string accessToken,
         CancellationToken ct)
     {
-        var endpoint = BuildGraphEndpoint($"{phoneNumberId}?fields=id,display_phone_number,verified_name");
+        var endpoint = WhatsAppGraphApiEndpoints.Build(_options, $"{phoneNumberId}?fields=id,display_phone_number,verified_name");
         using var request = CreateRequest(HttpMethod.Get, endpoint, accessToken);
         using var response = await http.SendAsync(request, ct);
         var body = await response.Content.ReadAsStringAsync(ct);
@@ -250,7 +250,7 @@ public sealed class WhatsAppOnboardingService(
 
     private async Task<WhatsAppConnectionResult> SubscribeAppAsync(string wabaId, string accessToken, CancellationToken ct)
     {
-        var endpoint = BuildGraphEndpoint($"{wabaId}/subscribed_apps");
+        var endpoint = WhatsAppGraphApiEndpoints.Build(_options, $"{wabaId}/subscribed_apps");
         using var request = CreateRequest(HttpMethod.Post, endpoint, accessToken);
         request.Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json");
         using var response = await http.SendAsync(request, ct);
@@ -277,13 +277,6 @@ public sealed class WhatsAppOnboardingService(
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         return request;
-    }
-
-    private string BuildGraphEndpoint(string relative)
-    {
-        var baseUrl = _options.GraphApiBaseUrl.TrimEnd('/');
-        var version = _options.GraphApiVersion.Trim('/');
-        return $"{baseUrl}/{version}/{relative.TrimStart('/')}";
     }
 
     private static string ExtractSafeError(string body, string fallback)

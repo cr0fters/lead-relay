@@ -26,6 +26,10 @@ public static class ConfigurationValidationExtensions
         Require(builder.Configuration, "WhatsApp:VerifyToken", missing);
         Require(builder.Configuration, "WhatsApp:AppSecret", missing);
         Require(builder.Configuration, "WhatsApp:CredentialEncryptionKey", missing);
+        if (!IsValidGraphApiBaseUrl(builder.Configuration["WhatsApp:GraphApiBaseUrl"]))
+            missing.Add("WhatsApp:GraphApiBaseUrl (must be an absolute HTTPS origin without path, query, or fragment)");
+        if (!IsValidGraphApiVersion(builder.Configuration["WhatsApp:GraphApiVersion"]))
+            missing.Add("WhatsApp:GraphApiVersion (must use the form v23.0)");
         if (!IsValidEncryptionKey(builder.Configuration["WhatsApp:CredentialEncryptionKey"]) &&
             !missing.Contains("WhatsApp:CredentialEncryptionKey", StringComparer.Ordinal))
         {
@@ -78,4 +82,20 @@ public static class ConfigurationValidationExtensions
            string.IsNullOrEmpty(uri.UserInfo) &&
            string.IsNullOrEmpty(uri.Query) &&
            string.IsNullOrEmpty(uri.Fragment);
+
+    private static bool IsValidGraphApiBaseUrl(string? value)
+        => Uri.TryCreate(value?.Trim(), UriKind.Absolute, out var uri) &&
+           string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) &&
+           string.IsNullOrEmpty(uri.UserInfo) &&
+           (string.IsNullOrEmpty(uri.AbsolutePath) || uri.AbsolutePath == "/") &&
+           string.IsNullOrEmpty(uri.Query) &&
+           string.IsNullOrEmpty(uri.Fragment);
+
+    private static bool IsValidGraphApiVersion(string? value)
+    {
+        var candidate = value?.Trim() ?? "";
+        if (candidate.Length < 4 || candidate[0] != 'v') return false;
+        var parts = candidate[1..].Split('.');
+        return parts.Length == 2 && parts.All(x => x.Length > 0 && x.All(char.IsDigit));
+    }
 }
