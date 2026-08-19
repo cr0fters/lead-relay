@@ -7,6 +7,7 @@ Update this file when an autonomous MVP run discovers or completes a human actio
 ## Do next
 
 - [ ] Rotate the production database, admin-auth, owner-session signing, Postmark, and Meta/WhatsApp credentials exposed during the 2026-08-19 Railway diagnostic. Plan the WhatsApp credential-encryption-key rotation with data re-encryption or customer reconnects so stored sender credentials remain recoverable.
+- [ ] Choose and provision a durable, access-restricted store for ASP.NET Core Data Protection keys (for example, a Railway volume or database-backed key ring) plus an at-rest protection mechanism; production currently warns that container-local keys disappear on redeploy.
 - [x] In Railway, enable **Wait for CI** on the production service's GitHub deployment trigger and accept the updated GitHub permissions.
 - [x] Check the latest GitHub Actions runs for `main` and confirm the build, tests, and migration validation pass.
 - [ ] Replace the placeholder legal business name, address, company details, and contact email used by the terms and privacy pages.

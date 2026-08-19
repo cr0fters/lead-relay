@@ -237,6 +237,7 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
   - Stripe webhook failures and payment failures
 - [ ] Add bounded timeouts, cancellation, and deliberate retry/backoff policies for Meta, OpenAI, Postmark, and Stripe.
 - [ ] Add upstream dependency diagnostics without exposing secrets or raw provider payloads.
+- [ ] Persist the ASP.NET Core Data Protection key ring outside Railway's disposable container and encrypt it at rest; verify antiforgery/temporary-data protection survives a redeploy and document rotation/recovery.
 - [ ] Treat the embedded widget script as a public compatibility contract: version releases, preserve old embeds where practical, and use deliberate cache busting/rollback.
 - [ ] Add production security headers, including HSTS, CSP, frame protections, content-type protections, and a deliberate referrer policy.
   - [x] enforce HSTS on HTTPS plus CSP, frame, content-type, referrer, and browser-permission policies outside development
