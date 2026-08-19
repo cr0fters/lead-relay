@@ -165,11 +165,11 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
   - [x] protect spreadsheet consumers from CSV formula injection and exclude conversation transcripts
   - [x] confirm the authoritative CI build and tests for this milestone
 - [ ] Add safe single-lead deletion/anonymization and an account-level export/deletion workflow.
-- [ ] Clarify the source of each lead and whether a conversation is a test.
+- [x] Clarify the source of each lead and whether a conversation is a test.
   - [x] show a normalized source and real/test label in the inbox, lead detail, notification email, and CSV export
   - [x] automatically classify conversations from the configured WhatsApp setup-test recipient and preserve that classification across the conversation
   - [x] exclude setup-test conversations from first-real-lead onboarding progress
-  - [ ] confirm the authoritative CI build, tests, and migration validation for this milestone
+  - [x] confirm the authoritative CI build, tests, and migration validation for this milestone
 - [ ] Prevent unsupported outbound WhatsApp free-form sends outside Meta's customer-service window; guide owners to approved templates where required.
 - [x] Add a minimal empty-state experience that links a new owner back to onboarding and widget installation.
   - [x] distinguish first-run and filtered-empty inbox states and link first-run owners to setup
