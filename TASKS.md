@@ -44,6 +44,8 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
   - store accepted document versions and timestamp
   - link both documents beside the checkbox
 - [ ] Replace manual WABA ID, phone-number ID, and access-token entry with Meta Embedded Signup.
+  - [x] Choose WhatsApp Business App coexistence and implement the owner v4 signup launcher, server-side code exchange, WABA/phone validation, webhook subscription, and encrypted credential persistence; authoritative CI passed.
+  - [ ] Complete the live Meta configuration and rehearsal, add the admin-only manual recovery form, and finish reconnect/re-authorize and offboarding recovery behaviour.
   - register LeadRelay as the appropriate Meta tech provider/solution integration
   - complete Meta business verification and App Review/Advanced Access requirements
   - request only the required WhatsApp/business permissions
