@@ -170,11 +170,11 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
   - [x] automatically classify conversations from the configured WhatsApp setup-test recipient and preserve that classification across the conversation
   - [x] exclude setup-test conversations from first-real-lead onboarding progress
   - [x] confirm the authoritative CI build, tests, and migration validation for this milestone
-- [ ] Prevent unsupported outbound WhatsApp free-form sends outside Meta's customer-service window; guide owners to approved templates where required.
+- [x] Prevent unsupported outbound WhatsApp free-form sends outside Meta's customer-service window; guide owners to approved templates where required.
   - [x] derive the rolling 24-hour window from the latest persisted inbound customer message
   - [x] enforce the rule server-side before owner replies reach Meta while leaving email available
   - [x] show the window expiry or a clear approved-template/customer-recontact recovery state in lead detail
-  - [ ] confirm the authoritative CI build and tests for this milestone
+  - [x] confirm the authoritative CI build and tests for this milestone
 - [x] Add a minimal empty-state experience that links a new owner back to onboarding and widget installation.
   - [x] distinguish first-run and filtered-empty inbox states and link first-run owners to setup
   - [x] confirm the authoritative CI build and tests for this milestone
