@@ -16,6 +16,7 @@ Update this file when an autonomous MVP run discovers or completes a human actio
 
 ## Product and commercial decisions
 
+- [ ] Choose the default Meta Embedded Signup path: dedicated Cloud API number only, or WhatsApp Business App coexistence for customers who want to keep using an existing app number. This determines the authorization flow, eligibility checks, recovery UX, and support scope.
 - [ ] Decide whether the production `/admin` surface will use dedicated operator authentication or be restricted to a trusted operator network; the shared-token login is not the intended launch control.
 - [ ] Choose the fixed monthly GBP launch price.
 - [ ] Define included lead, message, and AI usage plus the fair-use or hard-limit behavior.
