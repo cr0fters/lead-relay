@@ -26,6 +26,9 @@ internal static class DomainAllowList
         return false;
     }
 
+    internal static string? GetRequestDomain(string? referer, string? origin)
+        => TryGetHost(referer) ?? TryGetHost(origin);
+
     private static string NormalizeDomain(string? domain)
     {
         if (string.IsNullOrWhiteSpace(domain)) return "";

@@ -39,8 +39,15 @@ public sealed class OwnerOnboardingControllerTests
     public async Task progress_only_counts_a_whatsapp_lead()
     {
         using var db = CreateDb();
-        var site = CreateSite([]);
+        var site = CreateSite(["existing.example"]);
         db.Sites.Add(ToRecord(site));
+        db.OwnerAccounts.Add(new OwnerAccountRecord
+        {
+            SiteId = site.Id,
+            EmailVerifiedAtUtc = DateTimeOffset.UtcNow,
+            WidgetInstalledAtUtc = DateTimeOffset.UtcNow,
+            WidgetInstalledDomain = "existing.example"
+        });
         db.Leads.Add(new LeadRecord
         {
             Id = Guid.NewGuid(),
@@ -55,7 +62,14 @@ public sealed class OwnerOnboardingControllerTests
         var controller = CreateController(db, new MutableSiteRepository(site));
 
         var apiOnlyResult = (ViewResult)await controller.Index(CancellationToken.None);
-        Assert.That(((OwnerOnboardingController.OwnerOnboardingModel)apiOnlyResult.Model!).HasFirstLead, Is.False);
+        var apiOnlyModel = (OwnerOnboardingController.OwnerOnboardingModel)apiOnlyResult.Model!;
+        Assert.Multiple(() =>
+        {
+            Assert.That(apiOnlyModel.HasFirstLead, Is.False);
+            Assert.That(apiOnlyModel.IsEmailVerified, Is.True);
+            Assert.That(apiOnlyModel.WidgetInstalledAtUtc, Is.Not.Null);
+            Assert.That(apiOnlyModel.IsWidgetInstalled, Is.True);
+        });
 
         var lead = await db.Leads.SingleAsync();
         lead.Channel = "whatsapp";

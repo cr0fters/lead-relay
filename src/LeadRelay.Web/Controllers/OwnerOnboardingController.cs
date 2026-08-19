@@ -112,12 +112,21 @@ public sealed class OwnerOnboardingController(
     {
         var site = await sites.GetByIdAsync(auth.SiteId, ct) ?? throw new InvalidOperationException("Owner site not found.");
         var connection = await onboarding.GetSummaryAsync(auth.SiteId, ct);
+        var account = await db.OwnerAccounts.AsNoTracking()
+            .SingleOrDefaultAsync(x => x.SiteId == auth.SiteId, ct);
         var hasWhatsAppLead = await db.Leads.AsNoTracking()
             .AnyAsync(x => x.SiteId == auth.SiteId && x.Channel == "whatsapp" && !x.IsTest, ct);
         var publicBaseUrl = (configuration["PublicBaseUrl"] ?? "").TrimEnd('/');
         var widgetUrl = string.IsNullOrWhiteSpace(publicBaseUrl)
             ? $"{Request.Scheme}://{Request.Host}"
             : publicBaseUrl;
+        var whatsAppDigits = new string((site.WhatsAppNumber ?? "").Where(char.IsDigit).ToArray());
+        var isWidgetInstalled = account?.WidgetInstalledAtUtc.HasValue == true &&
+            !string.IsNullOrWhiteSpace(account.WidgetInstalledDomain) &&
+            DomainAllowList.IsAllowedDomain(
+                site.AllowedDomains,
+                $"https://{account.WidgetInstalledDomain}",
+                null);
 
         return new OwnerOnboardingModel
         {
@@ -126,8 +135,15 @@ public sealed class OwnerOnboardingController(
             OwnerEmail = auth.OwnerEmail,
             Connection = connection,
             AllowedDomains = site.AllowedDomains,
+            IsEmailVerified = account?.EmailVerifiedAtUtc.HasValue == true,
+            WidgetInstalledAtUtc = account?.WidgetInstalledAtUtc,
+            WidgetInstalledDomain = account?.WidgetInstalledDomain,
+            IsWidgetInstalled = isWidgetInstalled,
             HasFirstLead = hasWhatsAppLead,
-            WidgetSnippet = $"<script src=\"{widgetUrl}/widget/bootstrap.js?siteId={site.Id}\"></script>"
+            WidgetSnippet = $"<script src=\"{widgetUrl}/widget/bootstrap.js?siteId={site.Id}\"></script>",
+            WhatsAppPreviewUrl = string.IsNullOrWhiteSpace(whatsAppDigits)
+                ? null
+                : $"https://wa.me/{whatsAppDigits}?text={Uri.EscapeDataString("Hi")}"
         };
     }
 
@@ -156,17 +172,23 @@ public sealed class OwnerOnboardingController(
         public string OwnerEmail { get; set; } = "";
         public WhatsAppConnectionSummary Connection { get; set; } = new(false, "not_connected", null, null, null, null, null, null, null, null);
         public IReadOnlyList<string> AllowedDomains { get; set; } = [];
+        public bool IsEmailVerified { get; set; }
+        public DateTimeOffset? WidgetInstalledAtUtc { get; set; }
+        public string? WidgetInstalledDomain { get; set; }
+        public bool IsWidgetInstalled { get; set; }
         public bool HasFirstLead { get; set; }
         public string WidgetSnippet { get; set; } = "";
+        public string? WhatsAppPreviewUrl { get; set; }
         public string? Error { get; set; }
         public string? Success { get; set; }
+        public bool IsWhatsAppReady => Connection.IsConnected && Connection.IsWebhookVerified && Connection.HasSuccessfulTest;
+        public bool IsSubscriptionActive => false;
         public int CompletedSteps => new[]
         {
-            true,
-            Connection.IsConnected,
-            Connection.IsWebhookVerified,
-            Connection.HasSuccessfulTest,
-            AllowedDomains.Count > 0,
+            IsEmailVerified,
+            IsWhatsAppReady,
+            IsWidgetInstalled,
+            IsSubscriptionActive,
             HasFirstLead
         }.Count(x => x);
     }

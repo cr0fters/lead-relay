@@ -7,6 +7,7 @@ using LeadRelay.Web.Leads;
 using LeadRelay.Web.Messaging;
 using LeadRelay.Web.Security;
 using LeadRelay.Web.WhatsApp;
+using LeadRelay.Web.Widgets;
 using LeadRelay.Web.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -101,6 +102,7 @@ builder.Services.AddScoped<IOwnerSessionVersionStore, EfOwnerSessionVersionStore
 builder.Services.AddScoped<IOwnerPasswordAuthService, OwnerPasswordAuthService>();
 builder.Services.AddScoped<IOwnerRegistrationService, OwnerRegistrationService>();
 builder.Services.AddScoped<IOwnerEmailVerificationService, OwnerEmailVerificationService>();
+builder.Services.AddScoped<IWidgetInstallationTracker, WidgetInstallationTracker>();
 builder.Services.AddScoped<IMessageChannel, WhatsAppMessageChannel>();
 builder.Services.AddScoped<IMessageChannel, EmailMessageChannel>();
 builder.Services.AddScoped<IMessageDispatcher, MessageDispatcher>();

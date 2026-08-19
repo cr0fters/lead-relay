@@ -6,6 +6,17 @@ namespace LeadRelay.UnitTests;
 public sealed class DomainAllowListTests
 {
     [Test]
+    public void request_domain_comes_only_from_browser_source_headers()
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.That(DomainAllowList.GetRequestDomain("https://customer.example/page", null), Is.EqualTo("customer.example"));
+            Assert.That(DomainAllowList.GetRequestDomain(null, "https://shop.example"), Is.EqualTo("shop.example"));
+            Assert.That(DomainAllowList.GetRequestDomain(null, null), Is.Null);
+        });
+    }
+
+    [Test]
     public void allows_any_domain_when_allow_list_empty()
     {
         var allowed = Array.Empty<string>();

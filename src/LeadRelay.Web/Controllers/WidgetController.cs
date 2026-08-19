@@ -2,6 +2,7 @@ using System.Text.Json;
 using LeadRelay.Application.Abstractions;
 using LeadRelay.Web.Security;
 using LeadRelay.Web.WhatsApp;
+using LeadRelay.Web.Widgets;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 
@@ -11,6 +12,7 @@ public sealed class WidgetController(
     ISiteRepository sites,
     WhatsAppOnboardingService onboarding,
     IOwnerEmailVerificationService emailVerification,
+    IWidgetInstallationTracker installationTracker,
     IConfiguration configuration,
     ILogger<WidgetController> logger) : Controller
 {
@@ -67,6 +69,10 @@ public sealed class WidgetController(
                 $"console.warn(\"LeadRelay: widget blocked for site '{site.Id}'. Domain not in allow-list.\");",
                 "application/javascript; charset=utf-8");
         }
+
+        var requestDomain = DomainAllowList.GetRequestDomain(referer, originHeader);
+        if (site.AllowedDomains.Count > 0 && requestDomain is not null)
+            await installationTracker.RecordSuccessfulLoadAsync(site.Id, requestDomain, ct);
 
         var origin = ResolveOrigin();
         Response.Headers.CacheControl = "public, max-age=300, stale-while-revalidate=600";
