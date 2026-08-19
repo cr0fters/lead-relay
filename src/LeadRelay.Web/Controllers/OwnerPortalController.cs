@@ -17,7 +17,8 @@ public sealed class OwnerPortalController(
     ILeadRepository leads,
     IMessageDispatcher messages,
     ISiteRepository sites,
-    IClock clock) : Controller
+    IClock clock,
+    IConfiguration configuration) : Controller
 {
     [HttpGet("/owner")]
     public async Task<IActionResult> Index(
@@ -241,6 +242,61 @@ public sealed class OwnerPortalController(
         return View(ToSettingsModel(auth, site));
     }
 
+    [HttpPost("/owner/settings/profile")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateSiteProfile(
+        [FromForm] OwnerSiteProfileInputModel input,
+        CancellationToken ct)
+    {
+        var auth = GetAuthContext();
+        if (auth is null) return Redirect("/owner/login");
+
+        var site = await sites.GetByIdAsync(auth.SiteId, ct);
+        if (site is null) return NotFound();
+
+        var model = ToSettingsModel(auth, site);
+        model.SiteName = (input.SiteName ?? "").Trim();
+        model.BusinessSummary = NormalizeText(input.BusinessSummary);
+        model.IntroMessage = NormalizeText(input.IntroMessage);
+        model.AllowedDomains = input.AllowedDomains ?? "";
+
+        if (model.SiteName.Length is < 1 or > 120)
+        {
+            model.Error = "Business name must be between 1 and 120 characters.";
+            return View("Settings", model);
+        }
+        if (model.BusinessSummary?.Length > 2000)
+        {
+            model.Error = "Business summary must be 2,000 characters or fewer.";
+            return View("Settings", model);
+        }
+        if (model.IntroMessage?.Length > 1000)
+        {
+            model.Error = "Greeting must be 1,000 characters or fewer.";
+            return View("Settings", model);
+        }
+
+        var domains = WebsiteDomainNormalizer.NormalizeList(input.AllowedDomains);
+        if (domains.Error is not null)
+        {
+            model.Error = domains.Error;
+            return View("Settings", model);
+        }
+
+        site = CopySite(
+            site,
+            model.SiteName,
+            model.BusinessSummary,
+            model.IntroMessage,
+            domains.Domains,
+            site.Fields);
+        await sites.UpsertAsync(site, ct);
+
+        var updated = ToSettingsModel(auth, site);
+        updated.Success = "Business and website settings updated.";
+        return View("Settings", updated);
+    }
+
     [HttpPost("/owner/settings/fields")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateSiteFields([FromForm] List<OwnerFieldInputModel>? fields, CancellationToken ct)
@@ -259,18 +315,13 @@ public sealed class OwnerPortalController(
             return View("Settings", invalidModel);
         }
 
-        site = new Site
-        {
-            Id = site.Id,
-            Name = site.Name,
-            BusinessSummary = site.BusinessSummary,
-            AllowedDomains = site.AllowedDomains,
-            Fields = parsed.Fields,
-            IntroMessage = site.IntroMessage,
-            OwnerEmail = site.OwnerEmail,
-            WhatsAppNumber = site.WhatsAppNumber,
-            WhatsAppPhoneNumberId = site.WhatsAppPhoneNumberId
-        };
+        site = CopySite(
+            site,
+            site.Name,
+            site.BusinessSummary,
+            site.IntroMessage,
+            site.AllowedDomains,
+            parsed.Fields);
 
         await sites.UpsertAsync(site, ct);
         var updated = ToSettingsModel(auth, site);
@@ -491,7 +542,7 @@ public sealed class OwnerPortalController(
         };
     }
 
-    private static OwnerSiteSettingsModel ToSettingsModel(OwnerAuthContext auth, Site site)
+    private OwnerSiteSettingsModel ToSettingsModel(OwnerAuthContext auth, Site site)
     {
         var fields = site.Fields
             .Select(x => new OwnerFieldInputModel
@@ -507,9 +558,41 @@ public sealed class OwnerPortalController(
             SiteId = auth.SiteId,
             OwnerEmail = auth.OwnerEmail,
             SiteName = site.Name,
+            BusinessSummary = site.BusinessSummary,
+            IntroMessage = site.IntroMessage,
+            AllowedDomains = string.Join("\n", site.AllowedDomains),
+            WidgetSnippet = BuildWidgetSnippet(site.Id),
             Fields = fields
         };
     }
+
+    private string BuildWidgetSnippet(string siteId)
+    {
+        var publicBaseUrl = (configuration["PublicBaseUrl"] ?? "").TrimEnd('/');
+        var widgetUrl = string.IsNullOrWhiteSpace(publicBaseUrl)
+            ? $"{Request.Scheme}://{Request.Host}"
+            : publicBaseUrl;
+        return $"<script src=\"{widgetUrl}/widget/bootstrap.js?siteId={siteId}\"></script>";
+    }
+
+    private static Site CopySite(
+        Site site,
+        string name,
+        string? businessSummary,
+        string? introMessage,
+        IReadOnlyList<string> allowedDomains,
+        IReadOnlyList<ConversationField> fields) => new()
+    {
+        Id = site.Id,
+        Name = name,
+        BusinessSummary = businessSummary,
+        AllowedDomains = allowedDomains,
+        Fields = fields,
+        IntroMessage = introMessage,
+        OwnerEmail = site.OwnerEmail,
+        WhatsAppNumber = site.WhatsAppNumber,
+        WhatsAppPhoneNumberId = site.WhatsAppPhoneNumberId
+    };
 
     private static (List<ConversationField> Fields, string? Error) ParseAndNormalizeFields(List<OwnerFieldInputModel>? fields)
     {
@@ -819,9 +902,21 @@ public sealed class OwnerPortalController(
         public string SiteId { get; set; } = "";
         public string SiteName { get; set; } = "";
         public string OwnerEmail { get; set; } = "";
+        public string? BusinessSummary { get; set; }
+        public string? IntroMessage { get; set; }
+        public string AllowedDomains { get; set; } = "";
+        public string WidgetSnippet { get; set; } = "";
         public List<OwnerFieldInputModel> Fields { get; set; } = new();
         public string? Error { get; set; }
         public string? Success { get; set; }
+    }
+
+    public sealed class OwnerSiteProfileInputModel
+    {
+        public string? SiteName { get; set; }
+        public string? BusinessSummary { get; set; }
+        public string? IntroMessage { get; set; }
+        public string? AllowedDomains { get; set; }
     }
 
     public sealed class OwnerFieldInputModel

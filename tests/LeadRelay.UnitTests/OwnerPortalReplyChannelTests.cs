@@ -7,6 +7,7 @@ using LeadRelay.Web.Controllers;
 using LeadRelay.Web.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using NUnit.Framework;
 using System.Text;
 
@@ -36,7 +37,8 @@ public sealed class OwnerPortalReplyChannelTests
             repository,
             dispatcher,
             new LeadRelay.Infrastructure.Persistence.InMemorySiteRepository(),
-            new FixedClock(DateTimeOffset.UtcNow))
+            new FixedClock(DateTimeOffset.UtcNow),
+            CreateConfiguration())
         {
             ControllerContext = new ControllerContext
             {
@@ -165,7 +167,8 @@ public sealed class OwnerPortalReplyChannelTests
             repository,
             new RecordingDispatcher(),
             new LeadRelay.Infrastructure.Persistence.InMemorySiteRepository(),
-            new FixedClock(DateTimeOffset.UtcNow))
+            new FixedClock(DateTimeOffset.UtcNow),
+            CreateConfiguration())
         {
             ControllerContext = new ControllerContext
             {
@@ -237,6 +240,69 @@ public sealed class OwnerPortalReplyChannelTests
         var after = await siteRepository.GetByIdAsync(siteId, CancellationToken.None);
         Assert.That(after, Is.Not.Null);
         Assert.That(after!.Fields.Count, Is.EqualTo(beforeCount));
+    }
+
+    [Test]
+    public async Task update_site_profile_saves_owner_managed_configuration_and_preserves_provider_details()
+    {
+        var siteId = InMemorySiteRepository.DefaultSiteId;
+        var repository = new FakeLeadRepository(BuildLead(siteId));
+        var siteRepository = new InMemorySiteRepository();
+        var before = await siteRepository.GetByIdAsync(siteId, CancellationToken.None);
+        var controller = CreateController(repository, siteRepository, siteId);
+
+        var result = await controller.UpdateSiteProfile(
+            new OwnerPortalController.OwnerSiteProfileInputModel
+            {
+                SiteName = "  North Shore Build Co.  ",
+                BusinessSummary = "  Residential renovations and extensions.  ",
+                IntroMessage = "  Hi! Tell us about your project.  ",
+                AllowedDomains = "https://Example.com/work\nshop.example.com\nEXAMPLE.com"
+            },
+            CancellationToken.None);
+
+        Assert.That(result, Is.TypeOf<ViewResult>());
+        var updated = await siteRepository.GetByIdAsync(siteId, CancellationToken.None);
+        Assert.That(updated, Is.Not.Null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(updated!.Name, Is.EqualTo("North Shore Build Co."));
+            Assert.That(updated.BusinessSummary, Is.EqualTo("Residential renovations and extensions."));
+            Assert.That(updated.IntroMessage, Is.EqualTo("Hi! Tell us about your project."));
+            Assert.That(updated.AllowedDomains, Is.EqualTo(new[] { "example.com", "shop.example.com" }));
+            Assert.That(updated.Fields.Select(x => x.Id), Is.EqualTo(before!.Fields.Select(x => x.Id)));
+            Assert.That(updated.WhatsAppPhoneNumberId, Is.EqualTo(before.WhatsAppPhoneNumberId));
+        });
+    }
+
+    [Test]
+    public async Task update_site_profile_rejects_invalid_domain_without_saving_partial_changes()
+    {
+        var siteId = InMemorySiteRepository.DefaultSiteId;
+        var repository = new FakeLeadRepository(BuildLead(siteId));
+        var siteRepository = new InMemorySiteRepository();
+        var before = await siteRepository.GetByIdAsync(siteId, CancellationToken.None);
+        var controller = CreateController(repository, siteRepository, siteId);
+
+        var result = await controller.UpdateSiteProfile(
+            new OwnerPortalController.OwnerSiteProfileInputModel
+            {
+                SiteName = "Changed name",
+                AllowedDomains = "ftp://example.com"
+            },
+            CancellationToken.None);
+
+        var view = result as ViewResult;
+        var model = view?.Model as OwnerPortalController.OwnerSiteSettingsModel;
+        var after = await siteRepository.GetByIdAsync(siteId, CancellationToken.None);
+        Assert.Multiple(() =>
+        {
+            Assert.That(view, Is.Not.Null);
+            Assert.That(model?.Error, Does.Contain("valid website domain"));
+            Assert.That(model?.SiteName, Is.EqualTo("Changed name"));
+            Assert.That(after!.Name, Is.EqualTo(before!.Name));
+            Assert.That(after.AllowedDomains, Is.EqualTo(before.AllowedDomains));
+        });
     }
 
     [Test]
@@ -468,7 +534,8 @@ public sealed class OwnerPortalReplyChannelTests
             repository,
             dispatcher ?? new RecordingDispatcher(),
             siteRepository,
-            clock ?? new FixedClock(DateTimeOffset.UtcNow))
+            clock ?? new FixedClock(DateTimeOffset.UtcNow),
+            CreateConfiguration())
         {
             ControllerContext = new ControllerContext
             {
@@ -478,6 +545,13 @@ public sealed class OwnerPortalReplyChannelTests
         controller.HttpContext.Items[OwnerAuthMiddleware.ContextKey] = new OwnerAuthContext(siteId, "owner@example.com");
         return controller;
     }
+
+    private static IConfiguration CreateConfiguration() => new ConfigurationBuilder()
+        .AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["PublicBaseUrl"] = "https://leadrelay.test"
+        })
+        .Build();
 
     private sealed class FakeLeadRepository : ILeadRepository
     {

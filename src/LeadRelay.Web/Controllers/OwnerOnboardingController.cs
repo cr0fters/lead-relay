@@ -87,18 +87,22 @@ public sealed class OwnerOnboardingController(
         var site = await sites.GetByIdAsync(auth.SiteId, ct);
         if (site is null) return NotFound();
 
-        var normalizedDomain = NormalizeDomain(domain);
+        var normalizedDomain = WebsiteDomainNormalizer.Normalize(domain);
         if (normalizedDomain is null)
         {
             TempData["Onboarding.Error"] = "Enter a valid website domain, for example example.com.";
             return RedirectToAction(nameof(Index));
         }
 
-        var domains = site.AllowedDomains
-            .Append(normalizedDomain)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-        var updated = CopySiteWithDomains(site, domains);
+        var normalizedDomains = WebsiteDomainNormalizer.NormalizeList(
+            string.Join('\n', site.AllowedDomains.Append(normalizedDomain)));
+        if (normalizedDomains.Error is not null)
+        {
+            TempData["Onboarding.Error"] = normalizedDomains.Error;
+            return RedirectToAction(nameof(Index));
+        }
+
+        var updated = CopySiteWithDomains(site, normalizedDomains.Domains);
         await sites.UpsertAsync(updated, ct);
         TempData["Onboarding.Success"] = "Website domain saved. Your widget snippet is ready.";
         return RedirectToAction(nameof(Index));
@@ -131,20 +135,6 @@ public sealed class OwnerOnboardingController(
         => HttpContext.Items.TryGetValue(OwnerAuthMiddleware.ContextKey, out var value)
             ? value as OwnerAuthContext
             : null;
-
-    private static string? NormalizeDomain(string? value)
-    {
-        var candidate = (value ?? "").Trim();
-        if (string.IsNullOrWhiteSpace(candidate) || candidate.Length > 255)
-            return null;
-        if (!candidate.Contains("://", StringComparison.Ordinal))
-            candidate = $"https://{candidate}";
-        if (!Uri.TryCreate(candidate, UriKind.Absolute, out var uri) || string.IsNullOrWhiteSpace(uri.Host))
-            return null;
-        if (uri.Host.Contains(' ') || uri.Host.Contains('/'))
-            return null;
-        return uri.Host.Trim().ToLowerInvariant();
-    }
 
     private static Site CopySiteWithDomains(Site site, IReadOnlyList<string> domains) => new()
     {
