@@ -65,12 +65,13 @@ The trial should start at Stripe Checkout after WhatsApp testing, not at initial
   - guide the owner through a real test message
   - distinguish test conversations/leads from real leads and analytics
   - provide copyable platform-specific instructions for common site builders
-- [ ] Let owners manage all onboarding configuration without the admin area.
+- [x] Let owners manage all onboarding configuration without the admin area.
   - business name and summary
   - greeting/intro message
   - qualification fields and ordering
   - allowed domains and widget snippet
   - WhatsApp connection, health, reconnect, and disconnect
+  - authoritative CI build, tests, frontend asset verification, and migration validation passed
 - [ ] Add recovery states for every onboarding failure.
   - Meta authorization canceled or expired
   - number already connected elsewhere
